@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:38:32 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/09 14:41:14 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/09 18:23:40 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,11 @@
 
 int main() {
     FileUpload  ins;
-    
-    std::cout << ins.name << std::endl;   
+    std::string line;
+
+    std::ifstream BodyFile("Body.txt");
+
+    while (std::getline(BodyFile, line)) {
+        std::cout << line << std::endl;
+    }
 }
