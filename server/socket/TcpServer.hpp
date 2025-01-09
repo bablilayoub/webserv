@@ -8,14 +8,16 @@
 #include <stdlib.h>
 #include <fcntl.h>
 
-#define PORT 8080
-
-class TcpServer {
+class TcpServer
+{
 private:
 	struct sockaddr_in serverAddress;
+	bool isNonBlocking;
 	int sockfd;
+
 public:
-	TcpServer();
+	TcpServer(int port, bool nonBlocking);
 	int socketCreationAndBinding();
 	int handleIncomingConnection();
+	void setNonBlockingMode();
 };
