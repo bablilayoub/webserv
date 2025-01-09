@@ -1,118 +1,72 @@
 #include <iostream>
-#include <string>
-#include <thread>
-#include <vector>
-#include <cstring>
-#include <sstream>
+#include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <cstring>
+#include "Request/Request.hpp"
 
-constexpr int PORT = 8080;
-constexpr int BUFFER_SIZE = 1024;
+#define PORT 8080
+#define BUFFER_SIZE 4096
 
-void handle_client(int client_socket)
-{
-	char buffer[BUFFER_SIZE];
-	memset(buffer, 0, BUFFER_SIZE);
+int main() {
+    int server_fd, new_socket;
+    struct sockaddr_in address;
+    int opt = 1;
+    int addrlen = sizeof(address);
 
-	// Read the client's request
-	int bytes_read = read(client_socket, buffer, BUFFER_SIZE - 1);
-	if (bytes_read < 0)
-	{
-		std::cerr << "Error reading from client socket." << std::endl;
-		close(client_socket);
-		return;
-	}
+    // Create socket
+    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
+        perror("Socket failed");
+        exit(EXIT_FAILURE);
+    }
 
-	std::cout << buffer << std::endl;
+    // Attach socket to the port
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
+        perror("setsockopt");
+        exit(EXIT_FAILURE);
+    }
 
-	// Parse the HTTP request
-	std::istringstream request_stream(buffer);
-	std::string method, path, protocol;
-	request_stream >> method >> path >> protocol;
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(PORT);
 
-	// Handle GET and POST requests
-	std::string response;
-	if (method == "GET")
-	{
-		response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nYou sent a GET request to " + path + "\n";
-	}
-	else if (method == "POST")
-	{
-		// Read the body of the POST request
-		std::string line;
-		while (std::getline(request_stream, line) && line != "\r")
-		{
-		}
-		std::string body;
-		std::getline(request_stream, body);
+    // Bind the socket to the port
+    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+        perror("Bind failed");
+        exit(EXIT_FAILURE);
+    }
 
-		response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nYou sent a POST request to " + path + " with body: " + body + "\n";
-	}
-	else
-	{
-		response = "HTTP/1.1 405 Method Not Allowed\r\nContent-Type: text/plain\r\n\r\nMethod Not Allowed\n";
-	}
+    // Listen for connections
+    if (listen(server_fd, 3) < 0) {
+        perror("Listen");
+        exit(EXIT_FAILURE);
+    }
 
-	// Send the response
-	send(client_socket, response.c_str(), response.size(), 0);
+    std::cout << "Server is listening on port " << PORT << "...\n";
 
-	// Close the client socket
-	close(client_socket);
-}
+	Request req;
 
-int main()
-{
-	// Create a socket
-	int server_socket = socket(AF_INET, SOCK_STREAM, 0);
-	if (server_socket == -1)
-	{
-		std::cerr << "Failed to create socket." << std::endl;
-		return 1;
-	}
+    while (true) {
+        // Accept a new connection
+        if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
+            perror("Accept");
+            exit(EXIT_FAILURE);
+        }
 
-	// Bind the socket to the port
-	sockaddr_in server_addr{};
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_addr.s_addr = INADDR_ANY;
-	server_addr.sin_port = htons(PORT);
+        // Read the incoming request
+        char buffer[BUFFER_SIZE] = {0};
+        int valread = read(new_socket, buffer, BUFFER_SIZE);
+        if (valread > 0) {
+			req.parse(buffer);
 
-	int opt = 1;
-	setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+            // Respond to the client (basic HTTP response)
+            const char *response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nFile received!";
+            send(new_socket, response, strlen(response), 0);
+        }
 
-	if (bind(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
-	{
-		std::cerr << "Failed to bind socket." << std::endl;
-		close(server_socket);
-		return 1;
-	}
+        // Close the connection
+        close(new_socket);
+    }
 
-	// Start listening for connections
-	if (listen(server_socket, 10) < 0)
-	{
-		std::cerr << "Failed to listen on socket." << std::endl;
-		close(server_socket);
-		return 1;
-	}
-
-	std::cout << "Server is running on port " << PORT << std::endl;
-
-	// Handle incoming connections
-	while (true)
-	{
-		sockaddr_in client_addr{};
-		socklen_t client_len = sizeof(client_addr);
-		int client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &client_len);
-		if (client_socket < 0)
-		{
-			std::cerr << "Failed to accept client connection." << std::endl;
-			continue;
-		}
-
-		// Handle the client in a separate thread
-		std::thread(handle_client, client_socket).detach();
-	}
-
-	close(server_socket);
-	return 0;
+    return 0;
 }
