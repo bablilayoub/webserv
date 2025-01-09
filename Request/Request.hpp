@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/09 16:22:20 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/09 18:29:25 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,8 +18,8 @@
 #define METHOD_POST "POST"
 #define METHOD_DELETE "DELETE"
 #define BOUNDARY_PREFIX "boundary="
-#define CONTENT_LENGTH_PREFIX "Content-Length:"
-#define HOST_PREFIX "Host:"
+#define CONTENT_LENGTH_PREFIX "Content-Length: "
+#define HOST_PREFIX "Host: "
 
 class Request
 {
@@ -34,7 +34,7 @@ private:
 	std::map<std::string, std::string> headers;
 
 	void handleFirstLine(std::istringstream &requestStream);
-	void trim(std::string &line, std::string niddle);
+	void clear();
 public:	
 	void parse(const std::string &request);
 	const std::string &getBody() const;

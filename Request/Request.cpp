@@ -6,45 +6,44 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/09 16:25:24 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/09 18:36:37 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Request.hpp"
 
-void Request::trim(std::string &line, std::string niddle)
-{
-	for (size_t i = 0; i < niddle.size(); i++)
-	{
-		size_t pos = line.find(niddle[i]);
-		while (pos != std::string::npos)
-		{
-			std::cout << "Here" << std::endl;
-			line = line.substr(pos + 1, line.size());
-			pos = line.find(niddle[i]);
-		}
-	}
-}
-
 void Request::handleFirstLine(std::istringstream &requestStream)
 {
 	std::string line;
-	size_t lastPos = 0;
 	std::getline(requestStream, line);
 
-	// get method
-	lastPos = line.find(' ');
-	this->method = line.substr(0, lastPos);
-	line = line.substr(lastPos + 1, line.size());
+	size_t firstSpace = line.find(' ');
+	if (firstSpace == std::string::npos)
+		throw std::runtime_error("Invalid request line format");
 
-	// get path
-	lastPos = line.find(' ');
-	this->path = line.substr(0, lastPos);
-	line = line.substr(lastPos + 1, line.size());
+	this->method = line.substr(0, firstSpace);
+	size_t secondSpace = line.find(' ', firstSpace + 1);
+	if (secondSpace == std::string::npos)
+		throw std::runtime_error("Invalid request line format");
+
+	this->path = line.substr(firstSpace + 1, secondSpace - firstSpace - 1);
+}
+
+void Request::clear()
+{
+	this->port = 0;
+	this->content_length = 0;
+	this->ip.clear();
+	this->path.clear();
+	this->method.clear();
+	this->body.clear();
+	this->boundary.clear();
+	this->headers.clear();
 }
 
 void Request::parse(const std::string &request)
 {
+	this->clear();
 	std::istringstream requestStream(request);
 
 	this->handleFirstLine(requestStream);
@@ -55,7 +54,10 @@ void Request::parse(const std::string &request)
 		std::size_t boundaryPos = line.find(BOUNDARY_PREFIX);
 		std::size_t contentLengthPos = line.find(CONTENT_LENGTH_PREFIX);
 		std::size_t hostPrefixPos = line.find(HOST_PREFIX);
-		
+		size_t bodyPrefixPos = std::string::npos;
+		if (!this->boundary.empty())
+			bodyPrefixPos = line.find(this->boundary);
+
 		if (boundaryPos != std::string::npos)
 		{
 			boundaryPos += std::string(BOUNDARY_PREFIX).length();
@@ -68,20 +70,20 @@ void Request::parse(const std::string &request)
 		}
 		if (hostPrefixPos != std::string::npos)
 		{
-			hostPrefixPos += std::string(HOST_PREFIX).length() + 1;
-			line = line.substr(hostPrefixPos, line.size() - hostPrefixPos);
-			this->ip = line.substr(0, line.find(':'));
-			std::cout << "|" << line << "|" << std::endl;
-			this->port = std::atof(line.substr(line.find(':')).c_str());
+			std::string hostPrefix(HOST_PREFIX);
+			size_t colonPos = line.find(':', hostPrefix.length());
+			if (colonPos == std::string::npos)
+				throw std::runtime_error("Invalid host format");
+
+			this->ip = line.substr(hostPrefix.length(), colonPos - hostPrefix.length());
+			this->port = std::atof(line.substr(colonPos + 1).c_str());
+		}
+		if (!this->boundary.empty() && bodyPrefixPos != std::string::npos)
+		{
+			this->body += line + '\n';
+			while (std::getline(requestStream, line) && line.find(this->boundary + "--") == std::string::npos)
+				this->body += line + '\n';
+			bodyPrefixPos = std::string::npos;
 		}
 	}
-
-	std::cout << "|" << this->method << "|" << std::endl;
-	std::cout << "|" << this->path << "|" << std::endl;
-	std::cout << "|" << this->boundary << "|" << std::endl;
-	std::cout << "|" << this->content_length << "|" << std::endl;
-	std::cout << "|" << this->ip << "|" << std::endl;
-	std::cout << "|" << this->port << "|" << std::endl;
-	
-	std::cout << request << std::endl;
 }
