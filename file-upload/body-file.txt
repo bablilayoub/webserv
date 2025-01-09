@@ -3,42 +3,44 @@ cout : HTTP Request Received:
 POST /upload HTTP/1.1
 Host: localhost:8080
 Connection: keep-alive
-Content-Length: 144
+Content-Length: 18887
 Cache-Control: max-age=0
 sec-ch-ua: "Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"
 sec-ch-ua-mobile: ?0
 sec-ch-ua-platform: "macOS"
 Upgrade-Insecure-Requests: 1
-Origin: http://localhost:5500
-Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryTpLaLdlQKx6gH3MZ
+Origin: http://127.0.0.1:5500
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundarySV56i6u4XoshxOnA
 User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36
 Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
-Sec-Fetch-Site: same-site
+Sec-Fetch-Site: cross-site
 Sec-Fetch-Mode: navigate
 Sec-Fetch-User: ?1
 Sec-Fetch-Dest: document
-Referer: http://localhost:5500/
+Referer: http://127.0.0.1:5500/
 Accept-Encoding: gzip, deflate, br, zstd
 Accept-Language: fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7
 
-------WebKitFormBoundaryTpLaLdlQKx6gH3MZ
-Content-Disposition: form-data; name="username"
-
-hello
-------WebKitFormBoundaryTpLaLdlQKx6gH3MZ--
 
 cout : HTTP Request Received:
-GET /favicon.ico HTTP/1.1
+POST /upload HTTP/1.1
 Host: localhost:8080
 Connection: keep-alive
+Content-Length: 18887
+Cache-Control: max-age=0
 sec-ch-ua: "Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"
 sec-ch-ua-mobile: ?0
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36
 sec-ch-ua-platform: "macOS"
-Accept: image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8
-Sec-Fetch-Site: same-origin
-Sec-Fetch-Mode: no-cors
-Sec-Fetch-Dest: image
-Referer: http://localhost:8080/upload
+Upgrade-Insecure-Requests: 1
+Origin: http://127.0.0.1:5500
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundarySV56i6u4XoshxOnA
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Sec-Fetch-Site: cross-site
+Sec-Fetch-Mode: navigate
+Sec-Fetch-User: ?1
+Sec-Fetch-Dest: document
+Referer: http://127.0.0.1:5500/
 Accept-Encoding: gzip, deflate, br, zstd
 Accept-Language: fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7
+

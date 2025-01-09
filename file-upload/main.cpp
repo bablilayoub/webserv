@@ -41,7 +41,7 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    std::cout << "Server is listening on port " << PORT << "...\n";
+    std::cout << "cout : Server is listening on port " << PORT << "...\n";
 
     while (true) {
         // Accept a new connection
@@ -54,7 +54,7 @@ int main() {
         char buffer[BUFFER_SIZE] = {0};
         int valread = read(new_socket, buffer, BUFFER_SIZE);
         if (valread > 0) {
-            std::cout << "HTTP Request Received:\n" << buffer << "\n";
+            std::cout << "cout : HTTP Request Received:\n" << buffer << "\n";
 
             // Respond to the client (basic HTTP response)
             const char *response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nFile received!";
