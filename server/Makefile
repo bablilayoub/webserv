@@ -1,6 +1,6 @@
 CC = c++
 NAME = server
-FLAGS = -Wall  -Wextra -std=c++98
+FLAGS = -Wall  -Wextra -std=c++98 -fsanitize=address
 
 UTILS = Utils.cpp
 SOCKET =  TcpServer.cpp

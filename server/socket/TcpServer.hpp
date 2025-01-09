@@ -16,8 +16,9 @@ private:
 	int sockfd;
 
 public:
-	TcpServer(int port, bool nonBlocking);
-	int socketCreationAndBinding();
-	int handleIncomingConnection();
+	TcpServer();
+	void initializeServer(const int PORT);
+	int handleIncomingConnections();
 	void setNonBlockingMode();
+	void socketConfig(const int PORT);
 };
