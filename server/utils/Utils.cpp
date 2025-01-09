@@ -2,17 +2,21 @@
 
 bool Utils::fileExists(const std::string &filePath)
 {
-  return std::filesystem::exists(filePath);
+  std::ifstream file(filePath.c_str());
+  return file.is_open();
 }
 
-char* Utils::getCurrentTime()
+std::string	Utils::getCurrentTime()
 {
-  std::time_t t = std::time(nullptr);
-  std::tm *tm_info = std::gmtime(&t);
 
-  char buffer[80];
-  std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", tm_info);
+  std::time_t current_time = std::time(0);
+  struct tm *local_time = std::localtime(&current_time);
+  char time_string[100];
+  std::strftime(time_string, sizeof(time_string), "%Y-%m-%d %H:%M:%S", local_time);
 
-  std::cout << "Current date and time (GMT): " << buffer << std::endl;
-  return buffer;
+  return std::string(time_string);
 }
+
+// int	Utils::readFile(char* toFill, const std::string &filePath) {
+	
+// }
