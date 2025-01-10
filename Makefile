@@ -1,10 +1,11 @@
 CC = c++
-NAME = server
-FLAGS = -Wall  -Wextra -std=c++98 -fsanitize=address
+NAME = webserv
+FLAGS = -Wall  -Wextra -std=c++98 #-fsanitize=address
 
 UTILS = Utils.cpp
 SOCKET =  TcpServer.cpp
-SRC = server.cpp $(addprefix utils/, $(UTILS)) $(addprefix socket/, $(SOCKET))
+SERVER_SRC = $(addprefix utils/, $(UTILS)) $(addprefix socket/, $(SOCKET))
+SRC = main.cpp  $(addprefix Server/, $(SERVER_SRC))
 OBJ = $(SRC:.cpp=.o)
 
 
@@ -15,6 +16,8 @@ $(NAME): $(OBJ)
 
 %.o: %.cpp
 	$(CC) $(FLAGS) -c $< -o $@
+
+re: fclean all
 
 clean:
 	rm -f $(OBJ)

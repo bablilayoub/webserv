@@ -1,4 +1,4 @@
-#include "Global.hpp"
+#include "Server/Global.hpp"
 
 int main()
 {
@@ -18,7 +18,7 @@ int main()
 		}
 		catch (std::exception &e)
 		{
-			std::cout << e.what() << std::endl;
+			std::cerr << e.what() << std::endl;
 		}
 		break;
 	}
