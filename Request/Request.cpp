@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/09 18:36:37 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/10 17:09:14 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,10 +51,11 @@ void Request::parse(const std::string &request)
 	std::string line;
 	while (std::getline(requestStream, line))
 	{
-		std::size_t boundaryPos = line.find(BOUNDARY_PREFIX);
-		std::size_t contentLengthPos = line.find(CONTENT_LENGTH_PREFIX);
-		std::size_t hostPrefixPos = line.find(HOST_PREFIX);
+		size_t boundaryPos = line.find(BOUNDARY_PREFIX);
+		size_t contentLengthPos = line.find(CONTENT_LENGTH_PREFIX);
+		size_t hostPrefixPos = line.find(HOST_PREFIX);
 		size_t bodyPrefixPos = std::string::npos;
+		size_t colonPos = line.find(':');
 		if (!this->boundary.empty())
 			bodyPrefixPos = line.find(this->boundary);
 
@@ -63,12 +64,12 @@ void Request::parse(const std::string &request)
 			boundaryPos += std::string(BOUNDARY_PREFIX).length();
 			this->boundary = line.substr(boundaryPos, line.size() - boundaryPos);
 		}
-		if (contentLengthPos != std::string::npos)
+		else if (contentLengthPos != std::string::npos)
 		{
 			contentLengthPos += std::string(CONTENT_LENGTH_PREFIX).length();
 			this->content_length = std::atof(line.substr(contentLengthPos).c_str());
 		}
-		if (hostPrefixPos != std::string::npos)
+		else if (hostPrefixPos != std::string::npos)
 		{
 			std::string hostPrefix(HOST_PREFIX);
 			size_t colonPos = line.find(':', hostPrefix.length());
@@ -78,12 +79,15 @@ void Request::parse(const std::string &request)
 			this->ip = line.substr(hostPrefix.length(), colonPos - hostPrefix.length());
 			this->port = std::atof(line.substr(colonPos + 1).c_str());
 		}
-		if (!this->boundary.empty() && bodyPrefixPos != std::string::npos)
+		else if (!this->boundary.empty() && bodyPrefixPos != std::string::npos)
 		{
 			this->body += line + '\n';
 			while (std::getline(requestStream, line) && line.find(this->boundary + "--") == std::string::npos)
 				this->body += line + '\n';
 			bodyPrefixPos = std::string::npos;
+		}
+		else if (colonPos != std::string::npos) {
+			this->headers[line.substr(0, colonPos)] = line.substr(colonPos + 2, line.size());
 		}
 	}
 }
