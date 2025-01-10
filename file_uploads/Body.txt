@@ -1,40 +1,14 @@
-------WebKitFormBoundaryeJfWFG0l6druynv6
-Content-Disposition: form-data; name="username"
+----------------------------671379837443287244198638
+Content-Disposition: form-data; name="aimen"
 
-aimen
-------WebKitFormBoundaryeJfWFG0l6druynv6
-Content-Disposition: form-data; name="file"; filename="repo.sh"
-Content-Type: text/x-sh
+Redx
+----------------------------671379837443287244198638
+Content-Disposition: form-data; name="oussama"
 
-#!/bin/bash
+splinta
+----------------------------671379837443287244198638
+Content-Disposition: form-data; name="test"; filename="Screen Shot 2025-01-09 at 7.58.19 PM.png"
+Content-Type: image/png
 
-# Variables
-GITHUB_USERNAME="REDX-at"
-REPO_NAME="repo-automation"
-REPO_DESCRIPTION="Nothing to say"
-LOCAL_DIR="/home/aitaouss/script_repo"  # Change this to your local repo path
-
-# Prompt for commit message
-echo "Enter your commit message:"
-read COMMIT_MESSAGE
-
-# Create GitHub repository using GitHub CLI
-gh repo create "$GITHUB_USERNAME/$REPO_NAME" --description "$REPO_DESCRIPTION" --public
-
-# Navigate to your local directory
-cd "$LOCAL_DIR" || { echo "Directory $LOCAL_DIR not found!"; exit 1; }
-
-# Initialize a new git repository (if not already initialized)
-if [ ! -d ".git" ]; then
-  git init
-fi
-
-# Add the new remote repository
-git remote add origin "https://github.com/$GITHUB_USERNAME/$REPO_NAME.git"
-
-# Add all files, commit, and push to the new GitHub repository
-git add .
-git commit -m "$COMMIT_MESSAGE"
-git push -u origin master
-
-------WebKitFormBoundaryeJfWFG0l6druynv6--
+data for the image
+----------------------------671379837443287244198638--

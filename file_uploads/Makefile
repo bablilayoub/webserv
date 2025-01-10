@@ -1,5 +1,5 @@
 CXX = c++
-CXXFLAGS = -Wall -Wextra -Werror
+CXXFLAGS = -Wall -Wextra -Werror -std=c++98
 NAME = upload
 SRCS = main.cpp FileUpload.cpp
 OBJS = $(SRCS:.cpp=.o)
