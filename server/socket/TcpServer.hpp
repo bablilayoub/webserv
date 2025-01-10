@@ -8,6 +8,9 @@
 #include <stdlib.h>
 #include <fcntl.h>
 
+#define PORT 8080
+#define MAX_CLIENTS 10
+
 class TcpServer
 {
 private:
@@ -17,8 +20,8 @@ private:
 
 public:
 	TcpServer();
-	void initializeServer(const int PORT);
+	void initializeServer(const int port);
 	int handleIncomingConnections();
 	void setNonBlockingMode();
-	void socketConfig(const int PORT);
+	void socketConfig(const int port);
 };

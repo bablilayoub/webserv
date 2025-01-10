@@ -2,7 +2,7 @@
 
 TcpServer::TcpServer() : isNonBlocking(true) {}
 
-void TcpServer::initializeServer(const int PORT)
+void TcpServer::initializeServer(const int port)
 {
     int opt;
 
@@ -21,15 +21,15 @@ void TcpServer::initializeServer(const int PORT)
         throw std::runtime_error("bind failed");
     }
 
-    if (listen(this->sockfd, 5) == -1)
+    if (listen(this->sockfd, MAX_CLIENTS) == -1)
     {
         close(this->sockfd);
         throw std::runtime_error("Listening to server failed");
     }
-    std::cout << "Server is listening on port " << PORT << std::endl;
+    std::cout << "Server is listening on port " << port << std::endl;
 }
 
-void TcpServer::socketConfig(const int PORT)
+void TcpServer::socketConfig(const int port)
 {
     memset(&this->serverAddress, 0, sizeof(this->serverAddress));
     this->serverAddress.sin_family = AF_INET;

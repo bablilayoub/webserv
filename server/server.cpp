@@ -1,6 +1,5 @@
 #include "Global.hpp"
 
-#define PORT 8080
 int main()
 {
 	TcpServer tcpserver;
