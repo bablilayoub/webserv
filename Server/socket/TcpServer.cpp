@@ -37,91 +37,81 @@ void TcpServer::socketConfig(const int port)
     this->serverAddress.sin_addr.s_addr = INADDR_ANY;
 };
 
+int TcpServer::accept_IncomingConnection(std::vector<pollfd> &poll_fds_vec, size_t i)
+{
+    int addrlen, new_socket;
+    addrlen = sizeof(this->serverAddress);
+    if (poll_fds_vec[i].fd == this->listener)
+    {
+        new_socket = accept(this->listener, (struct sockaddr *)&serverAddress, (socklen_t *)&addrlen);
+        if (new_socket == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
+            return 1;
+        else if (new_socket == -1)
+            return 2;
+        AddClientSocket(poll_fds_vec, new_socket);
+    }
+    return 0;
+}
+
+void TcpServer::handle_clietns(std::vector<pollfd> &poll_fds_vec, size_t i)
+{
+    char buffer[50];
+    int client_socket;
+    std::string chunk = "";
+    client_socket = poll_fds_vec[i].fd;
+    ssize_t bytes_read = -1;
+
+    while (true)
+    {
+
+        bytes_read = read(client_socket, buffer, sizeof(buffer) - 1);
+        if (bytes_read > 0)
+        {
+            buffer[bytes_read] = '\0';
+            chunk += buffer;
+        }
+        if (chunk.length() == MAX_BYTES_TO_SEND - 1 || bytes_read == 0)
+        {
+            std::cout << chunk << std::endl;
+            if (bytes_read == 0)
+                close(client_socket);
+            // poll_fds_vec.erase(poll_fds_vec.begin() + i);
+            // --i;
+            // send(client_socket, chunk.c_str(), chunk.length(), 0);
+            break;
+        }
+        // else if (bytes_read == -1)
+        //     break;
+    }
+}
+
 int TcpServer::handleIncomingConnections()
 {
-    char buffer[200000];
-    int addrlen, new_socket, client_socket;
-    addrlen = sizeof(this->serverAddress);
     std::vector<pollfd> poll_fds_vec;
     AddClientSocket(poll_fds_vec, this->listener);
     pollfd *raw_array = &poll_fds_vec[0];
+
     while (true)
     {
-        int ret = poll(raw_array, poll_fds_vec.size(), 200);
+        int ret = poll(raw_array, poll_fds_vec.size(), 0);
         if (ret == -1)
-        {
-            std::cerr << "Poll failed: " << strerror(errno) << std::endl;
             break;
-        }
-        // else if (ret == 0)
-        //     std::cout << "Timeout expired" << std::endl;
-
-        std::cout << (poll_fds_vec[0].revents) << std::endl;
         for (size_t i = 0; i < poll_fds_vec.size(); i++)
         {
             if (poll_fds_vec[i].revents & POLLIN)
             {
-                if (poll_fds_vec[i].fd == this->listener)
+                int res = accept_IncomingConnection(poll_fds_vec, i);
+                if (res != 0)
                 {
-                    // std::cout << "connction accepted" << std::endl;
-                    new_socket = accept(this->listener, (struct sockaddr *)&serverAddress, (socklen_t *)&addrlen);
-                    if (new_socket == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
-                    {
-                        std::cerr << "accept => try later" << std::endl;
+                    if (res == 1)
                         continue;
-                    }
-                    else if (new_socket == -1)
-                        std::cerr << "Accept failed" << std::endl;
-                    setNonBlockingMode(new_socket);
-                    std::cout << "****************" << new_socket << std::endl;
-                    AddClientSocket(poll_fds_vec, new_socket);
-                }
-                else
-                {
-                    std::cout << "accessed to read" << std::endl;
-                    client_socket = poll_fds_vec[i].fd;
-                    ssize_t bytes_read = -1;
-                    std::string chunk;
-                    while (true)
-                    {
-                        bytes_read = read(client_socket, buffer, sizeof(buffer) - 1);
-                        if (bytes_read > 0)
-                        {
-                            buffer[bytes_read] = '\0';
-                            chunk += buffer;
-                        }
-                        if (chunk.length() == MAX_BYTES_TO_SEND || bytes_read == 0)
-                        {
-                            "call bablils fun";
-                            break;
-                        }
-                    }
-
-                    if (bytes_read == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
-                    {
-                        std::cerr << "read => try later" << std::endl;
-                        continue;
-                    }
-                    else if (bytes_read == -1)
-                    {
-                        std::cerr << "Read failed: " << strerror(errno) << std::endl;
-                        close(client_socket); // Handle fatal error
-                        poll_fds_vec.erase(poll_fds_vec.begin() + i);
-                        --i;
-                    }
-                    else
-                    {
-                        buffer[bytes_read] = '\0';
-                        std::cout << buffer << std::endl;
-                        // call bablil's function
-                        std::string response = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nHello frida!";
-                        send(client_socket, response.c_str(), response.length(), 0);
-                    }
+                    break;
                 }
             }
+            else if (poll_fds_vec.size() > 1)
+                handle_clietns(poll_fds_vec, i);
         }
     }
-    // closeFds(poll_fds_vec);
     return 1;
 }
 
@@ -154,4 +144,6 @@ void TcpServer::AddClientSocket(std::vector<pollfd> &poll_fds_vec, int client_so
     pfd.events = POLLIN;
     pfd.revents = 0;
     poll_fds_vec.push_back(pfd);
+    // Client new_client(client_socket);
+    // clients[client_socket] = new_client;
 }

@@ -12,7 +12,7 @@
 
 #define PORT 8080
 #define MAX_CLIENTS 20
-#define MAX_BYTES_TO_SEND 200000
+#define MAX_BYTES_TO_SEND 272
 
 class TcpServer
 {
@@ -29,4 +29,6 @@ public:
 	void socketConfig(const int port);
 	void closeFds(std::vector<pollfd> &poll_fds_vec);
 	void AddClientSocket(std::vector<pollfd> &poll_fds_vec, int client_socket);
+	int accept_IncomingConnection(std::vector<pollfd> &poll_fds_vec, size_t i);
+	void handle_clietns(std::vector<pollfd> &poll_fds_vec, size_t i);
 };
