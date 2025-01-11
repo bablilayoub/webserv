@@ -1,0 +1,6 @@
+.vscode
+**/*.o
+**/.DS_Store
+**/.vscode
+testing.cpp
+example.txt
