@@ -1,19 +1,19 @@
 # General
 NAME = webserv
 COMPILER = c++
-FLAGS = -Wall -Wextra -std=c++98 #-fsanitize=address
+FLAGS = -Wall -Wextra -std=c++98 #-fsanitize=address -g
 
 # Server part
 UTILS = Utils.cpp
 SOCKET =  TcpServer.cpp
 SERVER_SRC = $(addprefix utils/, $(UTILS)) $(addprefix socket/, $(SOCKET))
 
-# Request Part
-REQUEST_SRC = Request.cpp
-REQUEST_HEADERS = Request.hpp
+# Client Part
+CLIENT_SRC = Client.cpp
+CLIENT_HEADERS = Client.hpp
 
-HEADERS = $(addprefix Request/, $(REQUEST_HEADERS))
-SRC = main.cpp  $(addprefix Server/, $(SERVER_SRC)) $(addprefix Request/, $(REQUEST_SRC))
+HEADERS = $(addprefix Client/, $(CLIENT_HEADERS))
+SRC = main.cpp  $(addprefix Server/, $(SERVER_SRC)) $(addprefix Client/, $(CLIENT_SRC))
 OBJ = $(SRC:.cpp=.o)
 
 all: $(NAME)
