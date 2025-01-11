@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:38:32 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/11 12:08:31 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/11 15:47:13 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,15 +53,58 @@
 // }
 
 int main() {
-    std::string Body = 
+    std::string FirstChunk = 
     "----------------------------671379837443287244198638\r\n"
-    "Content-Disposition: form-data; name=\"test\"; filename=\"Screen Shot 2025-01-09 at 7.58.19 PM.png\"\r\n"
+    "Content-Disposition: form-data; name=\"test\"; filename=\"test.txt\"\r\n"
     "Content-Type: image/png\r\n"
     "\r\n"
+    "data for the image\r\n";
+    
+    std::string SecondeChunk = 
     "data for the image\r\n"
+    "data for the image\r\n"
+    "data for the image\r\n"
+    "data for the image\r\n"
+    "data for the image\r\n"
+    "data for the image\r\n"
+    "data for the image\r\n"
+    "data for the image\r\n";
+    
+    std::string ThirdChunk = 
+    "data for the image\r\n"
+    "data for the image\r\n"
+    "data for the image\r\n"
+    "data for the image\r\n"
+    "data for the image\r\n"
+    "data for the image\r\n"
+    "data for the image\r\n"
+    "data for the image\r\n";
+    
+    std::string MiddleChunk = 
+    "----------------------------671379837443287244198638\r\n"
+    "Content-Disposition: form-data; name=\"Middle\"; filename=\"Middle.txt\"\r\n"
+    "Content-Type: image/png\r\n"
+    "\r\n"
+    "data for the Middle image\r\n";
+
+    std::string LastChunk = 
+    "data for the Middle image\r\n"
+    "data for the Middle image\r\n"
+    "data for the Middle image\r\n"
+    "data for the Middle image\r\n"
+    "data for the Middle image\r\n"
+    "data for the Middle image\r\n"
+    "data for the Middle image\r\n"
+    "data for the Middle image\r\n"
     "----------------------------671379837443287244198638--\r";
 
-    FileUpload ins;
+    FileUpload InsFileUpload;
+    std::map<int, FileUpload> DataMap;
 
-    ins.ParseBody(Body);
+    DataMap[1].ParseBody(FirstChunk);
+    DataMap[1].ParseBody(SecondeChunk);
+    DataMap[1].ParseBody(MiddleChunk);
+    // InsFileUpload.ParseBody(FirstChunk, 1, DataMap);
+    // InsFileUpload.ParseBody(SecondeChunk, 2, DataMap);
+    // InsFileUpload.ParseBody(MiddleChunk, 1, DataMap);
 }
