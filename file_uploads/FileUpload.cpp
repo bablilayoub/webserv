@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/11 15:49:28 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/11 18:20:22 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,22 +16,22 @@ FileUpload::FileUpload() {
     this->BoundaryString = "----------------------------671379837443287244198638";
     this->DataFinish = false;
     this->FirstTime = true;
-    this->fd = -42;
+    this->fd = 1337;
 }
 
 FileUpload::~FileUpload() {
     
 }
 
-BodyData::BodyData() {
-    this->Data = "";
-    this->ContentType = "";
-    this->Name = "";
-    this->filename = "";
-}
+// BodyData::BodyData() {
+//     this->Data = "";
+//     this->ContentType = "";
+//     this->Name = "";
+//     this->filename = "";
+// }
 
-BodyData::~BodyData() {
-}
+// BodyData::~BodyData() {
+// }
 
 void    FileUpload::ParseBody(std::string Body) {
     std::string name;
@@ -78,19 +78,28 @@ void    FileUpload::ParseBody(std::string Body) {
                     }
                     Contenttype = Body.substr(0, pos - 1);
                 }
-                std::cout << "name : " << name << std::endl;
-                std::cout << "file name : " << FileName << std::endl;
-                std::cout << "MIME : " << Contenttype << std::endl;
             }
         }
     }
-    if (this->fd == -42) {
-        this->fd = open(FileName.c_str(), O_RDWR | O_CREAT);
-        if (this->fd > 0) {
-            // write the data for the safeBody in the fd
-            write(this->fd, BodySafe.c_str(), BodySafe.length());
-        }   
+    std::stringstream ss;
+    
+    // add the bodysafe in the ss
+    ss << BodySafe;
+    std::string line;
+    while (std::getline(ss, line)) {
+        std::cout << line << std::endl;
     }
-    size_t posBoundary = BodySafe.find(this->BoundaryString);
-
+    std::cout << "-------- Break -------" << std::endl;
+    // if (FileName.length() != 0) {
+    //     if (this->fd == 1337) {
+    //         this->fd = open(FileName.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0666);
+    //         if (this->fd < 0) {
+    //             std::cout << "Failed to open the file : " << FileName << std::endl;
+    //             return ;
+    //         }
+    //     }
+    // }
+    // if (fd > 0) {]
+    //     write(this->fd, BodySafe.c_str(), BodySafe.length());
+    // }
 }

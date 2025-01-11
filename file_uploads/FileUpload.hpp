@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:33:18 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/11 15:44:52 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/11 17:46:38 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@
 #include <fstream>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sstream>
 
 // Containers
 #include <vector>
@@ -28,16 +29,16 @@
 #define CONTENT_DISPOSITION_LENGHT 38
 
 // Data struct
-class   BodyData {
-    public:
-        BodyData();
-        ~BodyData();
-        int fd;
-        std::string Name;
-        std::string ContentType;
-        std::string Data;
-        std::string filename;
-};
+// class   BodyData {
+//     public:
+//         BodyData();
+//         ~BodyData();
+//         int fd;
+//         std::string Name;
+//         std::string ContentType;
+//         std::string Data;
+//         std::string filename;
+// };
 
 class   FileUpload {
     private:
@@ -48,6 +49,6 @@ class   FileUpload {
         ~FileUpload();
         int FirstTime;
         std::string BoundaryString;
-        BodyData DataBody;
+        // BodyData DataBody;
         void    ParseBody(std::string Body);
 };

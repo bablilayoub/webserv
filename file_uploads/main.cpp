@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:38:32 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/11 15:47:13 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/11 17:37:00 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -102,8 +102,9 @@ int main() {
     std::map<int, FileUpload> DataMap;
 
     DataMap[1].ParseBody(FirstChunk);
+    DataMap[2].ParseBody(MiddleChunk);
     DataMap[1].ParseBody(SecondeChunk);
-    DataMap[1].ParseBody(MiddleChunk);
+    // DataMap[1].ParseBody(MiddleChunk);
     // InsFileUpload.ParseBody(FirstChunk, 1, DataMap);
     // InsFileUpload.ParseBody(SecondeChunk, 2, DataMap);
     // InsFileUpload.ParseBody(MiddleChunk, 1, DataMap);
