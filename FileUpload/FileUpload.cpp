@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/11 18:20:22 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/11 20:09:30 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -81,25 +81,46 @@ void    FileUpload::ParseBody(std::string Body) {
             }
         }
     }
-    std::stringstream ss;
     
-    // add the bodysafe in the ss
+    std::stringstream ss;
     ss << BodySafe;
     std::string line;
-    while (std::getline(ss, line)) {
-        std::cout << line << std::endl;
+    
+    pos = BodySafe.find("Content-Type");
+
+    if ((pos = BodySafe.find("Content-Type")) == std::string::npos)
+        pos = BodySafe.find("Content-Disposition");
+
+    // open the filename if exist
+    if (FileName.length() != 0) {
+        if (this->fd == 1337) {
+            this->fd = open(FileName.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0666);
+            if (this->fd < 0) {
+                std::cout << "Failed to open the file : " << FileName << std::endl;
+                return ;
+            }
+        }
     }
-    std::cout << "-------- Break -------" << std::endl;
-    // if (FileName.length() != 0) {
-    //     if (this->fd == 1337) {
-    //         this->fd = open(FileName.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0666);
-    //         if (this->fd < 0) {
-    //             std::cout << "Failed to open the file : " << FileName << std::endl;
-    //             return ;
-    //         }
-    //     }
+
+    if (pos != std::string::npos) {
+        BodySafe = BodySafe.substr(pos, BodySafe.length());
+        pos = BodySafe.find("\n");
+        if (pos != std::string::npos) {
+            pos = pos + 3;
+            const char *str = BodySafe.c_str();
+            int LastPos = pos;
+            while (str[pos]) {
+                pos++;
+            }
+            BodySafe = BodySafe.substr(LastPos, pos);
+        }
+    }
+    // if data == npos so the data of the file or the text is the BodySafe and there is no boundary string
+    // if (pos == std::string::npos && BodySafe.find(this->BoundaryString) == std::string::npos) {
+        if (fd > 0) {
+            write(this->fd, BodySafe.c_str(), BodySafe.length());
+        }
     // }
-    // if (fd > 0) {]
-    //     write(this->fd, BodySafe.c_str(), BodySafe.length());
-    // }
+
+    // to do now check the boundary if there is
 }

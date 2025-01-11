@@ -72,7 +72,7 @@ void TcpServer::handle_clietns(std::vector<pollfd> &poll_fds_vec, size_t i)
         }
         if (chunk.length() == MAX_BYTES_TO_SEND - 1 || bytes_read == 0)
         {
-            std::cout << chunk << std::endl;
+            std::cout << chunk << "***************" << std::endl;
             if (bytes_read == 0)
                 close(client_socket);
             // poll_fds_vec.erase(poll_fds_vec.begin() + i);
