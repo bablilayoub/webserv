@@ -11,14 +11,15 @@
 #include <vector>
 
 #define PORT 8080
-#define MAX_CLIENTS 10
+#define MAX_CLIENTS 20
+#define MAX_BYTES_TO_SEND 200000
 
 class TcpServer
 {
 private:
 	struct sockaddr_in serverAddress;
 	bool isNonBlocking;
-	int sockfd;
+	int listener;
 
 public:
 	TcpServer();
