@@ -44,55 +44,109 @@ int TcpServer::accept_IncomingConnection(std::vector<pollfd> &poll_fds_vec, size
     if (poll_fds_vec[i].fd == this->listener)
     {
         new_socket = accept(this->listener, (struct sockaddr *)&serverAddress, (socklen_t *)&addrlen);
-        if (new_socket == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
-            return 1;
-        else if (new_socket == -1)
+        // std::cout << "accept_IncomingConnection with client fd => " << new_socket << std::endl;
+        if (new_socket == -1)
+        {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+                return 1;
             return 2;
+        }
+        // setNonBlockingMode(new_socket);
         AddClientSocket(poll_fds_vec, new_socket);
+        // std::cout << "client " << new_socket << "is added" << std::endl;
     }
     return 0;
 }
 
-void TcpServer::handle_clietns(std::vector<pollfd> &poll_fds_vec, size_t i)
+size_t findContentLength(int client_socket)
 {
-    int client_socket;
-    ssize_t bytes_read;
+    ssize_t bytes_received;
+    char buffer[MAX_BYTES_TO_SEND];
+    std::string request;
+    while ((bytes_received = recv(client_socket, buffer, MAX_BYTES_TO_SEND - 1, MSG_PEEK)) > 0)
+    {
+        request.append(buffer, bytes_received);
+        size_t pos = request.find("\r\n\r\n");
+        if (pos != std::string::npos)
+        {
+            std::string header = request.substr(0, pos);
+            size_t content_length_pos = header.find("Content-Length: ");
+            if (content_length_pos != std::string::npos)
+            {
+                size_t content_length_end = header.find("\r\n", content_length_pos);
+                std::string content_length_str = header.substr(content_length_pos + 16, content_length_end - content_length_pos - 16);
+                return std::stoi(content_length_str);
+            }
+            else
+                return 0;
+        }
+    }
+    return 0;
+}
 
-    char buffer[MAX_BYTES_TO_SEND + 1];
+void TcpServer::handle_clients(std::vector<pollfd> &poll_fds_vec, size_t i)
+{
+
+    int client_socket;
+    ssize_t bytes_received;
+    char buffer[MAX_BYTES_TO_SEND];
     std::string chunk = "";
     client_socket = poll_fds_vec[i].fd;
+    bytes_received = -1;
 
-    bytes_read = -1;
     while (true)
     {
-        bytes_read = read(client_socket, buffer, sizeof(buffer) - 1);
-        if (bytes_read == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
-            continue;
-        else if (bytes_read == -1)
+        bytes_received = recv(client_socket, buffer, MAX_BYTES_TO_SEND - 1, 0);
+        if (bytes_received == -1)
         {
-            // std::cerr << "read failed" << std::endl;
-            break;
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+            {
+                std::cout << "EAGAIN or EWOULDBLOCK" << std::endl;
+                break;
+            }
+            else
+            {
+                std::cerr << "Failed to receive data from client" << std::endl;
+                close(client_socket);
+                poll_fds_vec.erase(poll_fds_vec.begin() + i);
+                --i;
+                return;
+            }
         }
         else
         {
-            buffer[bytes_read] = '\0';
-            chunk += buffer;
-            if (chunk.length() == MAX_BYTES_TO_SEND || bytes_read == 0)
+            if (bytes_received == 0)
             {
-                // std::cout << chunk << "************" << std::endl;
-                std::cout << chunk.length() << "************" << std::endl;
-                chunk.clear();
-                if (bytes_read == 0)
+                if (!chunk.empty())
                 {
-                    close(client_socket);
-                    // break;
+                    std::cout << "last data from client: " << chunk.length() << std::endl;
+                    chunk.clear();
                 }
+                std::cout << "Client disconnected" << std::endl;
+                std::string response =
+                    "HTTP/1.1 200 OK\n"
+                    "Content-Type: text/plain\n"
+                    "Content-Length: 13\n"
+                    "Connection: close\n"
+                    "\n"
+                    "Hello, world!";
+
+                send(client_socket, response.c_str(), response.length(), 0);
+                close(client_socket);
                 poll_fds_vec.erase(poll_fds_vec.begin() + i);
                 --i;
+                break;
+            }
+
+            buffer[bytes_received] = '\0';
+            chunk.append(buffer, bytes_received);
+
+            if (chunk.length() >= MAX_BYTES_TO_SEND)
+            {
+                std::cout << "Received data from client: " << chunk.length() << std::endl;
+                chunk.clear();
             }
         }
-        // else if (bytes_read == -1)
-        //     break;
     }
 }
 
@@ -100,31 +154,34 @@ int TcpServer::handleIncomingConnections()
 {
     std::vector<pollfd> poll_fds_vec;
     AddClientSocket(poll_fds_vec, this->listener);
-    pollfd *raw_array = &poll_fds_vec[0];
+    // pollfd *raw_array = &poll_fds_vec[0];
 
     while (true)
     {
-        int ret = poll(raw_array, poll_fds_vec.size(), 100);
-        if (ret == -1) {
-            
-        }
+        int ret = poll(poll_fds_vec.data(), poll_fds_vec.size(), 1000);
+        if (ret == -1)
+        {
+            std::cout << "poll failed" << std::endl;
             break;
+        }
         for (size_t i = 0; i < poll_fds_vec.size(); i++)
         {
             if (poll_fds_vec[i].revents & POLLIN)
             {
-                int res = accept_IncomingConnection(poll_fds_vec, i);
-                if (res != 0)
+                if (poll_fds_vec[i].fd == this->listener)
                 {
-                    if (res == 1)
+                    int res = accept_IncomingConnection(poll_fds_vec, i);
+                    if (res == 0 || res == 2)
+                        break;
+                    else
                         continue;
-                    break;
                 }
+                else
+                    handle_clients(poll_fds_vec, i);
             }
-            else if (poll_fds_vec.size() > 1)
-                handle_clietns(poll_fds_vec, i);
         }
     }
+    // closeFds(poll_fds_vec);
     return 1;
 }
 
@@ -149,13 +206,13 @@ void TcpServer::setNonBlockingMode(int socket)
     }
 }
 
-void TcpServer::AddClientSocket(std::vector<pollfd> &poll_fds_vec, int client_socket)
+void TcpServer::AddClientSocket(std::vector<pollfd> &poll_fds_vec, int socket)
 {
-    struct pollfd pfd;
 
-    pfd.fd = client_socket;
+    struct pollfd pfd;
+    pfd.fd = socket;
     pfd.events = POLLIN;
-    pfd.revents = 0;
+    // pfd.revents = 0;
     poll_fds_vec.push_back(pfd);
     // Client new_client(client_socket);
     // clients[client_socket] = new_client;
