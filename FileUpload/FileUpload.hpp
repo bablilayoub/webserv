@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:33:18 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/11 17:46:38 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/12 13:12:52 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,7 +19,6 @@
 #include <unistd.h>
 #include <sstream>
 
-// Containers
 #include <vector>
 #include <map>
 #include <algorithm>
@@ -27,28 +26,23 @@
 #define NAME_LENGHT 5
 #define FILE_NAME_LENGHT 9
 #define CONTENT_DISPOSITION_LENGHT 38
-
-// Data struct
-// class   BodyData {
-//     public:
-//         BodyData();
-//         ~BodyData();
-//         int fd;
-//         std::string Name;
-//         std::string ContentType;
-//         std::string Data;
-//         std::string filename;
-// };
+#define CONTENT_DISPOSITION "Content-Disposition"
+#define CONTENT_TYPE "Content-Type"
 
 class   FileUpload {
     private:
-        int DataFinish;
+        // int DataFinish;
+        int FetchData;
+        std::string CurrentFileName;
+        std::string Name;
+        std::string FileName;
+        std::string MimeType;
+        int HeaderFetched;
+        std::string Data;
     public:
         int fd;
         FileUpload();
         ~FileUpload();
-        int FirstTime;
         std::string BoundaryString;
-        // BodyData DataBody;
         void    ParseBody(std::string Body);
 };
