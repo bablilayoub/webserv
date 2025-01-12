@@ -9,8 +9,8 @@ SOCKET =  TcpServer.cpp
 SERVER_SRC = $(addprefix utils/, $(UTILS)) $(addprefix socket/, $(SOCKET))
 
 # Client Part
-CLIENT_SRC = Client.cpp
-CLIENT_HEADERS = Client.hpp
+CLIENT_SRC = Client.cpp Config.cpp
+CLIENT_HEADERS = Client.hpp Config.hpp
 
 HEADERS = $(addprefix Client/, $(CLIENT_HEADERS))
 SRC = main.cpp  $(addprefix Server/, $(SERVER_SRC)) $(addprefix Client/, $(CLIENT_SRC))

@@ -6,17 +6,13 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/11 15:19:24 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/11 18:47:54 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Client.hpp"
 
-Client::Client(int clientFd)
-{
-	this->clientFd = clientFd;
-	this->firstChunk = true;
-}
+Client::Client() { this->firstChunk = true; }
 
 void Client::handleFirstLine(std::istringstream &requestStream)
 {
@@ -49,16 +45,11 @@ void Client::clear()
 
 void Client::parse(const std::string &request)
 {
-	if (this->firstChunk)
-	{
-		this->clear();
-		this->firstChunk = false;
-	}
 	std::istringstream requestStream(request);
 
 	if (this->firstChunk)
 		this->handleFirstLine(requestStream);
-
+		
 	std::string line;
 	while (std::getline(requestStream, line))
 	{
@@ -112,7 +103,15 @@ void Client::parse(const std::string &request)
 		}
 	}
 
-	std::cout << this->body << std::endl;
+	if (this->firstChunk)
+		this->firstChunk = false;
+
+	std::cout << this->ip << std::endl;
+	std::cout << this->port << std::endl;
+	std::cout << this->method << std::endl;
+	std::cout << this->boundary << std::endl;
+	// std::cout << this->headers << std::endl;
+	std::cout << this->body.substr(0, 10) << "..." << std::endl;
 }
 
 const std::string &Client::getBody() const
