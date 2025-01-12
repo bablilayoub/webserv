@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/12 13:12:43 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/12 17:36:43 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,7 @@ FileUpload::FileUpload() {
     this->FileName = "";
     this->MimeType = "";
     this->Data = "";
+    this->DataFinish = false;
 }
 
 FileUpload::~FileUpload() {
@@ -142,10 +143,14 @@ void    FileUpload::ParseBody(std::string Body) {
 
     ss << Body;
     while (std::getline(ss, line)) {
-
         //Get the name and the filename if exist
+        if (this->DataFinish) {
+            break;
+        }
         pos = line.find("Content-Disposition: form-data;");
         if (pos != std::string::npos) {
+            close(this->fd);
+            this->fd = -42;
             pos = line.find("name=\"");
             substr = line.substr(pos + NAME_LENGHT + 1, line.length());
             pos = substr.find("\"");
@@ -155,6 +160,9 @@ void    FileUpload::ParseBody(std::string Body) {
                 substr = substr.substr(pos + FILE_NAME_LENGHT + 1 , substr.length());
                 pos = substr.find("\"");
                 this->FileName = substr.substr(0, pos);
+            }
+            else {
+                this->FileName = "";
             }
             this->HeaderFetched = true;
         }
@@ -178,26 +186,40 @@ void    FileUpload::ParseBody(std::string Body) {
                 return ;
             }
         }
+
+        // check if there is in the line Dipso or type or Boundary
         pos = line.find(CONTENT_DISPOSITION);
-        if (pos == std::string::npos) {
+        if (pos == std::string::npos && line.length() > 1) {
             pos = line.find(CONTENT_TYPE);
             if (pos == std::string::npos) {
                 pos = line.find(this->BoundaryString);
-                if (pos != std::string::npos) {
-                    if (pos != 0) {
-                        for (size_t i = 0; i < line.length(); i++) {
-                            if (i == pos)
-                                break;
-                            std::cout << line[i];
+                if (pos != 0) {
+                    if (pos != std::string::npos) {
+                        if (pos != 0) {
+                            for (size_t i = 0; i < line.length(); i++) {
+                                if (i == pos)
+                                    break;
+                                std::cout << line[i];
+                            }
+                            std::cout << std::endl;
                         }
-                        std::cout << std::endl;
+                    }
+                    else {
+                        Data = line;
+                        if (this->fd > 0) {
+                            write(fd, Data.c_str(), Data.length());
+                        }
                     }
                 }
             }
         }
+        if (line.find(this->BoundaryString + "--") != std::string::npos) {
+            this->DataFinish = true;
+        }
     }
-    std::cout << "--------- Data Info ---------" << std::endl;
-    std::cout << this->Name << std::endl; 
-    std::cout << this->FileName << std::endl;
-    std::cout <<  this->MimeType << std::endl;
+    // std::cout << "--------- Data Info ---------" << std::endl;
+    // std::cout << this->Name << std::endl; 
+    // std::cout << this->FileName << std::endl;
+    // std::cout <<  this->MimeType << std::endl;
+    // std::cout << "--------- Data Info Ended ---------" << std::endl;
 }
