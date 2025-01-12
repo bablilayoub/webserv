@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/12 17:36:43 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/12 17:49:49 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -199,9 +199,11 @@ void    FileUpload::ParseBody(std::string Body) {
                             for (size_t i = 0; i < line.length(); i++) {
                                 if (i == pos)
                                     break;
-                                std::cout << line[i];
                             }
-                            std::cout << std::endl;
+                            Data = line.substr(0, pos);
+                            if (this->fd > 0) {
+                                write(fd, Data.c_str(), Data.length());
+                            }
                         }
                     }
                     else {
