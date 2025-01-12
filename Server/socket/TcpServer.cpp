@@ -70,6 +70,7 @@ size_t findContentLength(int client_socket)
         if (pos != std::string::npos)
         {
             std::string header = request.substr(0, pos);
+            size_t header_length = header.length();
             size_t content_length_pos = header.find("Content-Length: ");
             if (content_length_pos != std::string::npos)
             {
@@ -84,25 +85,27 @@ size_t findContentLength(int client_socket)
     return 0;
 }
 
+size_t received_content_length = 0;
+
 void TcpServer::handle_clients(std::vector<pollfd> &poll_fds_vec, size_t i)
 {
-
     int client_socket;
     ssize_t bytes_received;
     char buffer[MAX_BYTES_TO_SEND];
     std::string chunk = "";
     client_socket = poll_fds_vec[i].fd;
     bytes_received = -1;
-
-    while (true)
+    size_t content_length = findContentLength(client_socket);
+    while (received_content_length < content_length)
     {
+        // std::cout << "looping" << std::endl;
         bytes_received = recv(client_socket, buffer, MAX_BYTES_TO_SEND - 1, 0);
         if (bytes_received == -1)
         {
             if (errno == EAGAIN || errno == EWOULDBLOCK)
             {
-                std::cout << "EAGAIN or EWOULDBLOCK" << std::endl;
-                break;
+                // std::cout << "EAGAIN or EWOULDBLOCK" << std::endl;
+                continue;
             }
             else
             {
@@ -115,14 +118,11 @@ void TcpServer::handle_clients(std::vector<pollfd> &poll_fds_vec, size_t i)
         }
         else
         {
-            if (bytes_received == 0)
+            // received_content_length += bytes_received;
+            // std::cout << "received_content_length: " << received_content_length << "===== content_length: " << content_length << std::endl;
+            if (received_content_length >= content_length - 10000)
             {
-                if (!chunk.empty())
-                {
-                    std::cout << "last data from client: " << chunk.length() << std::endl;
-                    chunk.clear();
-                }
-                std::cout << "Client disconnected" << std::endl;
+
                 std::string response =
                     "HTTP/1.1 200 OK\n"
                     "Content-Type: text/plain\n"
@@ -130,7 +130,7 @@ void TcpServer::handle_clients(std::vector<pollfd> &poll_fds_vec, size_t i)
                     "Connection: close\n"
                     "\n"
                     "Hello, world!";
-
+                received_content_length = 0;
                 send(client_socket, response.c_str(), response.length(), 0);
                 close(client_socket);
                 poll_fds_vec.erase(poll_fds_vec.begin() + i);
@@ -140,10 +140,13 @@ void TcpServer::handle_clients(std::vector<pollfd> &poll_fds_vec, size_t i)
 
             buffer[bytes_received] = '\0';
             chunk.append(buffer, bytes_received);
-
+            if (bytes_received != -1)
+            {
+                received_content_length += bytes_received;
+            }   
             if (chunk.length() >= MAX_BYTES_TO_SEND)
             {
-                std::cout << "Received data from client: " << chunk.length() << std::endl;
+                std::cout << chunk;
                 chunk.clear();
             }
         }

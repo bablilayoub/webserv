@@ -12,7 +12,7 @@
 
 #define PORT 8080
 #define MAX_CLIENTS 5
-#define MAX_BYTES_TO_SEND 4097
+#define MAX_BYTES_TO_SEND 10001
 
 class TcpServer
 {
