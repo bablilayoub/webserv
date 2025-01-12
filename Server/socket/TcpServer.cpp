@@ -55,30 +55,41 @@ int TcpServer::accept_IncomingConnection(std::vector<pollfd> &poll_fds_vec, size
 
 void TcpServer::handle_clietns(std::vector<pollfd> &poll_fds_vec, size_t i)
 {
-    char buffer[50];
     int client_socket;
+    ssize_t bytes_read;
+
+    char buffer[MAX_BYTES_TO_SEND + 1];
     std::string chunk = "";
     client_socket = poll_fds_vec[i].fd;
-    ssize_t bytes_read = -1;
 
+    bytes_read = -1;
     while (true)
     {
-
         bytes_read = read(client_socket, buffer, sizeof(buffer) - 1);
-        if (bytes_read > 0)
+        if (bytes_read == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
+            continue;
+        else if (bytes_read == -1)
+        {
+            // std::cerr << "read failed" << std::endl;
+            break;
+        }
+        else
         {
             buffer[bytes_read] = '\0';
             chunk += buffer;
-        }
-        if (chunk.length() == MAX_BYTES_TO_SEND - 1 || bytes_read == 0)
-        {
-            std::cout << chunk << std::endl;
-            if (bytes_read == 0)
-                close(client_socket);
-            // poll_fds_vec.erase(poll_fds_vec.begin() + i);
-            // --i;
-            // send(client_socket, chunk.c_str(), chunk.length(), 0);
-            break;
+            if (chunk.length() == MAX_BYTES_TO_SEND || bytes_read == 0)
+            {
+                // std::cout << chunk << "************" << std::endl;
+                std::cout << chunk.length() << "************" << std::endl;
+                chunk.clear();
+                if (bytes_read == 0)
+                {
+                    close(client_socket);
+                    // break;
+                }
+                poll_fds_vec.erase(poll_fds_vec.begin() + i);
+                --i;
+            }
         }
         // else if (bytes_read == -1)
         //     break;
@@ -93,8 +104,10 @@ int TcpServer::handleIncomingConnections()
 
     while (true)
     {
-        int ret = poll(raw_array, poll_fds_vec.size(), 0);
-        if (ret == -1)
+        int ret = poll(raw_array, poll_fds_vec.size(), 100);
+        if (ret == -1) {
+            
+        }
             break;
         for (size_t i = 0; i < poll_fds_vec.size(); i++)
         {
