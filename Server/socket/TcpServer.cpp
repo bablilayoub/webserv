@@ -1,6 +1,6 @@
 #include "TcpServer.hpp"
 
-TcpServer::TcpServer() : isNonBlocking(true) {}
+TcpServer::TcpServer() : isNonBlocking(true), received_content_length(0), header_length(0) {}
 
 void TcpServer::initializeServer(const int port)
 {
@@ -58,19 +58,19 @@ int TcpServer::accept_IncomingConnection(std::vector<pollfd> &poll_fds_vec, size
     return 0;
 }
 
-size_t findContentLength(int client_socket)
+size_t TcpServer::findContentLength(int client_socket)
 {
     ssize_t bytes_received;
-    char buffer[MAX_BYTES_TO_SEND];
+    char buffer[BUFFER_SIZE];
     std::string request;
-    while ((bytes_received = recv(client_socket, buffer, MAX_BYTES_TO_SEND - 1, MSG_PEEK)) > 0)
+    while ((bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, MSG_PEEK)) > 0)
     {
         request.append(buffer, bytes_received);
         size_t pos = request.find("\r\n\r\n");
         if (pos != std::string::npos)
         {
             std::string header = request.substr(0, pos);
-            size_t header_length = header.length();
+            this->header_length = header.length() + 4;
             size_t content_length_pos = header.find("Content-Length: ");
             if (content_length_pos != std::string::npos)
             {
@@ -85,22 +85,28 @@ size_t findContentLength(int client_socket)
     return 0;
 }
 
-size_t received_content_length = 0;
-
-void TcpServer::handle_clients(std::vector<pollfd> &poll_fds_vec, size_t i)
+void TcpServer::handle_clients(std::vector<pollfd> &poll_fds_vec, size_t *i)
 {
     int client_socket;
     ssize_t bytes_received;
-    char buffer[MAX_BYTES_TO_SEND];
+    char buffer[BUFFER_SIZE];
     std::string chunk = "";
-    client_socket = poll_fds_vec[i].fd;
+    client_socket = poll_fds_vec[*i].fd;
     bytes_received = -1;
-    size_t content_length = findContentLength(client_socket);
-    while (received_content_length < content_length)
+    size_t content_length = this->findContentLength(client_socket);
+    size_t wholeContentLength = content_length + this->header_length;
+    while (true)
     {
-        // std::cout << "looping" << std::endl;
-        bytes_received = recv(client_socket, buffer, MAX_BYTES_TO_SEND - 1, 0);
-        if (bytes_received == -1)
+        bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
+        if (bytes_received == 0)
+        {
+            std::cout << "Client disconnected" << std::endl;
+            close(client_socket);
+            poll_fds_vec.erase(poll_fds_vec.begin() + *i);
+            *i -= 1;
+            return;
+        }
+        else if (bytes_received == -1)
         {
             if (errno == EAGAIN || errno == EWOULDBLOCK)
             {
@@ -111,18 +117,25 @@ void TcpServer::handle_clients(std::vector<pollfd> &poll_fds_vec, size_t i)
             {
                 std::cerr << "Failed to receive data from client" << std::endl;
                 close(client_socket);
-                poll_fds_vec.erase(poll_fds_vec.begin() + i);
-                --i;
+                poll_fds_vec.erase(poll_fds_vec.begin() + *i);
+                *i -= 1;
                 return;
             }
         }
         else
         {
-            // received_content_length += bytes_received;
-            // std::cout << "received_content_length: " << received_content_length << "===== content_length: " << content_length << std::endl;
-            if (received_content_length >= content_length - 10000)
+            buffer[bytes_received] = '\0';
+            chunk.append(buffer, bytes_received);
+            this->received_content_length += bytes_received;
+            if (chunk.length() >= MAX_BYTES_TO_SEND)
             {
-
+                std::cout << chunk;
+                chunk.clear();
+            }
+            if (this->received_content_length >= wholeContentLength)
+            {
+                std::cout << chunk << std::endl;
+                chunk.clear();
                 std::string response =
                     "HTTP/1.1 200 OK\n"
                     "Content-Type: text/plain\n"
@@ -130,24 +143,12 @@ void TcpServer::handle_clients(std::vector<pollfd> &poll_fds_vec, size_t i)
                     "Connection: close\n"
                     "\n"
                     "Hello, world!";
-                received_content_length = 0;
+                this->received_content_length = 0;
                 send(client_socket, response.c_str(), response.length(), 0);
                 close(client_socket);
-                poll_fds_vec.erase(poll_fds_vec.begin() + i);
-                --i;
-                break;
-            }
-
-            buffer[bytes_received] = '\0';
-            chunk.append(buffer, bytes_received);
-            if (bytes_received != -1)
-            {
-                received_content_length += bytes_received;
-            }   
-            if (chunk.length() >= MAX_BYTES_TO_SEND)
-            {
-                std::cout << chunk;
-                chunk.clear();
+                poll_fds_vec.erase(poll_fds_vec.begin() + *i);
+                *i -= 1;
+                return;
             }
         }
     }
@@ -157,16 +158,16 @@ int TcpServer::handleIncomingConnections()
 {
     std::vector<pollfd> poll_fds_vec;
     AddClientSocket(poll_fds_vec, this->listener);
-    // pollfd *raw_array = &poll_fds_vec[0];
-
     while (true)
     {
-        int ret = poll(poll_fds_vec.data(), poll_fds_vec.size(), 1000);
+        int ret = poll(poll_fds_vec.data(), poll_fds_vec.size(), TIME_OUT);
         if (ret == -1)
         {
             std::cout << "poll failed" << std::endl;
             break;
         }
+        if (ret == 0)
+            continue;
         for (size_t i = 0; i < poll_fds_vec.size(); i++)
         {
             if (poll_fds_vec[i].revents & POLLIN)
@@ -180,11 +181,11 @@ int TcpServer::handleIncomingConnections()
                         continue;
                 }
                 else
-                    handle_clients(poll_fds_vec, i);
+                    handle_clients(poll_fds_vec, &i);
             }
         }
     }
-    // closeFds(poll_fds_vec);
+    closeFds(poll_fds_vec);
     return 1;
 }
 
