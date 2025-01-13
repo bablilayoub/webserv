@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/13 17:23:00 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/13 18:54:00 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -141,8 +141,7 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
     std::string substr;
     size_t pos;
     std::string Data;
-    pos = Boundary.find("\r");
-    std::string LastBoundary = Boundary.substr(0, pos) + "--";
+    std::string LastBoundary = Boundary + "--";
     // ss << Body;
 
     while (std::getline(ss, line) && !this->DataFinish) {
@@ -155,8 +154,6 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
         // //Get the name and the filename if exist
         pos = line.find("Content-Disposition: form-data;");
         if (pos != std::string::npos) {
-            // close(this->fd);
-            // this->fd = -42;
             pos = line.find("name=\"");
             substr = line.substr(pos + NAME_LENGHT + 1, line.length());
             pos = substr.find("\"");
@@ -195,7 +192,7 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
         // check if there is in the line Dipsosition or type or Boundary if There is Boundary 
         // print the data untill the pos of the first pos
         pos = line.find(CONTENT_DISPOSITION);
-        if (pos == std::string::npos && line.length() > 0) {
+        if (pos == std::string::npos) {
             pos = line.find(CONTENT_TYPE);
             if (pos == std::string::npos) {
                 this->FileName = "";

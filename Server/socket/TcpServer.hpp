@@ -36,7 +36,7 @@ public:
 	void socketConfig(const int port);
 	void closeFds(std::vector<pollfd> &poll_fds_vec);
 	void AddClientSocket(std::vector<pollfd> &poll_fds_vec, int client_socket);
-	int accept_IncomingConnection(std::vector<pollfd> &poll_fds_vec, size_t i, Client &client);
+	int accept_IncomingConnection(std::vector<pollfd> &poll_fds_vec, Client &client);
 	void handle_clients(std::vector<pollfd> &poll_fds_vec, size_t *i, Client &client);
 	size_t findContentLength(int client_socket);
 	std::map<int, FileUpload> BodyMap;

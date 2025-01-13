@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/13 17:18:13 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/13 18:45:41 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,10 +41,8 @@ private:
 
 public:
 	Client();
-	void setSocketFd(int fd) {
-		this->clientFd = fd;
-	}
-	void parse(const std::string &request, std::map<int, FileUpload> &BodyMap);
+	void setSocketFd(int fd);
+	void parse(const std::string &request, std::map<int, FileUpload>& BodyMap);
 	const std::string &getBody() const;
 	const std::string &getBoundary() const;
 	const std::map<std::string, std::string> &getHeaders() const;
