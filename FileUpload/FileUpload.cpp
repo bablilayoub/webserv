@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/13 11:29:57 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/13 17:23:00 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -134,24 +134,29 @@ FileUpload::~FileUpload() {
 //     // // to do now check the boundary if there is
 // }
 
-void    FileUpload::ParseBody(std::string Body) {
-    std::stringstream ss;
+void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
+    // std::stringstream ss;
+    std::stringstream ss(Body);
     std::string line;
     std::string substr;
     size_t pos;
     std::string Data;
+    pos = Boundary.find("\r");
+    std::string LastBoundary = Boundary.substr(0, pos) + "--";
+    // ss << Body;
 
-    ss << Body;
-    while (std::getline(ss, line)) {
+    while (std::getline(ss, line) && !this->DataFinish) {
         // if Boundary-- then Break the loop
-        if (this->DataFinish) {
-            break;
+        if (line.find(LastBoundary) != std::string::npos) {
+            this->DataFinish = true;
+            std::cout << "Data Finish" << std::endl;
+            return ;
         }
-        //Get the name and the filename if exist
+        // //Get the name and the filename if exist
         pos = line.find("Content-Disposition: form-data;");
         if (pos != std::string::npos) {
-            close(this->fd);
-            this->fd = -42;
+            // close(this->fd);
+            // this->fd = -42;
             pos = line.find("name=\"");
             substr = line.substr(pos + NAME_LENGHT + 1, line.length());
             pos = substr.find("\"");
@@ -179,6 +184,7 @@ void    FileUpload::ParseBody(std::string Body) {
             }
             if (!this->FileName.empty()) {
                 this->fd = open(this->FileName.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0666);
+                std::cout << "file Opened" << std::endl;
                 if (this->fd < 0) {
                     std::cout << "Failed to open the file : " << this->FileName << std::endl;
                     return ;
@@ -186,15 +192,14 @@ void    FileUpload::ParseBody(std::string Body) {
             }
         }
 
-        // Remplace the File name with the name if the Filename not exist
-
         // check if there is in the line Dipsosition or type or Boundary if There is Boundary 
         // print the data untill the pos of the first pos
         pos = line.find(CONTENT_DISPOSITION);
-        if (pos == std::string::npos && line.length() > 1) {
+        if (pos == std::string::npos && line.length() > 0) {
             pos = line.find(CONTENT_TYPE);
             if (pos == std::string::npos) {
-                pos = line.find(this->BoundaryString);
+                this->FileName = "";
+                pos = line.find(Boundary);
                 if (pos != 0) {
                     if (pos != std::string::npos) {
                         if (pos != 0) {
@@ -203,6 +208,7 @@ void    FileUpload::ParseBody(std::string Body) {
                                     break;
                             }
                             Data = line.substr(0, pos);
+                            Data += "\n";
                             if (this->fd > 0) {
                                 write(fd, Data.c_str(), Data.length());
                             }
@@ -210,6 +216,7 @@ void    FileUpload::ParseBody(std::string Body) {
                     }
                     else {
                         Data = line;
+                        Data += "\n";
                         if (this->fd > 0) {
                             write(fd, Data.c_str(), Data.length());
                         }
@@ -217,10 +224,9 @@ void    FileUpload::ParseBody(std::string Body) {
                 }
             }
         }
-        if (line.find(this->BoundaryString + "--") != std::string::npos) {
-            this->DataFinish = true;
-        }
     }
+
+    
     // std::cout << "--------- Data Info ---------" << std::endl;
     // std::cout << this->Name << std::endl; 
     // std::cout << this->FileName << std::endl;

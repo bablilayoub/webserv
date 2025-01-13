@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:33:18 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/12 17:35:16 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/13 13:41:21 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,5 +44,5 @@ class   FileUpload {
         FileUpload();
         ~FileUpload();
         std::string BoundaryString;
-        void    ParseBody(std::string Body);
+        void    ParseBody(std::string Body, std::string Boundary);
 };
