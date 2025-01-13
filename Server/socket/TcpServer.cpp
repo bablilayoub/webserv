@@ -41,21 +41,18 @@ int TcpServer::accept_IncomingConnection(std::vector<pollfd> &poll_fds_vec, size
 {
     int addrlen, new_socket;
     addrlen = sizeof(this->serverAddress);
-    if (poll_fds_vec[i].fd == this->listener)
+    new_socket = accept(this->listener, (struct sockaddr *)&serverAddress, (socklen_t *)&addrlen);
+    // std::cout << "accept_IncomingConnection with client fd => " << new_socket << std::endl;
+    if (new_socket == -1)
     {
-        new_socket = accept(this->listener, (struct sockaddr *)&serverAddress, (socklen_t *)&addrlen);
-        // std::cout << "accept_IncomingConnection with client fd => " << new_socket << std::endl;
-        if (new_socket == -1)
-        {
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
-                return 1;
-            return 2;
-        }
-        // setNonBlockingMode(new_socket);
-        AddClientSocket(poll_fds_vec, new_socket);
-        client.setSocketFd(new_socket);
-        // std::cout << "client " << new_socket << "is added" << std::endl;
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+            return 1;
+        return 2;
     }
+    // setNonBlockingMode(new_socket);
+    AddClientSocket(poll_fds_vec, new_socket);
+    client.setSocketFd(new_socket);
+    // std::cout << "client " << new_socket << "is added" << std::endl;
     return 0;
 }
 
@@ -132,7 +129,6 @@ void TcpServer::handle_clients(std::vector<pollfd> &poll_fds_vec, size_t *i, Cli
             {
                 client.parse(chunk);
                 // client.parse(chunk, this->BodyMap);
-                // std::cout << chunk;
                 chunk.clear();
             }
             if (this->received_content_length >= wholeContentLength)

@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/13 11:41:14 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/13 18:22:49 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,9 +39,7 @@ private:
 
 public:
 	Client();
-	void setSocketFd(int fd) {
-		this->clientFd = fd;
-	}
+	void setSocketFd(int fd);
 	void parse(const std::string &request);
 	const std::string &getBody() const;
 	const std::string &getBoundary() const;
