@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/12 17:49:49 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/13 11:29:57 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -143,10 +143,11 @@ void    FileUpload::ParseBody(std::string Body) {
 
     ss << Body;
     while (std::getline(ss, line)) {
-        //Get the name and the filename if exist
+        // if Boundary-- then Break the loop
         if (this->DataFinish) {
             break;
         }
+        //Get the name and the filename if exist
         pos = line.find("Content-Disposition: form-data;");
         if (pos != std::string::npos) {
             close(this->fd);
@@ -172,22 +173,23 @@ void    FileUpload::ParseBody(std::string Body) {
         if (pos != std::string::npos) {
             substr = line.substr(pos + 14, line.length());
             pos = substr.find("/");
-            this->MimeType = substr.substr(pos + 1, substr.length());
-        }
-
-        // Remplace the File name with the name if the Filename not exist
-        if (this->FileName.empty()) {
-            this->FileName = this->Name;
-        }
-        if (!this->FileName.empty()) {
-            this->fd = open(this->FileName.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0666);
-            if (this->fd < 0) {
-                std::cout << "Failed to open the file : " << this->FileName << std::endl;
-                return ;
+            this->MimeType = substr.substr(pos + 1, substr.find("\r") - (pos + 1));
+            if (this->FileName.empty()) {
+                this->FileName = this->Name + "." + this->MimeType;
+            }
+            if (!this->FileName.empty()) {
+                this->fd = open(this->FileName.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0666);
+                if (this->fd < 0) {
+                    std::cout << "Failed to open the file : " << this->FileName << std::endl;
+                    return ;
+                }
             }
         }
 
-        // check if there is in the line Dipso or type or Boundary
+        // Remplace the File name with the name if the Filename not exist
+
+        // check if there is in the line Dipsosition or type or Boundary if There is Boundary 
+        // print the data untill the pos of the first pos
         pos = line.find(CONTENT_DISPOSITION);
         if (pos == std::string::npos && line.length() > 1) {
             pos = line.find(CONTENT_TYPE);
