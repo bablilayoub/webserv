@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:07:41 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/12 17:55:16 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/13 10:44:25 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,10 @@
 #include <vector>
 #include <unordered_map>
 #include <stack>
+
+#define METHOD_GET "GET"
+#define METHOD_POST "POST"
+#define METHOD_DELETE "DELETE"
 
 struct Location
 {

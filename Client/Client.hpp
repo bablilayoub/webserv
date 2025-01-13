@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/11 18:34:51 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/13 10:44:18 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,9 +16,6 @@
 #include <sstream>
 #include <map>
 
-#define METHOD_GET "GET"
-#define METHOD_POST "POST"
-#define METHOD_DELETE "DELETE"
 #define BOUNDARY_PREFIX "boundary="
 #define CONTENT_LENGTH_PREFIX "Content-Length: "
 #define HOST_PREFIX "Host: "

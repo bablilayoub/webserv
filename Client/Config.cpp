@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 10:49:18 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/12 17:03:33 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/13 10:57:24 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -161,6 +161,8 @@ void Config::handleKeyValue(const std::string &line)
 			while (std::getline(stream, method, ','))
 			{
 				this->trimWhitespace(method);
+				if (method != METHOD_GET && method != METHOD_POST && method != METHOD_DELETE)
+					throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid method (GET, POST, DELETE only)");
 				currentLocation.accepted_methods.push_back(method);
 			}
 
@@ -211,14 +213,17 @@ Config::Config(const std::string &filePath)
 		throw std::runtime_error("Invalid config file: No server is found");
 	for (std::vector<Server>::iterator serverIt = servers.begin(); serverIt != servers.end(); ++serverIt)
 	{
+		if (serverIt->listen_port < 1 || serverIt->listen_port > 65535)
+			throw std::runtime_error("Invalid config file: Invalid port for server: " + (serverIt->server_names.size() > 0 ? serverIt->server_names[0] : "Unknown") + " . Allowed ports (1 to 65535)");
+
 		if (serverIt->locations.empty())
-			throw std::runtime_error("Invalid config file: No routes found for server: " + serverIt->server_names[0]);
+			throw std::runtime_error("Invalid config file: No routes found for server: " + (serverIt->server_names.size() > 0 ? serverIt->server_names[0] : "Unknown"));
 
 		for (std::map<std::string, Location>::iterator locIt = serverIt->locations.begin(); locIt != serverIt->locations.end(); ++locIt)
 		{
 			if (locIt->second.accepted_methods.empty())
 				throw std::runtime_error("Invalid config file: No methods defined for route: " + locIt->first +
-										 " in server: " + serverIt->server_names[0]);
+										 " in server: " + (serverIt->server_names.size() > 0 ? serverIt->server_names[0] : "Unknown"));
 		}
 	}
 }
