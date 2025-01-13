@@ -11,14 +11,19 @@
 #include <vector>
 
 #define PORT 8080
-#define MAX_CLIENTS 10
+#define MAX_CLIENTS 5
+#define MAX_BYTES_TO_SEND 200000
+#define BUFFER_SIZE 60001
+#define TIME_OUT 5000
 
 class TcpServer
 {
 private:
 	struct sockaddr_in serverAddress;
+	int listener;
 	bool isNonBlocking;
-	int sockfd;
+	size_t received_content_length;
+	size_t header_length;	
 
 public:
 	TcpServer();
@@ -28,4 +33,7 @@ public:
 	void socketConfig(const int port);
 	void closeFds(std::vector<pollfd> &poll_fds_vec);
 	void AddClientSocket(std::vector<pollfd> &poll_fds_vec, int client_socket);
+	int accept_IncomingConnection(std::vector<pollfd> &poll_fds_vec, size_t i);
+	void handle_clients(std::vector<pollfd> &poll_fds_vec, size_t *i);
+	size_t findContentLength(int client_socket);
 };

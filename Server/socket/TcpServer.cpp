@@ -1,29 +1,29 @@
 #include "TcpServer.hpp"
 
-TcpServer::TcpServer() : isNonBlocking(true) {}
+TcpServer::TcpServer() : isNonBlocking(true), received_content_length(0), header_length(0) {}
 
 void TcpServer::initializeServer(const int port)
 {
     int opt;
 
-    this->sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (this->sockfd == -1)
+    this->listener = socket(AF_INET, SOCK_STREAM, 0);
+    if (this->listener == -1)
         throw std::runtime_error("Socket creation failed");
     opt = 1;
-    setsockopt(this->sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    setsockopt(this->listener, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
     if (isNonBlocking)
-        this->setNonBlockingMode(this->sockfd);
+        this->setNonBlockingMode(this->listener);
     this->socketConfig(PORT);
-    if (bind(this->sockfd, (struct sockaddr *)&this->serverAddress, sizeof(this->serverAddress)) == -1)
+    if (bind(this->listener, (struct sockaddr *)&this->serverAddress, sizeof(this->serverAddress)) == -1)
     {
-        close(this->sockfd);
+        close(this->listener);
         throw std::runtime_error("bind failed");
     }
 
-    if (listen(this->sockfd, MAX_CLIENTS) == -1)
+    if (listen(this->listener, MAX_CLIENTS) == -1)
     {
-        close(this->sockfd);
+        close(this->listener);
         throw std::runtime_error("Listening to server failed");
     }
     std::cout << "Server is listening on port " << port << std::endl;
@@ -37,61 +37,151 @@ void TcpServer::socketConfig(const int port)
     this->serverAddress.sin_addr.s_addr = INADDR_ANY;
 };
 
-int TcpServer::handleIncomingConnections()
+int TcpServer::accept_IncomingConnection(std::vector<pollfd> &poll_fds_vec, size_t i)
 {
-    char buffer[1024];
-    int addrlen, new_socket, client_socket;
+    int addrlen, new_socket;
     addrlen = sizeof(this->serverAddress);
-    std::vector<pollfd> poll_fds_vec;
-    AddClientSocket(poll_fds_vec, this->sockfd);
-    pollfd *raw_array = &poll_fds_vec[0];
+    if (poll_fds_vec[i].fd == this->listener)
+    {
+        new_socket = accept(this->listener, (struct sockaddr *)&serverAddress, (socklen_t *)&addrlen);
+        // std::cout << "accept_IncomingConnection with client fd => " << new_socket << std::endl;
+        if (new_socket == -1)
+        {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+                return 1;
+            return 2;
+        }
+        // setNonBlockingMode(new_socket);
+        AddClientSocket(poll_fds_vec, new_socket);
+        // std::cout << "client " << new_socket << "is added" << std::endl;
+    }
+    return 0;
+}
 
+size_t TcpServer::findContentLength(int client_socket)
+{
+    ssize_t bytes_received;
+    char buffer[BUFFER_SIZE];
+    std::string request;
+    while ((bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, MSG_PEEK)) > 0)
+    {
+        request.append(buffer, bytes_received);
+        size_t pos = request.find("\r\n\r\n");
+        if (pos != std::string::npos)
+        {
+            std::string header = request.substr(0, pos);
+            this->header_length = header.length() + 4;
+            size_t content_length_pos = header.find("Content-Length: ");
+            if (content_length_pos != std::string::npos)
+            {
+                size_t content_length_end = header.find("\r\n", content_length_pos);
+                std::string content_length_str = header.substr(content_length_pos + 16, content_length_end - content_length_pos - 16);
+                return std::stoi(content_length_str);
+            }
+            else
+                return 0;
+        }
+    }
+    return 0;
+}
+
+void TcpServer::handle_clients(std::vector<pollfd> &poll_fds_vec, size_t *i)
+{
+    int client_socket;
+    ssize_t bytes_received;
+    char buffer[BUFFER_SIZE];
+    std::string chunk = "";
+    client_socket = poll_fds_vec[*i].fd;
+    bytes_received = -1;
+    size_t content_length = this->findContentLength(client_socket);
+    size_t wholeContentLength = content_length + this->header_length;
     while (true)
     {
-        int ret = poll(raw_array, poll_fds_vec.size(), 100);
-        std::cout << "jello\n";
-        if (ret == -1)
+        bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
+        if (bytes_received == 0)
         {
-            std::cerr << "Poll failed" << std::endl;
-            break;
+            std::cout << "Client disconnected" << std::endl;
+            close(client_socket);
+            poll_fds_vec.erase(poll_fds_vec.begin() + *i);
+            *i -= 1;
+            return;
         }
-
-        for (size_t i = 0; i < poll_fds_vec.size(); ++i)
+        else if (bytes_received == -1)
         {
-            if (poll_fds_vec[i].revents & POLLIN)
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
             {
-                if (poll_fds_vec[i].fd == this->sockfd)
-                {
-                    new_socket = accept(this->sockfd, (struct sockaddr *)&serverAddress, (socklen_t *)&addrlen);
-                    if (new_socket == -1)
-                    {
-                        std::cerr << "Accept failed" << std::endl;
-                        continue;
-                    }
-                    std::cout << "New client connected!" << std::endl;
-                    setNonBlockingMode(new_socket);
-                    AddClientSocket(poll_fds_vec, new_socket);
-                }
+                // std::cout << "EAGAIN or EWOULDBLOCK" << std::endl;
+                continue;
             }
             else
             {
-                client_socket = poll_fds_vec[i].fd;
-                ssize_t bytes_read = read(client_socket, buffer, sizeof(buffer) - 1);
-                if (bytes_read == -1)
-                    std::cerr << "Read failed" << std::endl;
-                else if (bytes_read == 0)
+                std::cerr << "Failed to receive data from client" << std::endl;
+                close(client_socket);
+                poll_fds_vec.erase(poll_fds_vec.begin() + *i);
+                *i -= 1;
+                return;
+            }
+        }
+        else
+        {
+            buffer[bytes_received] = '\0';
+            chunk.append(buffer, bytes_received);
+            this->received_content_length += bytes_received;
+            if (chunk.length() >= MAX_BYTES_TO_SEND)
+            {
+                std::cout << chunk;
+                chunk.clear();
+            }
+            if (this->received_content_length >= wholeContentLength)
+            {
+                std::cout << chunk << std::endl;
+                chunk.clear();
+                std::string response =
+                    "HTTP/1.1 200 OK\n"
+                    "Content-Type: text/plain\n"
+                    "Content-Length: 13\n"
+                    "Connection: close\n"
+                    "\n"
+                    "Hello, world!";
+                this->received_content_length = 0;
+                send(client_socket, response.c_str(), response.length(), 0);
+                close(client_socket);
+                poll_fds_vec.erase(poll_fds_vec.begin() + *i);
+                *i -= 1;
+                return;
+            }
+        }
+    }
+}
+
+int TcpServer::handleIncomingConnections()
+{
+    std::vector<pollfd> poll_fds_vec;
+    AddClientSocket(poll_fds_vec, this->listener);
+    while (true)
+    {
+        int ret = poll(poll_fds_vec.data(), poll_fds_vec.size(), TIME_OUT);
+        if (ret == -1)
+        {
+            std::cout << "poll failed" << std::endl;
+            break;
+        }
+        if (ret == 0)
+            continue;
+        for (size_t i = 0; i < poll_fds_vec.size(); i++)
+        {
+            if (poll_fds_vec[i].revents & POLLIN)
+            {
+                if (poll_fds_vec[i].fd == this->listener)
                 {
-                    std::cout << "Client disconnected!" << std::endl;
-                    close(client_socket);
-                    poll_fds_vec.erase(poll_fds_vec.begin() + i);
+                    int res = accept_IncomingConnection(poll_fds_vec, i);
+                    if (res == 0 || res == 2)
+                        break;
+                    else
+                        continue;
                 }
                 else
-                {
-                    buffer[bytes_read] = '\0';
-                    std::cout << "Received message: " << buffer << std::endl;
-                    std::string response = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nHello world!";
-                    send(client_socket, response.c_str(), response.length(), 0);
-                }
+                    handle_clients(poll_fds_vec, &i);
             }
         }
     }
@@ -113,19 +203,21 @@ void TcpServer::setNonBlockingMode(int socket)
         close(socket);
         throw std::runtime_error("Failed to get socket flags");
     }
-    if (fcntl(sockfd, F_SETFL, flags | O_NONBLOCK) == -1)
+    if (fcntl(socket, F_SETFL, flags | O_NONBLOCK) == -1)
     {
         close(socket);
         throw std::runtime_error("Failed to set non-blocking mode");
     }
 }
 
-void TcpServer::AddClientSocket(std::vector<pollfd> &poll_fds_vec, int client_socket)
+void TcpServer::AddClientSocket(std::vector<pollfd> &poll_fds_vec, int socket)
 {
-    struct pollfd pfd;
 
-    pfd.fd = client_socket;
+    struct pollfd pfd;
+    pfd.fd = socket;
     pfd.events = POLLIN;
-    pfd.revents = 0;
+    // pfd.revents = 0;
     poll_fds_vec.push_back(pfd);
+    // Client new_client(client_socket);
+    // clients[client_socket] = new_client;
 }
