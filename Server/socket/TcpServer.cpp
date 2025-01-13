@@ -57,9 +57,11 @@ int TcpServer::accept_IncomingConnection(std::vector<pollfd> &poll_fds_vec, size
     }
     return 0;
 }
-
+int flag = true;
 size_t TcpServer::findContentLength(int client_socket)
 {
+    if (!flag)
+        return 0;
     ssize_t bytes_received;
     char buffer[BUFFER_SIZE];
     std::string request;
@@ -76,6 +78,7 @@ size_t TcpServer::findContentLength(int client_socket)
             {
                 size_t content_length_end = header.find("\r\n", content_length_pos);
                 std::string content_length_str = header.substr(content_length_pos + 16, content_length_end - content_length_pos - 16);
+                flag = false;
                 return std::stoi(content_length_str);
             }
             else
@@ -85,18 +88,19 @@ size_t TcpServer::findContentLength(int client_socket)
     return 0;
 }
 
+std::string chunk = "";
 void TcpServer::handle_clients(std::vector<pollfd> &poll_fds_vec, size_t *i)
 {
     int client_socket;
     ssize_t bytes_received;
     char buffer[BUFFER_SIZE];
-    std::string chunk = "";
     client_socket = poll_fds_vec[*i].fd;
     bytes_received = -1;
     size_t content_length = this->findContentLength(client_socket);
-    size_t wholeContentLength = content_length + this->header_length;
+    static size_t wholeContentLength = content_length + this->header_length;
     while (true)
     {
+        // std::cout << "loop" << std::endl;
         bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
         if (bytes_received == 0)
         {
@@ -111,7 +115,7 @@ void TcpServer::handle_clients(std::vector<pollfd> &poll_fds_vec, size_t *i)
             if (errno == EAGAIN || errno == EWOULDBLOCK)
             {
                 // std::cout << "EAGAIN or EWOULDBLOCK" << std::endl;
-                continue;
+                break;
             }
             else
             {
@@ -126,12 +130,12 @@ void TcpServer::handle_clients(std::vector<pollfd> &poll_fds_vec, size_t *i)
         {
             buffer[bytes_received] = '\0';
             chunk.append(buffer, bytes_received);
-            this->received_content_length += bytes_received;
             if (chunk.length() >= MAX_BYTES_TO_SEND)
             {
                 std::cout << chunk;
                 chunk.clear();
             }
+            this->received_content_length += bytes_received;
             if (this->received_content_length >= wholeContentLength)
             {
                 std::cout << chunk << std::endl;

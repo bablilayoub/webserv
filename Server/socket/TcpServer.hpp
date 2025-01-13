@@ -16,6 +16,24 @@
 #define BUFFER_SIZE 60001
 #define TIME_OUT 5000
 
+class IncomingDataHandler
+{
+public:
+	std::string chunk;
+	size_t received_content_length;
+	size_t header_length;
+	size_t wholeContentLength;
+	ssize_t bytes_received;
+
+	IncomingDataHandler()
+	{
+		this->received_content_length = 0;
+		this->header_length = 0;
+		this->wholeContentLength = 0;
+		this->bytes_received = -1;
+	}
+};
+
 class TcpServer
 {
 private:
@@ -23,7 +41,8 @@ private:
 	int listener;
 	bool isNonBlocking;
 	size_t received_content_length;
-	size_t header_length;	
+	size_t header_length;
+	std::vector<IncomingDataHandler> incomingDataHandlers;
 
 public:
 	TcpServer();
