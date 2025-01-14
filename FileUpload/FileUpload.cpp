@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/13 18:54:00 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/14 10:35:39 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,7 +25,9 @@ FileUpload::FileUpload() {
 }
 
 FileUpload::~FileUpload() {
-    
+    if (this->fd > 0) {
+        close(this->fd);
+    }
 }
 
 // void    FileUpload::ParseBody(std::string Body) {
@@ -135,7 +137,7 @@ FileUpload::~FileUpload() {
 // }
 
 void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
-    // std::stringstream ss;
+    int flag = 0; 
     std::stringstream ss(Body);
     std::string line;
     std::string substr;
@@ -148,7 +150,6 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
         // if Boundary-- then Break the loop
         if (line.find(LastBoundary) != std::string::npos) {
             this->DataFinish = true;
-            std::cout << "Data Finish" << std::endl;
             return ;
         }
         // //Get the name and the filename if exist
@@ -168,8 +169,9 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
                 this->FileName = "";
             }
             this->HeaderFetched = true;
+            std::getline(ss, line);
+            flag = 1;
         }
-
         // Get the Mime type
         pos = line.find("Content-Type:");
         if (pos != std::string::npos) {
@@ -180,13 +182,20 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
                 this->FileName = this->Name + "." + this->MimeType;
             }
             if (!this->FileName.empty()) {
-                this->fd = open(this->FileName.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0666);
-                std::cout << "file Opened" << std::endl;
+                std::string path = "/Users/aitaouss/Desktop/web-serve/files/" + this->FileName;
+                this->fd = open(path.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0666);
                 if (this->fd < 0) {
                     std::cout << "Failed to open the file : " << this->FileName << std::endl;
                     return ;
                 }
             }
+            std::getline(ss, line);
+            std::getline(ss, line);
+            flag = 0;
+        }
+        else if (flag == 1) {
+            flag = 0;
+            std::getline(ss, line);
         }
 
         // check if there is in the line Dipsosition or type or Boundary if There is Boundary 
@@ -197,36 +206,17 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
             if (pos == std::string::npos) {
                 this->FileName = "";
                 pos = line.find(Boundary);
-                if (pos != 0) {
-                    if (pos != std::string::npos) {
-                        if (pos != 0) {
-                            for (size_t i = 0; i < line.length(); i++) {
-                                if (i == pos)
-                                    break;
-                            }
-                            Data = line.substr(0, pos);
-                            Data += "\n";
-                            if (this->fd > 0) {
-                                write(fd, Data.c_str(), Data.length());
-                            }
-                        }
-                    }
-                    else {
-                        Data = line;
+                if (pos == std::string::npos) {
+                    Data = line;
+                    // chek if the eof
+                    if (!ss.eof()) {
                         Data += "\n";
-                        if (this->fd > 0) {
-                            write(fd, Data.c_str(), Data.length());
-                        }
+                    }
+                    if (this->fd > 0) {
+                        write(fd, Data.c_str(), Data.size());
                     }
                 }
             }
         }
     }
-
-    
-    // std::cout << "--------- Data Info ---------" << std::endl;
-    // std::cout << this->Name << std::endl; 
-    // std::cout << this->FileName << std::endl;
-    // std::cout <<  this->MimeType << std::endl;
-    // std::cout << "--------- Data Info Ended ---------" << std::endl;
 }
