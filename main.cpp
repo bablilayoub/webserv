@@ -2,12 +2,12 @@
 
 int main()
 {
-	TcpServer tcpserver;
 
 	while (true)
 	{
 		try
 		{
+			TcpServer tcpserver;
 			tcpserver.initializeServer(PORT);
 			int result = tcpserver.handleIncomingConnections();
 			if (result == 1)
