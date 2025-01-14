@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Client.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
+/*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/13 18:44:53 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/14 11:41:56 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -108,14 +108,6 @@ void Client::parse(const std::string &request, std::map<int, FileUpload>& BodyMa
 	else
 		this->body = request; 
 
-	// std::cout << "|" << this->ip << "|" << std::endl;
-	// std::cout << "|" << this->port << "|" << std::endl;
-	// std::cout << "|" << this->method << "|" << std::endl;
-	// std::cout << "|" << this->boundary << "|" << std::endl;
-	// std::cout << "|=============================|" << std::endl;
-	// std::cout << this->headers << std::endl;
-	// std::cout << "|============|" << std::endl;
-	// std::cout << this->body << std::endl;
 	BodyMap[this->clientFd].ParseBody(this->body, this->boundary);
 }
 
