@@ -1,13 +1,20 @@
 #include "Server/Global.hpp"
+#include "Client/Config.hpp"
 
-int main()
+int main(int ac, char **args)
 {
-	TcpServer tcpserver;
+	if (ac != 2)
+	{
+		std::cout << "Usage : ./webserv [config file path]" << std::endl;
+		return 1;
+	}
 
 	while (true)
 	{
 		try
 		{
+			Config config(args[1]);
+			TcpServer tcpserver;
 			tcpserver.initializeServer(PORT);
 			int result = tcpserver.handleIncomingConnections();
 			if (result == 1)
