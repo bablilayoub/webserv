@@ -27,6 +27,7 @@ struct ClientData
 	int length_set;
 	std::string file_name;
 
+
 	ClientData()
 	{
 		this->received_content_length = 0;
