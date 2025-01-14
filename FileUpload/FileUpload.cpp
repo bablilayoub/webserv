@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/14 10:35:39 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/14 20:46:55 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -136,87 +136,176 @@ FileUpload::~FileUpload() {
 //     // // to do now check the boundary if there is
 // }
 
-void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
-    int flag = 0; 
-    std::stringstream ss(Body);
-    std::string line;
-    std::string substr;
-    size_t pos;
-    std::string Data;
-    std::string LastBoundary = Boundary + "--";
-    // ss << Body;
+// void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
+//     int flag = 0; 
+//     std::stringstream ss(Body);
+//     std::string line;
+//     std::string substr;
+//     size_t pos;
+//     std::string Data;
+//     std::string LastBoundary = Boundary + "--";
+//     // ss << Body;
 
-    while (std::getline(ss, line) && !this->DataFinish) {
-        // if Boundary-- then Break the loop
-        if (line.find(LastBoundary) != std::string::npos) {
-            this->DataFinish = true;
-            return ;
-        }
-        // //Get the name and the filename if exist
-        pos = line.find("Content-Disposition: form-data;");
+//     while (std::getline(ss, line) && !this->DataFinish) {
+//         // if Boundary-- then Break the loop
+//         if (line.find(LastBoundary) != std::string::npos) {
+//             this->DataFinish = true;
+//             return ;
+//         }
+//         // //Get the name and the filename if exist
+//         pos = line.find("Content-Disposition: form-data;");
+//         if (pos != std::string::npos) {
+//             pos = line.find("name=\"");
+//             substr = line.substr(pos + NAME_LENGHT + 1, line.length());
+//             pos = substr.find("\"");
+//             this->Name = substr.substr(0, pos);
+//             pos = substr.find("filename=\"");
+//             if (pos != std::string::npos) {
+//                 substr = substr.substr(pos + FILE_NAME_LENGHT + 1 , substr.length());
+//                 pos = substr.find("\"");
+//                 this->FileName = substr.substr(0, pos);
+//             }
+//             else {
+//                 this->FileName = "";
+//             }
+//             this->HeaderFetched = true;
+//             std::getline(ss, line);
+//             flag = 1;
+//         }
+//         // Get the Mime type
+//         pos = line.find("Content-Type:");
+//         if (pos != std::string::npos) {
+//             substr = line.substr(pos + 14, line.length());
+//             pos = substr.find("/");
+//             this->MimeType = substr.substr(pos + 1, substr.find("\r") - (pos + 1));
+//             if (this->FileName.empty()) {
+//                 this->FileName = this->Name + "." + this->MimeType;
+//             }
+//             if (!this->FileName.empty()) {
+//                 std::string path = "/Users/aitaouss/Desktop/web-serve/files/" + this->FileName;
+//                 this->fd = open(path.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0666);
+//                 if (this->fd < 0) {
+//                     std::cout << "Failed to open the file : " << this->FileName << std::endl;
+//                     return ;
+//                 }
+//             }
+//             std::getline(ss, line);
+//             std::getline(ss, line);
+//             flag = 0;
+//         }
+//         else if (flag == 1) {
+//             flag = 0;
+//             std::getline(ss, line);
+//         }
+
+//         // check if there is in the line Dipsosition or type or Boundary if There is Boundary 
+//         // print the data untill the pos of the first pos
+//         pos = line.find(CONTENT_DISPOSITION);
+//         if (pos == std::string::npos) {
+//             pos = line.find(CONTENT_TYPE);
+//             if (pos == std::string::npos) {
+//                 this->FileName = "";
+//                 pos = line.find(Boundary);
+//                 if (pos == std::string::npos) {
+//                     Data = line;
+//                     // chek if the eof
+//                     if (!ss.eof()) {
+//                         Data += "\n";
+//                     }
+//                     if (this->fd > 0) {
+//                         write(fd, Data.c_str(), Data.size());
+//                     }
+//                 }
+//             }
+//         }
+//     }
+// }
+
+void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
+    
+    size_t pos;
+    Boundary = "--" + Boundary;
+    std::string ContentDisposition = "Content-Disposition: form-data;";
+    std::string FileNameString = "filename=\"";
+    std::string ContentType = "Content-Type:";
+    std::string NameString = "name=\"";
+    std::string substr;
+
+    if (this->DataFinish) {
+        return ;
+    }
+    pos = Body.find(Boundary);
+    // if the boundary is the first Line
+    if (pos == 0) {
+        // extract the Boundary from the data
+        Body = Body.substr(Boundary.length() + 2, Body.length());
+        pos = Body.find("Content-Disposition: form-data;");
         if (pos != std::string::npos) {
-            pos = line.find("name=\"");
-            substr = line.substr(pos + NAME_LENGHT + 1, line.length());
-            pos = substr.find("\"");
-            this->Name = substr.substr(0, pos);
-            pos = substr.find("filename=\"");
+            Body = Body.substr(pos + ContentDisposition.length() + 1, Body.length());
+            // Get the name
+            pos = Body.find(NameString);
+            Body = Body.substr(pos + NAME_LENGHT + 1, Body.length());
+            substr = Body.substr(0, Body.find("\""));
+            this->Name = substr;
+            // Get the filename
+            pos = Body.find(FileNameString);
+            Body = Body.substr(pos + FileNameString.length(), Body.length());
             if (pos != std::string::npos) {
-                substr = substr.substr(pos + FILE_NAME_LENGHT + 1 , substr.length());
-                pos = substr.find("\"");
-                this->FileName = substr.substr(0, pos);
+                substr = Body.substr(0 , Body.find("\""));
+                Body = Body.substr(Body.find("\"") + 3 , Body.length());
+                this->FileName = substr;
             }
             else {
-                this->FileName = "";
+                this->FileName = "Default";
             }
             this->HeaderFetched = true;
-            std::getline(ss, line);
-            flag = 1;
         }
-        // Get the Mime type
-        pos = line.find("Content-Type:");
+        // Get the Mime type From the Content-Type
+        pos = Body.find("Content-Type:");
         if (pos != std::string::npos) {
-            substr = line.substr(pos + 14, line.length());
-            pos = substr.find("/");
-            this->MimeType = substr.substr(pos + 1, substr.find("\r") - (pos + 1));
-            if (this->FileName.empty()) {
+            Body = Body.substr(pos + ContentType.length() + 1, Body.length());
+            pos = Body.find("/");
+            Body = Body.substr(pos + 1, Body.length());
+            this->MimeType = Body.substr(0, Body.find("\n") - 1);
+            Body = Body.substr(Body.find("\n") + 3 , Body.length());
+            if (this->FileName == "Default") {
                 this->FileName = this->Name + "." + this->MimeType;
             }
-            if (!this->FileName.empty()) {
-                std::string path = "/Users/aitaouss/Desktop/web-serve/files/" + this->FileName;
-                this->fd = open(path.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0666);
-                if (this->fd < 0) {
-                    std::cout << "Failed to open the file : " << this->FileName << std::endl;
-                    return ;
-                }
-            }
-            std::getline(ss, line);
-            std::getline(ss, line);
-            flag = 0;
+            // if (!this->FileName.empty()) {
+            //     std::string path = "/Users/aitaouss/Desktop/web-serve/files/" + this->FileName;
+            //     this->fd = open(path.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0666);
+            //     if (this->fd < 0) {
+            //         std::cout << "Failed to open the file : " << this->FileName << std::endl;
+            //         return ;
+            //     }
+            // }
+            this->HeaderFetched = true;
         }
-        else if (flag == 1) {
-            flag = 0;
-            std::getline(ss, line);
-        }
-
-        // check if there is in the line Dipsosition or type or Boundary if There is Boundary 
-        // print the data untill the pos of the first pos
-        pos = line.find(CONTENT_DISPOSITION);
-        if (pos == std::string::npos) {
-            pos = line.find(CONTENT_TYPE);
-            if (pos == std::string::npos) {
-                this->FileName = "";
-                pos = line.find(Boundary);
-                if (pos == std::string::npos) {
-                    Data = line;
-                    // chek if the eof
-                    if (!ss.eof()) {
-                        Data += "\n";
-                    }
-                    if (this->fd > 0) {
-                        write(fd, Data.c_str(), Data.size());
-                    }
-                }
+    }
+    if (this->HeaderFetched) {
+        this->HeaderFetched = false;
+        if (!this->FileName.empty()) {
+            std::string path = "/Users/aitaouss/Desktop/web-serve/files/" + this->FileName;
+            this->fd = open(path.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0666);
+            if (this->fd < 0) {
+                std::cout << "Failed to open the file : " << this->FileName << std::endl;
+                return ;
             }
         }
     }
+    if (Body.find(Boundary + "--") != std::string::npos) {
+        Body = Body.substr(0, Body.find(Boundary));
+        this->DataFinish = true;
+    }
+    if (this->fd > 0) {
+        write(this->fd, Body.c_str(), Body.size());
+    }
 }
+
+
+    // this->fd = open("file.txt", O_CREAT | O_WRONLY | O_APPEND, 0666);
+    // if (this->fd < 0) {
+    //     std::cout << "Failed to open the file : " << this->FileName << std::endl;
+    //     return ;
+    // }
+    // write(this->fd, Body.c_str(), Body.size());
