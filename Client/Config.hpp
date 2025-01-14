@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:07:41 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/14 10:21:36 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/14 14:55:13 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,7 +28,7 @@
 
 struct Location
 {
-    bool autoindex = false;
+    bool autoindex;
     std::string redirect;
     std::string upload_dir;
     std::string root_folder;
