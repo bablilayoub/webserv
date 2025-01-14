@@ -3,14 +3,16 @@
 /*                                                        :::      ::::::::   */
 /*   Client.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/13 18:22:49 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/13 18:45:41 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
+
+#include "../FileUpload/FileUpload.hpp"
 
 #include <iostream>
 #include <sstream>
@@ -40,7 +42,7 @@ private:
 public:
 	Client();
 	void setSocketFd(int fd);
-	void parse(const std::string &request);
+	void parse(const std::string &request, std::map<int, FileUpload>& BodyMap);
 	const std::string &getBody() const;
 	const std::string &getBoundary() const;
 	const std::map<std::string, std::string> &getHeaders() const;
