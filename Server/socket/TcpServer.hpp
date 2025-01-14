@@ -9,9 +9,11 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <vector>
-#include <fstream>
+#include "../../Client/Client.hpp"
+#include "../../FileUpload/FileUpload.hpp"
+#include <map>
 
-#define PORT 8080
+#define PORT 9000
 #define MAX_BYTES_TO_SEND 200000
 #define BUFFER_SIZE 60001
 #define TIME_OUT 5000
@@ -26,7 +28,6 @@ struct ClientData
 	int flag;
 	int length_set;
 	std::string file_name;
-
 
 	ClientData()
 	{
@@ -55,8 +56,10 @@ public:
 	void setNonBlockingMode(int socket);
 	void socketConfig(const int port);
 	// void closeFds(std::vector<pollfd> &poll_fds_vec);
-	void AddClientSocket(int socket);
+	void AddClientSocket(int client_socket);
 	int accept_IncomingConnection();
 	void handle_clients(size_t *i);
 	size_t findContentLength(int client_socket, int *flag);
+	std::map<int, FileUpload> BodyMap;
+	std::map<int, Client> clients;
 };

@@ -48,7 +48,7 @@ int TcpServer::accept_IncomingConnection()
             return 1;
         return 2;
     }
-    setNonBlockingMode(new_socket);
+    // setNonBlockingMode(new_socket);
     AddClientSocket(new_socket);
     return 0;
 }
@@ -92,8 +92,7 @@ void TcpServer::handle_clients(size_t *i)
     char buffer[BUFFER_SIZE];
     std::string &chunk = clientData[*i].chunk;
     ssize_t bytes_received;
-    std::ofstream outFile(clientData[*i].file_name, std::ios::app);
-
+    // std::ofstream outFile(clientData[*i].file_name, std::ios::app);
 
     client_socket = poll_fds_vec[*i].fd;
     if (!clientData[*i].length_set)
@@ -105,11 +104,12 @@ void TcpServer::handle_clients(size_t *i)
     size_t &received_content_length = clientData[*i].received_content_length;
     while (true)
     {
-        // std::cout << "handle_clients" << std::endl;
         bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
         if (bytes_received == 0)
         {
             std::cout << "Client disconnected" << std::endl;
+            this->clients.erase(client_socket);
+            this->BodyMap.erase(client_socket);
             close(client_socket);
             clientData.erase(clientData.begin() + *i);
             poll_fds_vec.erase(poll_fds_vec.begin() + *i);
@@ -126,6 +126,8 @@ void TcpServer::handle_clients(size_t *i)
             else
             {
                 std::cerr << "Failed to receive data from client" << std::endl;
+                this->clients.erase(client_socket);
+                this->BodyMap.erase(client_socket);
                 close(client_socket);
                 clientData.erase(clientData.begin() + *i);
                 poll_fds_vec.erase(poll_fds_vec.begin() + *i);
@@ -139,16 +141,15 @@ void TcpServer::handle_clients(size_t *i)
             chunk.append(buffer, bytes_received);
             if (chunk.length() >= MAX_BYTES_TO_SEND)
             {
-                // std::cout << chunk;
-                outFile << chunk;
+                this->clients[client_socket].parse(chunk, this->BodyMap);
+                // outFile << chunk;
                 chunk.clear();
             }
             received_content_length += bytes_received;
             if (received_content_length >= wholeContentLength)
             {
-                // std::cout << chunk << std::endl;
-                outFile << chunk << std::endl;
-                outFile.close();
+                this->clients[client_socket].parse(chunk, this->BodyMap);
+                // outFile << chunk;
                 chunk.clear();
                 std::string response =
                     "HTTP/1.1 200 OK\n"
@@ -159,6 +160,8 @@ void TcpServer::handle_clients(size_t *i)
                     "Hello, world!";
                 // *received_content_length = 0;
                 send(client_socket, response.c_str(), response.length(), 0);
+                this->clients.erase(client_socket);
+                this->BodyMap.erase(client_socket);
                 close(client_socket);
                 clientData.erase(clientData.begin() + *i);
                 poll_fds_vec.erase(poll_fds_vec.begin() + *i);
@@ -189,10 +192,8 @@ int TcpServer::handleIncomingConnections()
         {
             if (poll_fds_vec[i].revents & POLLIN)
             {
-                // std::cout << "check POLLIN" << std::endl;
                 if (poll_fds_vec[i].fd == this->listener)
                 {
-                    // std::cout << "accept_IncomingConnection" << std::endl;
                     int res = accept_IncomingConnection();
                     if (res == 0 || res == 2)
                         break;
@@ -200,10 +201,7 @@ int TcpServer::handleIncomingConnections()
                         continue;
                 }
                 else
-                {
-                    // std::cout << "handle_clients" << std::endl;
                     handle_clients(&i);
-                }
             }
         }
     }
@@ -237,8 +235,13 @@ void TcpServer::AddClientSocket(int socket)
 {
 
     ClientData data;
-    data.file_name = "file" + std::to_string(socket) + ".txt";
     clientData.push_back(data);
+
+    if (socket != this->listener)
+    {
+        this->clients[socket] = Client();
+        this->clients[socket].setSocketFd(socket);
+    }
 
     struct pollfd pfd;
     pfd.fd = socket;

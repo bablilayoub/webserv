@@ -3,22 +3,21 @@
 /*                                                        :::      ::::::::   */
 /*   Client.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/11 15:18:53 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/13 18:45:41 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
+#include "../FileUpload/FileUpload.hpp"
+
 #include <iostream>
 #include <sstream>
 #include <map>
 
-#define METHOD_GET "GET"
-#define METHOD_POST "POST"
-#define METHOD_DELETE "DELETE"
 #define BOUNDARY_PREFIX "boundary="
 #define CONTENT_LENGTH_PREFIX "Content-Length: "
 #define HOST_PREFIX "Host: "
@@ -41,8 +40,9 @@ private:
 	void clear();
 
 public:
-	Client(int clientFd);
-	void parse(const std::string &request);
+	Client();
+	void setSocketFd(int fd);
+	void parse(const std::string &request, std::map<int, FileUpload>& BodyMap);
 	const std::string &getBody() const;
 	const std::string &getBoundary() const;
 	const std::map<std::string, std::string> &getHeaders() const;
