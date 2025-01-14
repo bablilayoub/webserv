@@ -3,6 +3,10 @@ NAME = webserv
 COMPILER = c++
 FLAGS = -Wall -Wextra -std=c++98 #-fsanitize=address -g
 
+# FileUpload part
+FILE_UPLOAD_SRC = FileUpload.cpp
+FILE_UPLOAD_HEADERS = FileUpload.hpp
+
 # Server part
 UTILS = Utils.cpp
 SOCKET =  TcpServer.cpp
@@ -12,8 +16,8 @@ SERVER_SRC = $(addprefix utils/, $(UTILS)) $(addprefix socket/, $(SOCKET))
 CLIENT_SRC = Client.cpp Config.cpp
 CLIENT_HEADERS = Client.hpp Config.hpp
 
-HEADERS = $(addprefix Client/, $(CLIENT_HEADERS))
-SRC = main.cpp  $(addprefix Server/, $(SERVER_SRC)) $(addprefix Client/, $(CLIENT_SRC))
+HEADERS = $(addprefix Client/, $(CLIENT_HEADERS)) $(addprefix FileUpload/, $(FILE_UPLOAD_HEADERS))
+SRC = main.cpp  $(addprefix Server/, $(SERVER_SRC)) $(addprefix Client/, $(CLIENT_SRC)) $(addprefix FileUpload/, $(FILE_UPLOAD_SRC))
 OBJ = $(SRC:.cpp=.o)
 
 all: $(NAME)

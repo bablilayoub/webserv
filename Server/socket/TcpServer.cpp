@@ -37,7 +37,7 @@ void TcpServer::socketConfig(const int port)
     this->serverAddress.sin_addr.s_addr = INADDR_ANY;
 };
 
-int TcpServer::accept_IncomingConnection(std::vector<pollfd> &poll_fds_vec, size_t i, Client &client)
+int TcpServer::accept_IncomingConnection(std::vector<pollfd> &poll_fds_vec, Client &client)
 {
     int addrlen, new_socket;
     addrlen = sizeof(this->serverAddress);
@@ -127,14 +127,13 @@ void TcpServer::handle_clients(std::vector<pollfd> &poll_fds_vec, size_t *i, Cli
             this->received_content_length += bytes_received;
             if (chunk.length() >= MAX_BYTES_TO_SEND)
             {
-                client.parse(chunk);
-                // client.parse(chunk, this->BodyMap);
+                client.parse(chunk, this->BodyMap);
+                // std::cout << chunk;
                 chunk.clear();
             }
             if (this->received_content_length >= wholeContentLength)
             {
-                client.parse(chunk);
-                // client.parse(chunk, this->BodyMap);
+                client.parse(chunk, this->BodyMap);
                 // std::cout << chunk << std::endl;
                 chunk.clear();
                 std::string response =
@@ -176,7 +175,7 @@ int TcpServer::handleIncomingConnections()
             {
                 if (poll_fds_vec[i].fd == this->listener)
                 {
-                    int res = accept_IncomingConnection(poll_fds_vec, i, client);
+                    int res = accept_IncomingConnection(poll_fds_vec, client);
                     // std::cout << client.clientFd << std::endl;
                     if (res == 0 || res == 2)
                         break;

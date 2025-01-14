@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Client.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/13 18:36:02 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/13 18:44:53 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -49,7 +49,7 @@ void Client::clear()
 	this->headers.clear();
 }
 
-void Client::parse(const std::string &request)
+void Client::parse(const std::string &request, std::map<int, FileUpload>& BodyMap)
 {
 	size_t pos = 0;
 	size_t endPos = request.find("\r\n\r\n", pos);
@@ -115,7 +115,8 @@ void Client::parse(const std::string &request)
 	// std::cout << "|=============================|" << std::endl;
 	// std::cout << this->headers << std::endl;
 	// std::cout << "|============|" << std::endl;
-	// BodyMap[fd].ParseBody(this->Body);
+	// std::cout << this->body << std::endl;
+	BodyMap[this->clientFd].ParseBody(this->body, this->boundary);
 }
 
 const std::string &Client::getBody() const
