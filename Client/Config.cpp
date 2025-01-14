@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 10:49:18 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/13 10:57:24 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/14 10:22:08 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -143,6 +143,8 @@ void Config::handleKeyValue(const std::string &line)
 			currentLocation.root_folder = value;
 		else if (key == "index")
 			currentLocation.root_folder = value;
+		else if (key == "default_file")
+			currentLocation.default_file = value;
 		else if (key == "autoindex")
 		{
 			if (value == "on")
