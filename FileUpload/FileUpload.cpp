@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/15 13:18:08 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/15 16:57:16 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -237,8 +237,6 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
     pos = Body.find(Boundary);
     // if the boundary is the first Line
     if (pos == 0) {
-        // extract the Boundary from the data
-        // Body = Body.substr(Boundary.length() + 2, Body.length());
         // get the position of the COntent Disposition
         pos = Body.find("Content-Disposition: form-data;");
         if (pos != std::string::npos) {
@@ -247,11 +245,15 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
             pos = Body.find(NameString);
             Body = Body.substr(pos + NAME_LENGHT + 1, Body.length());
             substr = Body.substr(0, Body.find("\""));
+            Body = Body.substr(Body.find("\"") + 3 , Body.length());
             this->Name = substr;
             // Get the filename
             pos = Body.find(FileNameString);
-            Body = Body.substr(pos + FileNameString.length(), Body.length());
+            if (pos == std::string::npos) {
+                Body = Body.substr(2, Body.length());
+            }
             if (pos != std::string::npos) {
+                Body = Body.substr(pos + FileNameString.length(), Body.length());
                 substr = Body.substr(0 , Body.find("\""));
                 Body = Body.substr(Body.find("\"") + 3 , Body.length());
                 this->FileName = substr;
@@ -296,6 +298,9 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
         this->DataFinish = true;
     }
     if (this->fd > 0) {
+        if (Body.empty()) {
+            return ;
+        }
         write(this->fd, Body.c_str(), Body.size());
     }
 }
