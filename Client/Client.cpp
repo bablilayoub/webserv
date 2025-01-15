@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/15 16:08:30 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/15 18:25:37 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,8 +37,6 @@ void Client::setup(int fd, Config *config)
 	this->clientFd = fd;
 	this->config = config;
 }
-
-const std::string &Client::getResponse() const { return this->response; }
 
 std::string Client::loadErrorPage(const std::string &filePath, int statusCode)
 {
@@ -131,25 +129,27 @@ std::string Client::loadFile(const std::string &filePath)
 	return html;
 }
 
-std::string Client::loadFiles(const std::string& directory) {
-    DIR* dir = opendir(directory.c_str());
-    if (dir == NULL)
-        return this->loadErrorPage("", 404);
+std::string Client::loadFiles(const std::string &directory)
+{
+	DIR *dir = opendir(directory.c_str());
+	if (dir == NULL)
+		return this->loadErrorPage("", 404);
 
-    struct dirent* entry;
-    std::string fileListHTML = "<html><body><h1>Directory Listing</h1><ul>";
+	struct dirent *entry;
+	std::string fileListHTML = "<html><body><h1>Directory Listing</h1><ul>";
 
-    while ((entry = readdir(dir)) != NULL) {
-        // Skip "." and ".." entries
-        if (std::strcmp(entry->d_name, ".") == 0 || std::strcmp(entry->d_name, "..") == 0)
-            continue;
+	while ((entry = readdir(dir)) != NULL)
+	{
+		// Skip "." and ".." entries
+		if (std::strcmp(entry->d_name, ".") == 0 || std::strcmp(entry->d_name, "..") == 0)
+			continue;
 
-        fileListHTML += "<li><a href=\"" + directory + "/" + entry->d_name + "\">" + entry->d_name + "</a></li>";
-    }
+		fileListHTML += "<li><a href=\"" + directory + "/" + entry->d_name + "\">" + entry->d_name + "</a></li>";
+	}
 
-    fileListHTML += "</ul></body></html>";
-    closedir(dir);
-    return fileListHTML;
+	fileListHTML += "</ul></body></html>";
+	closedir(dir);
+	return fileListHTML;
 }
 
 void Client::checkConfigs(struct Response *response)
@@ -195,30 +195,29 @@ void Client::checkConfigs(struct Response *response)
 				return;
 			}
 
-            if (location.autoindex)
-            {
-                std::string defaultFilePath = location.root_folder + "/" + location.default_file;
+			if (location.autoindex)
+			{
+				std::string defaultFilePath = location.root_folder + "/" + location.default_file;
 
-                if (location.default_file.empty())
-                {
-                    std::string fullPath = location.root_folder + locIt->first;
-                    if (!isDirectory(fullPath))
-                    {
-                        response->html = this->loadErrorPage("", 404); // Not Found
-                        response->statusCode = 404;
-                        return;
-                    }
-                    // Return the directory listing if it's a directory
-                    response->html = loadFiles(fullPath);
-                    response->statusCode = 200;
-                    return;
-                }
+				if (location.default_file.empty())
+				{
+					std::string fullPath = location.root_folder + locIt->first;
+					if (!isDirectory(fullPath))
+					{
+						response->html = this->loadErrorPage("", 404); // Not Found
+						response->statusCode = 404;
+						return;
+					}
+					// Return the directory listing if it's a directory
+					response->html = loadFiles(fullPath);
+					response->statusCode = 200;
+					return;
+				}
 
-                response->html = this->loadFile(defaultFilePath);
-                response->statusCode = 200;
-                return;
-            }
-
+				response->html = this->loadFile(defaultFilePath);
+				response->statusCode = 200;
+				return;
+			}
 
 			// Return the file specified in the index
 			response->html = this->loadFile(location.root_folder + "/" + location.index);
@@ -333,10 +332,7 @@ void Client::parse(const std::string &request, std::map<int, FileUpload> &BodyMa
 	}
 
 	if (this->firstChunk)
-	{
-		this->body = request.substr(endPos + 4);
 		this->firstChunk = false;
-	}
 	else
 		this->body = request;
 
@@ -345,6 +341,8 @@ void Client::parse(const std::string &request, std::map<int, FileUpload> &BodyMa
 
 	this->generateResponse();
 }
+
+const std::string &Client::getResponse() const { return this->response; }
 
 const std::string &Client::getBody() const
 {
