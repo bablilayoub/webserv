@@ -28,6 +28,7 @@
 #define CONTENT_DISPOSITION_LENGHT 38
 #define CONTENT_DISPOSITION "Content-Disposition"
 #define CONTENT_TYPE "Content-Type"
+#define PATH_FRIDA "/Users/alaalalm/Desktop/webserv/files/"
 
 class   FileUpload {
     private:

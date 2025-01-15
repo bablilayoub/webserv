@@ -1,4 +1,4 @@
-#include "Server/Global.hpp"
+#include "./Server/TcpServer.hpp"
 
 int main()
 {
