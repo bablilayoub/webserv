@@ -1,6 +1,6 @@
 #include "TcpServer.hpp"
 
-TcpServer::TcpServer() : isNonBlocking(true) {}
+TcpServer::TcpServer(Config* config) : isNonBlocking(true), config(config) {}
 
 void TcpServer::initializeServer(const int port)
 {
@@ -127,13 +127,7 @@ void TcpServer::fileReachedEnd(std::string &chunk, int client_socket, size_t &re
         // std::cout << chunk << std::endl;
         this->clients[client_socket].parse(chunk, this->BodyMap);
         chunk.clear();
-        std::string response =
-            "HTTP/1.1 200 OK\n"
-            "Content-Type: text/plain\n"
-            "Content-Length: 13\n"
-            "Connection: close\n"
-            "\n"
-            "Hello, world!";
+        std::string response = this->clients[client_socket].getResponse();
         send(client_socket, response.c_str(), response.length(), 0);
         cleanUp(client_socket, i);
     }
@@ -287,7 +281,7 @@ void TcpServer::AddClientSocket(int socket)
     if (socket != this->listener)
     {
         this->clients[socket] = Client();
-        this->clients[socket].setSocketFd(socket);
+        this->clients[socket].setup(socket, this->config);
     }
 
     struct pollfd pfd;

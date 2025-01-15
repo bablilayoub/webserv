@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 10:49:18 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/13 10:57:24 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/15 13:23:51 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,6 +64,7 @@ void Config::processLocationBlock(const std::string &line)
 
 	locationPath = line.substr(pos + 1, line.size() - pos - 2);
 	currentLocation = Location();
+	currentLocation.autoindex = false;
 }
 
 void Config::processClosingBrace()
@@ -142,7 +143,9 @@ void Config::handleKeyValue(const std::string &line)
 		else if (key == "root_folder")
 			currentLocation.root_folder = value;
 		else if (key == "index")
-			currentLocation.root_folder = value;
+			currentLocation.index = value;
+		else if (key == "default_file")
+			currentLocation.default_file = value;
 		else if (key == "autoindex")
 		{
 			if (value == "on")
@@ -223,6 +226,9 @@ Config::Config(const std::string &filePath)
 		{
 			if (locIt->second.accepted_methods.empty())
 				throw std::runtime_error("Invalid config file: No methods defined for route: " + locIt->first +
+										 " in server: " + (serverIt->server_names.size() > 0 ? serverIt->server_names[0] : "Unknown"));
+			if (locIt->second.root_folder.empty())
+				throw std::runtime_error("Invalid config file: No root_folder defined for route: " + locIt->first +
 										 " in server: " + (serverIt->server_names.size() > 0 ? serverIt->server_names[0] : "Unknown"));
 		}
 	}
