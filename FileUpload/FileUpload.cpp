@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/14 20:46:55 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/15 13:18:08 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -222,7 +222,7 @@ FileUpload::~FileUpload() {
 // }
 
 void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
-    
+
     size_t pos;
     Boundary = "--" + Boundary;
     std::string ContentDisposition = "Content-Disposition: form-data;";
@@ -238,7 +238,8 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
     // if the boundary is the first Line
     if (pos == 0) {
         // extract the Boundary from the data
-        Body = Body.substr(Boundary.length() + 2, Body.length());
+        // Body = Body.substr(Boundary.length() + 2, Body.length());
+        // get the position of the COntent Disposition
         pos = Body.find("Content-Disposition: form-data;");
         if (pos != std::string::npos) {
             Body = Body.substr(pos + ContentDisposition.length() + 1, Body.length());
@@ -254,6 +255,9 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
                 substr = Body.substr(0 , Body.find("\""));
                 Body = Body.substr(Body.find("\"") + 3 , Body.length());
                 this->FileName = substr;
+                if (this->FileName.empty()) {
+                    this->FileName = "Default";
+                }
             }
             else {
                 this->FileName = "Default";
@@ -271,19 +275,13 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
             if (this->FileName == "Default") {
                 this->FileName = this->Name + "." + this->MimeType;
             }
-            // if (!this->FileName.empty()) {
-            //     std::string path = "/Users/aitaouss/Desktop/web-serve/files/" + this->FileName;
-            //     this->fd = open(path.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0666);
-            //     if (this->fd < 0) {
-            //         std::cout << "Failed to open the file : " << this->FileName << std::endl;
-            //         return ;
-            //     }
-            // }
             this->HeaderFetched = true;
         }
     }
     if (this->HeaderFetched) {
         this->HeaderFetched = false;
+        close(this->fd);
+        this->fd = -42;
         if (!this->FileName.empty()) {
             std::string path = "/Users/aitaouss/Desktop/web-serve/files/" + this->FileName;
             this->fd = open(path.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0666);
@@ -301,11 +299,3 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
         write(this->fd, Body.c_str(), Body.size());
     }
 }
-
-
-    // this->fd = open("file.txt", O_CREAT | O_WRONLY | O_APPEND, 0666);
-    // if (this->fd < 0) {
-    //     std::cout << "Failed to open the file : " << this->FileName << std::endl;
-    //     return ;
-    // }
-    // write(this->fd, Body.c_str(), Body.size());
