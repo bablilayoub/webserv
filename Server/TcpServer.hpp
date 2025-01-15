@@ -14,7 +14,6 @@
 #include <map>
 
 #define PORT 8080
-#define MAX_BYTES_TO_SEND 200000
 #define BUFFER_SIZE 80001
 #define TIME_OUT 5000
 

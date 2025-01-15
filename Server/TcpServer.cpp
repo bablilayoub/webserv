@@ -282,7 +282,6 @@ void TcpServer::AddClientSocket(int socket)
 {
 
     ClientData data;
-    // data.file_name = "file" + std::to_string(socket);
     clientData.push_back(data);
 
     if (socket != this->listener)
