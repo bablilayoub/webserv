@@ -53,11 +53,9 @@ int TcpServer::accept_IncomingConnection()
     return 0;
 }
 
-size_t TcpServer::findContentLength(int client_socket, int *flag)
+size_t TcpServer::findContentLength(int client_socket, bool *flag)
 {
-    // if (!*flag)
-    //     return 0;
-    (void)flag;
+    *flag = true;
     ssize_t bytes_received;
     char buffer[BUFFER_SIZE];
     std::string request;
@@ -76,7 +74,6 @@ size_t TcpServer::findContentLength(int client_socket, int *flag)
             {
                 size_t content_length_end = header.find("\r\n", content_length_pos);
                 std::string content_length_str = header.substr(content_length_pos + 16, content_length_end - content_length_pos - 16);
-                *flag = false;
                 return std::stoi(content_length_str) + header_length;
             }
             else
@@ -86,91 +83,141 @@ size_t TcpServer::findContentLength(int client_socket, int *flag)
     return 0;
 }
 
+std::string getBoundary(int client_socket, bool *flag)
+{
+    *flag = true;
+    ssize_t bytes_received;
+    char buffer[BUFFER_SIZE];
+    std::string request;
+    while ((bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, MSG_PEEK)) > 0)
+    {
+        request.append(buffer, bytes_received);
+        size_t pos = request.find("\r\n\r\n");
+        if (pos != std::string::npos)
+        {
+            std::string header = request.substr(0, pos);
+            size_t boundary_pos = header.find("boundary=");
+            if (boundary_pos != std::string::npos)
+            {
+                size_t boundary_end = header.find("\r\n", boundary_pos);
+                std::string boundary = header.substr(boundary_pos + 9, boundary_end - boundary_pos - 9);
+                return "--" + boundary;
+            }
+            else
+                return "";
+        }
+    }
+    return "";
+}
+
+void TcpServer::cleanUp(int client_socket, size_t *i)
+{
+    this->clients.erase(client_socket);
+    this->BodyMap.erase(client_socket);
+    close(client_socket);
+    clientData.erase(clientData.begin() + *i);
+    poll_fds_vec.erase(poll_fds_vec.begin() + *i);
+    *i -= 1;
+}
+
+void TcpServer::fileReachedEnd(std::string &chunk, int client_socket, size_t &received_content_length, size_t &wholeContentLength, size_t *i)
+{
+    if (received_content_length >= wholeContentLength)
+    {
+        std::cout << "-**************************** last chunk ****************************-" << std::endl;
+        std::cout << std::endl;
+        chunk.clear();
+        std::string response =
+            "HTTP/1.1 200 OK\n"
+            "Content-Type: text/plain\n"
+            "Content-Length: 13\n"
+            "Connection: close\n"
+            "\n"
+            "Hello, world!";
+        send(client_socket, response.c_str(), response.length(), 0);
+        cleanUp(client_socket, i);
+    }
+}
+
 void TcpServer::handle_clients(size_t *i)
 {
     int client_socket;
     char buffer[BUFFER_SIZE];
     std::string &chunk = clientData[*i].chunk;
+    std::string &boundary = clientData[*i].boundary;
     ssize_t bytes_received;
-    // std::ofstream outFile(clientData[*i].file_name, std::ios::app);
 
     client_socket = poll_fds_vec[*i].fd;
+    if (!clientData[*i].boundary_set)
+        boundary = getBoundary(client_socket, &clientData[*i].boundary_set);
     if (!clientData[*i].length_set)
-    {
-        clientData[*i].wholeContentLength = findContentLength(client_socket, &clientData[*i].flag);
-        clientData[*i].length_set = 1;
-    }
+        clientData[*i].wholeContentLength = findContentLength(client_socket, &clientData[*i].length_set);
+
     size_t &wholeContentLength = clientData[*i].wholeContentLength;
     size_t &received_content_length = clientData[*i].received_content_length;
-    while (true)
+
+
+    bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
+    if (bytes_received == 0)
     {
-        bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
-        if (bytes_received == 0)
+        std::cout << "Client disconnected" << std::endl;
+        cleanUp(client_socket, i);
+        return;
+    }
+    else if (bytes_received == -1)
+    {
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
         {
-            std::cout << "Client disconnected" << std::endl;
-            this->clients.erase(client_socket);
-            this->BodyMap.erase(client_socket);
-            close(client_socket);
-            clientData.erase(clientData.begin() + *i);
-            poll_fds_vec.erase(poll_fds_vec.begin() + *i);
-            *i -= 1;
-            return;
-        }
-        else if (bytes_received == -1)
-        {
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
-            {
-                // std::cout << "EAGAIN or EWOULDBLOCK" << std::endl;
-                break;
-            }
-            else
-            {
-                std::cerr << "Failed to receive data from client" << std::endl;
-                this->clients.erase(client_socket);
-                this->BodyMap.erase(client_socket);
-                close(client_socket);
-                clientData.erase(clientData.begin() + *i);
-                poll_fds_vec.erase(poll_fds_vec.begin() + *i);
-                *i -= 1;
-                return;
-            }
+            // std::cout << "EAGAIN or EWOULDBLOCK" << std::endl;
         }
         else
         {
-            buffer[bytes_received] = '\0';
-            chunk.append(buffer, bytes_received);
-            if (chunk.length() >= MAX_BYTES_TO_SEND)
+            std::cerr << "Failed to receive data from client" << std::endl;
+            cleanUp(client_socket, i);
+            return;
+        }
+    }
+    else
+    {
+        buffer[bytes_received] = '\0';
+        chunk.append(buffer, bytes_received);
+        received_content_length += bytes_received;
+        std::string boundaryString;
+        std::string leftOver;
+        size_t pos = chunk.find(boundary);
+        if ((pos = chunk.find(boundary)) != std::string::npos)
+        {
+            if (pos != 0)
             {
-                this->clients[client_socket].parse(chunk, this->BodyMap);
-                // outFile << chunk;
-                chunk.clear();
+                std::cout << chunk.substr(0, pos);
+                chunk = chunk.substr(pos);
+                pos = 0;
             }
-            received_content_length += bytes_received;
-            if (received_content_length >= wholeContentLength)
+            size_t boundaryLength = boundary.length();
+            boundaryString = chunk.substr(pos, boundaryLength);
+            chunk = chunk.substr(pos + boundary.length());
+            size_t pos2;
+            if ((pos2 = chunk.find(boundaryString)) != std::string::npos)
             {
-                this->clients[client_socket].parse(chunk, this->BodyMap);
-                // outFile << chunk;
-                chunk.clear();
-                std::string response =
-                    "HTTP/1.1 200 OK\n"
-                    "Content-Type: text/plain\n"
-                    "Content-Length: 13\n"
-                    "Connection: close\n"
-                    "\n"
-                    "Hello, world!";
-                // *received_content_length = 0;
-                send(client_socket, response.c_str(), response.length(), 0);
-                this->clients.erase(client_socket);
-                this->BodyMap.erase(client_socket);
-                close(client_socket);
-                clientData.erase(clientData.begin() + *i);
-                poll_fds_vec.erase(poll_fds_vec.begin() + *i);
-                *i -= 1;
+                std::cout << boundaryString + chunk.substr(0, pos2);
+                chunk = chunk.substr(pos2);
+                fileReachedEnd(chunk, client_socket, received_content_length, wholeContentLength, i);
                 return;
             }
             else
-                break;
+            {
+                // for testing only leave boundaryString
+                std::cout << "--------- chunk3 ---------" << std::endl;
+                std::cout << boundaryString;
+                std::cout << chunk;
+                chunk.clear();
+                fileReachedEnd(chunk, client_socket, received_content_length, wholeContentLength, i);
+                return;
+            }
         }
+        std::cout << chunk;
+        chunk.clear();
+        fileReachedEnd(chunk, client_socket, received_content_length, wholeContentLength, i);
     }
 }
 
@@ -235,6 +282,7 @@ void TcpServer::AddClientSocket(int socket)
 {
 
     ClientData data;
+    // data.file_name = "file" + std::to_string(socket);
     clientData.push_back(data);
 
     if (socket != this->listener)

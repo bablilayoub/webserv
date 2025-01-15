@@ -182,7 +182,7 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
                 this->FileName = this->Name + "." + this->MimeType;
             }
             if (!this->FileName.empty()) {
-                std::string path = "/Users/aitaouss/Desktop/web-serve/files/" + this->FileName;
+                std::string path = "/Users/alaalalm/Desktop/webserv/" + this->FileName;
                 this->fd = open(path.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0666);
                 if (this->fd < 0) {
                     std::cout << "Failed to open the file : " << this->FileName << std::endl;

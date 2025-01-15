@@ -13,7 +13,7 @@
 #include "../../FileUpload/FileUpload.hpp"
 #include <map>
 
-#define PORT 9000
+#define PORT 8080
 #define MAX_BYTES_TO_SEND 200000
 #define BUFFER_SIZE 60001
 #define TIME_OUT 5000
@@ -21,13 +21,15 @@
 struct ClientData
 {
 	std::string chunk;
+	std::string boundary;
 	size_t received_content_length;
 	size_t header_length;
 	size_t wholeContentLength;
 	ssize_t bytes_received;
-	int flag;
-	int length_set;
-	std::string file_name;
+	bool length_set;
+	bool boundary_set;
+
+	// std::string file_name;
 
 	ClientData()
 	{
@@ -35,8 +37,8 @@ struct ClientData
 		this->header_length = 0;
 		this->wholeContentLength = 0;
 		this->bytes_received = -1;
-		this->flag = true;
 		this->length_set = false;
+		this->boundary_set = false;
 	}
 };
 
@@ -59,7 +61,10 @@ public:
 	void AddClientSocket(int client_socket);
 	int accept_IncomingConnection();
 	void handle_clients(size_t *i);
-	size_t findContentLength(int client_socket, int *flag);
+	size_t findContentLength(int client_socket, bool *flag);
+	// void sendChunks(int client_socket, char *buffer, ssize_t bytes_received, size_t *i);
+	void cleanUp(int client_socket, size_t *i);
+	void fileReachedEnd(std::string &chunk, int client_socket, size_t &received_content_length, size_t &wholeContentLength, size_t *i);
 	std::map<int, FileUpload> BodyMap;
 	std::map<int, Client> clients;
 };
