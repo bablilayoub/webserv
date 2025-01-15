@@ -6,25 +6,13 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:07:41 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/14 14:55:13 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/14 18:47:07 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
-#include <iostream>
-#include <map>
-#include <vector>
-#include <exception>
-#include <fstream>
-#include <sstream>
-#include <vector>
-#include <unordered_map>
-#include <stack>
-
-#define METHOD_GET "GET"
-#define METHOD_POST "POST"
-#define METHOD_DELETE "DELETE"
+#include "Global.hpp"
 
 struct Location
 {
@@ -42,8 +30,8 @@ struct Server
     int listen_port;
     std::string limit_client_body_size;
     std::vector<std::string> server_names;
-    std::map<std::string, Location> locations;
     std::map<int, std::string> error_pages;
+    std::map<std::string, Location> locations;
 };
 
 class Config

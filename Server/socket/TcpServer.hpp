@@ -10,6 +10,7 @@
 #include <poll.h>
 #include <vector>
 #include "../../Client/Client.hpp"
+#include "../../Client/Config.hpp"
 #include "../../FileUpload/FileUpload.hpp"
 #include <map>
 
@@ -48,9 +49,10 @@ private:
 	std::vector<pollfd> poll_fds_vec;
 	int listener;
 	bool isNonBlocking;
+	Config* config;
 
 public:
-	TcpServer();
+	TcpServer(Config* config);
 	void initializeServer(const int port);
 	int handleIncomingConnections();
 	void setNonBlockingMode(int socket);

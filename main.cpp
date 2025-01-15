@@ -14,7 +14,7 @@ int main(int ac, char **args)
 		try
 		{
 			Config config(args[1]);
-			TcpServer tcpserver;
+			TcpServer tcpserver(&config);
 			tcpserver.initializeServer(PORT);
 			int result = tcpserver.handleIncomingConnections();
 			if (result == 1)
