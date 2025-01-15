@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/15 16:57:16 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/15 17:47:54 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -221,8 +221,20 @@ FileUpload::~FileUpload() {
 //     }
 // }
 
+std::string generate_random_string(int length) {
+    std::string str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    std::string newstr;
+
+    for (int i = 0; i < length; i++) {
+        newstr += str[rand() % str.size()];
+    }
+    return newstr;
+}
+
 void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
 
+    // std::cout << Body << std::endl;
+    // return ;
     size_t pos;
     Boundary = "--" + Boundary;
     std::string ContentDisposition = "Content-Disposition: form-data;";
@@ -249,7 +261,11 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
             this->Name = substr;
             // Get the filename
             pos = Body.find(FileNameString);
+            // Name the file if there is no Filename
             if (pos == std::string::npos) {
+                unsigned int seed = std::chrono::system_clock::now().time_since_epoch().count();
+                std::srand(seed);
+                this->FileName = "RBL" + generate_random_string(5);
                 Body = Body.substr(2, Body.length());
             }
             if (pos != std::string::npos) {
@@ -261,9 +277,9 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
                     this->FileName = "Default";
                 }
             }
-            else {
-                this->FileName = "Default";
-            }
+            // else {
+            //     this->FileName = "Default";
+            // }
             this->HeaderFetched = true;
         }
         // Get the Mime type From the Content-Type
