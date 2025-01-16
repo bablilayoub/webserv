@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/15 16:03:22 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/16 10:44:59 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,7 +19,7 @@ struct Response
 {
 	int statusCode;
 	std::string statusMessage;
-	std::string html;
+	std::string content;
 	std::string contentType;
 };
 
@@ -30,6 +30,8 @@ private:
 	int clientFd;
 	int content_length;
 	bool firstChunk;
+	bool isChunked;
+	bool isContentLenght;
 	std::string ip;
 	std::string path;
 	std::string method;
@@ -52,13 +54,17 @@ private:
 	std::string loadErrorPage(const std::string &filePath, int statusCode);
 	std::string loadFiles(const std::string& directory);
 
+	std::string getErrorPagePath(int errorCode);
 public:
 	Client();
 	void setup(int fd, Config *config);
-	void parse(const std::string &request, std::map<int, FileUpload>& BodyMap);
+	void parse(const std::string &request);
 	const std::string &getBody() const;
 	const std::string &getBoundary() const;
+	const std::string &getMethod() const;
 	const std::map<std::string, std::string> &getHeaders() const;
 	const int &getContentLength() const;
+	const bool &getIsChunked() const;
+	const bool &getIsContentLenght() const;
 	const std::string &getResponse() const;
 };

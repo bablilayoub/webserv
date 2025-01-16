@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/15 18:25:37 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/16 10:46:08 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -113,6 +113,44 @@ bool isDirectory(const std::string &path)
 	return S_ISDIR(statbuf.st_mode);
 }
 
+std::string getMimeType(const std::string &path)
+{
+	static std::map<std::string, std::string> mimeTypes;
+
+	if (mimeTypes.empty())
+	{
+		mimeTypes[".html"] = "text/html";
+		mimeTypes[".htm"] = "text/html";
+		mimeTypes[".css"] = "text/css";
+		mimeTypes[".js"] = "application/javascript";
+		mimeTypes[".json"] = "application/json";
+		mimeTypes[".png"] = "image/png";
+		mimeTypes[".jpg"] = "image/jpeg";
+		mimeTypes[".jpeg"] = "image/jpeg";
+		mimeTypes[".gif"] = "image/gif";
+		mimeTypes[".svg"] = "image/svg+xml";
+		mimeTypes[".mp4"] = "video/mp4";
+		mimeTypes[".webm"] = "video/webm";
+		mimeTypes[".ogg"] = "video/ogg";
+		mimeTypes[".mp3"] = "audio/mpeg";
+		mimeTypes[".wav"] = "audio/wav";
+		mimeTypes[".txt"] = "text/plain";
+		mimeTypes[".xml"] = "application/xml";
+		mimeTypes[".pdf"] = "application/pdf";
+		mimeTypes[".zip"] = "application/zip";
+	}
+
+	size_t dotPos = path.find('.');
+	if (dotPos != std::string::npos)
+	{
+		std::string ext = path.substr(dotPos);
+		if (mimeTypes.count(ext))
+			return mimeTypes.at(ext);
+	}
+
+	return "text/html";
+}
+
 std::string Client::loadFile(const std::string &filePath)
 {
 	std::ifstream file(filePath.c_str());
@@ -120,23 +158,54 @@ std::string Client::loadFile(const std::string &filePath)
 		throw std::runtime_error("Failed to open file: " + filePath);
 
 	std::stringstream buffer;
-	std::string html;
+	std::string content;
 
 	buffer << file.rdbuf();
 
-	html = buffer.str();
+	content = buffer.str();
 	file.close();
-	return html;
+	return content;
+}
+
+std::string Client::getErrorPagePath(int errorCode)
+{
+	std::string error_page_path;
+	error_page_path.clear();
+	for (std::vector<Server>::iterator serverIt = this->config->servers.begin(); serverIt != this->config->servers.end(); ++serverIt)
+	{
+		if (std::find(serverIt->server_names.begin(), serverIt->server_names.end(), this->ip) == serverIt->server_names.end() || serverIt->listen_port != this->port)
+			continue;
+		std::map<int, std::string>::iterator it = serverIt->error_pages.find(errorCode);
+		if (it != serverIt->error_pages.end())
+			error_page_path = serverIt->root_folder + "/" + it->second;
+	}
+	return error_page_path;
 }
 
 std::string Client::loadFiles(const std::string &directory)
 {
 	DIR *dir = opendir(directory.c_str());
 	if (dir == NULL)
-		return this->loadErrorPage("", 404);
+		return this->loadErrorPage(this->getErrorPagePath(404), 404);
 
 	struct dirent *entry;
-	std::string fileListHTML = "<html><body><h1>Directory Listing</h1><ul>";
+	struct stat entryStat;
+	std::string fileListHTML =
+		"<html>"
+		"<head>"
+		"<style>"
+		"body { font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 0; }"
+		"h1 { text-align: center; color: #333; padding: 20px; background-color: #007BFF; color: #fff; margin: 0; }"
+		"table { border-collapse: collapse; margin: 20px auto; max-width: 800px; width: 90%; background-color: #ffffff }"
+		"th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }"
+		"th { background-color: #007BFF; color: #fff; }"
+		"tr:hover { background-color: #f1f1f1; }"
+		"</style>"
+		"</head>"
+		"<body>"
+		"<h1>Directory Listing</h1>"
+		"<table>"
+		"<tr><th>Name</th><th>Type</th></tr>";
 
 	while ((entry = readdir(dir)) != NULL)
 	{
@@ -144,10 +213,25 @@ std::string Client::loadFiles(const std::string &directory)
 		if (std::strcmp(entry->d_name, ".") == 0 || std::strcmp(entry->d_name, "..") == 0)
 			continue;
 
-		fileListHTML += "<li><a href=\"" + directory + "/" + entry->d_name + "\">" + entry->d_name + "</a></li>";
+		std::string entryPath = directory + "/" + entry->d_name;
+
+		// Get file status
+		if (stat(entryPath.c_str(), &entryStat) != 0)
+			continue;
+
+		// Determine file type
+		std::string fileType = S_ISDIR(entryStat.st_mode) ? "Directory" : "File";
+
+		// Add row to the table
+		fileListHTML += "<tr>";
+		fileListHTML += "<td><a href='/";
+		fileListHTML += entry->d_name;
+		fileListHTML += "'>" + std::string(entry->d_name) + "</a></td>";
+		fileListHTML += "<td>" + fileType + "</td>";
+		fileListHTML += "</tr>";
 	}
 
-	fileListHTML += "</ul></body></html>";
+	fileListHTML += "</table></body></html>";
 	closedir(dir);
 	return fileListHTML;
 }
@@ -173,7 +257,7 @@ void Client::checkConfigs(struct Response *response)
 			// Check if the method is accepted for this location
 			if (std::find(location.accepted_methods.begin(), location.accepted_methods.end(), this->method) == location.accepted_methods.end())
 			{
-				response->html = this->loadErrorPage("", 405); // Method Not Allowed
+				response->content = this->loadErrorPage(this->getErrorPagePath(405), 405); // Method Not Allowed
 				response->statusCode = 405;
 				return;
 			}
@@ -185,49 +269,51 @@ void Client::checkConfigs(struct Response *response)
 
 				if (!fileExists(indexPath))
 				{
-					response->html = this->loadErrorPage("", 404); // Not Found
+					response->content = this->loadErrorPage(this->getErrorPagePath(404), 404); // Not Found
 					response->statusCode = 404;
 					return;
 				}
 
-				response->html = this->loadFile(indexPath);
+				response->content = this->loadFile(indexPath);
 				response->statusCode = 200;
 				return;
 			}
 
 			if (location.autoindex)
 			{
-				std::string defaultFilePath = location.root_folder + "/" + location.default_file;
+				std::string defaultFilePath = location.root_folder + "/" + location.index;
 
-				if (location.default_file.empty())
+				if (location.index.empty())
 				{
 					std::string fullPath = location.root_folder + locIt->first;
 					if (!isDirectory(fullPath))
 					{
-						response->html = this->loadErrorPage("", 404); // Not Found
+						response->content = this->loadErrorPage(this->getErrorPagePath(404), 404); // Not Found
 						response->statusCode = 404;
 						return;
 					}
 					// Return the directory listing if it's a directory
-					response->html = loadFiles(fullPath);
+					response->content = loadFiles(fullPath);
 					response->statusCode = 200;
 					return;
 				}
 
-				response->html = this->loadFile(defaultFilePath);
+				response->content = this->loadFile(defaultFilePath);
 				response->statusCode = 200;
 				return;
 			}
 
-			// Return the file specified in the index
-			response->html = this->loadFile(location.root_folder + "/" + location.index);
-			response->statusCode = 200;
-			return;
+			if (location.index.empty())
+			{
+				response->content = this->loadErrorPage(this->getErrorPagePath(404), 404);
+				response->statusCode = 404;
+				return;
+			}
 		}
 	}
 
 	// Page not found if no matching location or server
-	response->html = this->loadErrorPage("", 404);
+	response->content = this->loadErrorPage(this->getErrorPagePath(404), 404);
 	response->statusCode = 404;
 }
 
@@ -237,14 +323,16 @@ void Client::generateResponse()
 
 	this->checkConfigs(&response);
 
+	// Determine MIME type based on path
+	std::string mimeType = getMimeType(this->path);
+
 	this->response =
-		"HTTP/1.1 " + std::to_string(response.statusCode) + " " + this->statusCodes[response.statusCode] + "\r\n"
-																										   "Content-Type: text/html\r\n"
-																										   "Content-Length: " +
-		std::to_string(response.html.size()) + "\r\n"
-											   "Connection: close\r\n"
-											   "\r\n" +
-		response.html;
+		"HTTP/1.1 " + std::to_string(response.statusCode) + " " + this->statusCodes[response.statusCode] + "\r\n" +
+		"Content-Type: " + mimeType + "\r\n" +
+		"Content-Length: " + std::to_string(response.content.size()) + "\r\n" +
+		"Connection: close\r\n"
+		"\r\n" +
+		response.content;
 }
 
 void Client::handleFirstLine(std::istringstream &requestStream)
@@ -278,9 +366,11 @@ void Client::clear()
 	this->body.clear();
 	this->boundary.clear();
 	this->headers.clear();
+	this->isChunked = false;
+	this->isContentLenght = false;
 }
 
-void Client::parse(const std::string &request, std::map<int, FileUpload> &BodyMap)
+void Client::parse(const std::string &request)
 {
 	size_t pos = 0;
 	size_t endPos = request.find("\r\n\r\n", pos);
@@ -305,6 +395,7 @@ void Client::parse(const std::string &request, std::map<int, FileUpload> &BodyMa
 			size_t contentLengthPos = line.find(CONTENT_LENGTH_PREFIX);
 			size_t hostPrefixPos = line.find(HOST_PREFIX);
 			size_t colonPos = line.find(':');
+			size_t transferEncoding = line.find(TRANSFER_ENCODING);
 
 			if (boundaryPos != std::string::npos)
 			{
@@ -315,6 +406,7 @@ void Client::parse(const std::string &request, std::map<int, FileUpload> &BodyMa
 			{
 				contentLengthPos += std::string(CONTENT_LENGTH_PREFIX).length();
 				this->content_length = std::atof(line.substr(contentLengthPos).c_str());
+				this->isContentLenght = true;
 			}
 			else if (hostPrefixPos != std::string::npos)
 			{
@@ -328,6 +420,8 @@ void Client::parse(const std::string &request, std::map<int, FileUpload> &BodyMa
 			}
 			else if (colonPos != std::string::npos)
 				this->headers[line.substr(0, colonPos)] = line.substr(colonPos + 2);
+			else if (transferEncoding != std::string::npos)
+				this->isChunked = true;
 		}
 	}
 
@@ -336,30 +430,24 @@ void Client::parse(const std::string &request, std::map<int, FileUpload> &BodyMa
 	else
 		this->body = request;
 
-	if (this->method != METHOD_GET)
-		BodyMap[this->clientFd].ParseBody(this->body, this->boundary);
+	// if (this->method != METHOD_GET)
+	// 	BodyMap[this->clientFd].ParseBody(this->body, this->boundary);
 
 	this->generateResponse();
 }
 
 const std::string &Client::getResponse() const { return this->response; }
 
-const std::string &Client::getBody() const
-{
-	return this->body;
-}
+const std::string &Client::getBody() const { return this->body; }
 
-const std::string &Client::getBoundary() const
-{
-	return this->boundary;
-}
+const std::string &Client::getBoundary() const { return this->boundary; }
 
-const std::map<std::string, std::string> &Client::getHeaders() const
-{
-	return this->headers;
-}
+const std::map<std::string, std::string> &Client::getHeaders() const { return this->headers; }
 
-const int &Client::getContentLength() const
-{
-	return this->content_length;
-}
+const int &Client::getContentLength() const { return this->content_length; }
+
+const std::string &Client::getMethod() const { return this->method; }
+
+const bool &Client::getIsChunked() const { return this->isChunked; }
+
+const bool &Client::getIsContentLenght() const { return this->isContentLenght; }
