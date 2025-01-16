@@ -179,11 +179,11 @@ void TcpServer::handle_clients(size_t *i)
     if (!clientData[*i].headerDataSet)
         getHeaderData(client_socket, &clientData[*i].headerDataSet, i, boundary);
 
-    if (this->clients[client_socket].getMethod() != POST)
-    {
-        // call bablil's function
-    }
-    else
+    // if (this->clients[client_socket].getMethod() != POST)
+    // {
+    //     // call bablil's function
+    // }
+    // else
     {
         bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
         if (bytes_received == 0)
