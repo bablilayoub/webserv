@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:33:18 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/16 13:00:37 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/16 17:24:51 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,10 +41,14 @@ class   FileUpload {
         int HeaderFetched;
         int DataFinish;
         int fd;
+        bool FileNameEmpty;
         std::string generate_random_string(int length);
+        void    ParseContentDisposition(std::string &Body);
+        void    ParseContentType(std::string &Body);
+        void    OpenFile(std::string &path);
+        void    WriteToFile(std::string &Body, std::string &Boundary);
     public:
         FileUpload();
         ~FileUpload();
         void    ParseBody(std::string Body, std::string Boundary, std::string path);
-        void    ParseContentDisposition(std::string &Body);
 };
