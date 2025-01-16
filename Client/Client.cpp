@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/16 10:46:08 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/16 11:39:34 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,8 +14,6 @@
 
 Client::Client()
 {
-	this->firstChunk = true;
-
 	this->statusCodes[200] = "OK";
 	this->statusCodes[201] = "Created";
 	this->statusCodes[202] = "Accepted";
@@ -269,7 +267,7 @@ void Client::checkConfigs(struct Response *response)
 
 				if (!fileExists(indexPath))
 				{
-					response->content = this->loadErrorPage(this->getErrorPagePath(404), 404); // Not Found
+					response->content = this->loadErrorPage(this->getErrorPagePath(404), 404);
 					response->statusCode = 404;
 					return;
 				}
@@ -288,7 +286,7 @@ void Client::checkConfigs(struct Response *response)
 					std::string fullPath = location.root_folder + locIt->first;
 					if (!isDirectory(fullPath))
 					{
-						response->content = this->loadErrorPage(this->getErrorPagePath(404), 404); // Not Found
+						response->content = this->loadErrorPage(this->getErrorPagePath(404), 404);
 						response->statusCode = 404;
 						return;
 					}
@@ -310,9 +308,21 @@ void Client::checkConfigs(struct Response *response)
 				return;
 			}
 		}
+
+		if (isDirectory(serverIt->root_folder + this->path))
+		{
+			response->content = loadFiles(serverIt->root_folder + this->path);
+			response->statusCode = 200;
+			return;
+		}
+		if (fileExists(serverIt->root_folder + this->path))
+		{
+			response->content = loadFile(serverIt->root_folder + this->path);
+			response->statusCode = 200;
+			return;
+		}
 	}
 
-	// Page not found if no matching location or server
 	response->content = this->loadErrorPage(this->getErrorPagePath(404), 404);
 	response->statusCode = 404;
 }
@@ -366,6 +376,7 @@ void Client::clear()
 	this->body.clear();
 	this->boundary.clear();
 	this->headers.clear();
+	this->upload_dir.empty();
 	this->isChunked = false;
 	this->isContentLenght = false;
 }
@@ -375,7 +386,7 @@ void Client::parse(const std::string &request)
 	size_t pos = 0;
 	size_t endPos = request.find("\r\n\r\n", pos);
 
-	if (endPos != std::string::npos && this->firstChunk)
+	if (endPos != std::string::npos)
 	{
 		this->clear();
 
@@ -425,10 +436,17 @@ void Client::parse(const std::string &request)
 		}
 	}
 
-	if (this->firstChunk)
-		this->firstChunk = false;
-	else
-		this->body = request;
+	for (std::vector<Server>::const_iterator serverIt = config->servers.begin(); serverIt != config->servers.end(); ++serverIt)
+	{
+		if (std::find(serverIt->server_names.begin(), serverIt->server_names.end(), this->ip) == serverIt->server_names.end() || serverIt->listen_port != this->port)
+			continue;
+
+		for (std::map<std::string, Location>::const_iterator locIt = serverIt->locations.begin(); locIt != serverIt->locations.end(); ++locIt)
+		{
+			if (this->path == locIt->first)
+				this->upload_dir = locIt->second.upload_dir;
+		}
+	}
 
 	// if (this->method != METHOD_GET)
 	// 	BodyMap[this->clientFd].ParseBody(this->body, this->boundary);
@@ -451,3 +469,5 @@ const std::string &Client::getMethod() const { return this->method; }
 const bool &Client::getIsChunked() const { return this->isChunked; }
 
 const bool &Client::getIsContentLenght() const { return this->isContentLenght; }
+
+const std::string &Client::getUploadDir() const { return this->upload_dir; }

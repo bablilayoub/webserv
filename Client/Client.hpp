@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/16 10:44:59 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/16 11:36:22 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,7 +29,6 @@ private:
 	int port;
 	int clientFd;
 	int content_length;
-	bool firstChunk;
 	bool isChunked;
 	bool isContentLenght;
 	std::string ip;
@@ -42,6 +41,8 @@ private:
 	std::map<int, std::string> statusCodes;
 
 	Config* config;
+
+	std::string upload_dir;
 
 	std::string response;
 
@@ -67,4 +68,5 @@ public:
 	const bool &getIsChunked() const;
 	const bool &getIsContentLenght() const;
 	const std::string &getResponse() const;
+	const std::string &getUploadDir() const;
 };
