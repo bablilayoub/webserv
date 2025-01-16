@@ -59,13 +59,14 @@ public:
 	int handleIncomingConnections();
 	void setNonBlockingMode(int socket);
 	void socketConfig(const int port);
-	// void closeFds(std::vector<pollfd> &poll_fds_vec);
-	void AddClientSocket(int client_socket);
+	void closeFds();
+	void AddClientSocket(int socket, int event);
 	int acceptIncomingConnection();
-	void handle_clients(size_t *i);
+	void handleClientsRequest(int client_socket, size_t *i);
 	void getHeaderData(int client_socket, bool *flag, size_t *i, std::string &boundary);
-	void sendChunks(int client_socket, char *buffer, ssize_t bytes_received, size_t *i, std::string &boundary);
+	void handlePostRequest(int client_socket, char *buffer, ssize_t bytes_received, size_t *i, std::string &boundary);
 	void cleanUp(int client_socket, size_t *i);
+	void parseIfContentLength(int client_socket, std::string &boundary, std::string &chunk, size_t *i, size_t &received_content_length, size_t &wholeContentLength);
 	void fileReachedEnd(std::string &chunk, int client_socket, size_t &received_content_length, size_t &wholeContentLength, size_t *i);
 	std::map<int, FileUpload> BodyMap;
 	std::map<int, Client> clients;

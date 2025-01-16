@@ -1,31 +1,32 @@
 #include "TcpServer.hpp"
 
-
 TcpServer::TcpServer(Config *config) : isNonBlocking(true), config(config) {}
 
 void TcpServer::initializeServer(const int port)
 {
-    // int opt;
 
     this->listener = socket(AF_INET, SOCK_STREAM, 0);
-    if (this->listener == -1)
+    if (this->listener < 0)
         throw std::runtime_error("Socket creation failed");
-    // opt = 1;
-    // if(setsockopt(this->listener, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) == -1)
-    // {
-    //     close(this->listener);
-    //     throw std::runtime_error("setsockopt failed");
-    // }
+
+    int optval = 1;
+    if (setsockopt(this->listener, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval)) < 0)
+    {
+        close(this->listener);
+        throw std::runtime_error("setsockopt failed");
+    }
+
     if (isNonBlocking)
         this->setNonBlockingMode(this->listener);
+
     this->socketConfig(PORT);
-    if (bind(this->listener, (struct sockaddr *)&this->serverAddress, sizeof(this->serverAddress)) == -1)
+    if (bind(this->listener, (struct sockaddr *)&this->serverAddress, sizeof(this->serverAddress)) < 0)
     {
         close(this->listener);
         throw std::runtime_error("bind failed");
     }
 
-    if (listen(this->listener, SOMAXCONN) == -1)
+    if (listen(this->listener, SOMAXCONN) < 0)
     {
         close(this->listener);
         throw std::runtime_error("Listening to server failed");
@@ -40,22 +41,6 @@ void TcpServer::socketConfig(const int port)
     this->serverAddress.sin_port = htons(port);
     this->serverAddress.sin_addr.s_addr = INADDR_ANY;
 };
-
-int TcpServer::acceptIncomingConnection()
-{
-    int addrlen, new_socket;
-    addrlen = sizeof(this->serverAddress);
-    new_socket = accept(this->listener, (struct sockaddr *)&serverAddress, (socklen_t *)&addrlen);
-    if (new_socket == -1)
-    {
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
-            return 1;
-        return 2;
-    }
-    // setNonBlockingMode(new_socket);
-    AddClientSocket(new_socket);
-    return 0;
-}
 
 std::string getBoundary(std::string &header)
 {
@@ -117,26 +102,11 @@ void TcpServer::fileReachedEnd(std::string &chunk, int client_socket, size_t &re
     }
 }
 
-void TcpServer::sendChunks(int client_socket, char *buffer, ssize_t bytes_received, size_t *i, std::string &boundary)
+void TcpServer::parseIfContentLength(int client_socket, std::string &boundary, std::string &chunk, size_t *i, size_t &received_content_length, size_t &wholeContentLength)
 {
-
-    std::string boundaryString;
-    size_t &wholeContentLength = clientData[*i].wholeContentLength;
-    size_t &received_content_length = clientData[*i].received_content_length;
-    std::string &chunk = clientData[*i].chunk;
-
-    buffer[bytes_received] = '\0';
-    chunk.append(buffer, bytes_received);
-    received_content_length += bytes_received;
     bool flag = false;
+    std::string boundaryString;
 
-    if (!clientData[*i].removeHeader)
-    {
-        chunk = chunk.substr(clientData[*i].header_length);
-        clientData[*i].removeHeader = true;
-    }
-
-    // if (this->clients[client_socket].isContentLength)
     size_t pos;
     if ((pos = chunk.find(boundary)) != std::string::npos)
     {
@@ -160,30 +130,59 @@ void TcpServer::sendChunks(int client_socket, char *buffer, ssize_t bytes_receiv
         else
             flag = true;
     }
-    // else is ischunked
-
     BodyMap[client_socket].ParseBody((flag ? boundaryString : "") + chunk, boundary, clients[client_socket].getUploadDir());
     fileReachedEnd(chunk, client_socket, received_content_length, wholeContentLength, i);
     chunk.clear();
 }
 
-void TcpServer::handle_clients(size_t *i)
+void TcpServer::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_received, size_t *i, std::string &boundary)
 {
-    int client_socket;
+
+    size_t &wholeContentLength = clientData[*i].wholeContentLength;
+    size_t &received_content_length = clientData[*i].received_content_length;
+    std::string &chunk = clientData[*i].chunk;
+
+    buffer[bytes_received] = '\0';
+    chunk.append(buffer, bytes_received);
+    received_content_length += bytes_received;
+
+    if (!clientData[*i].removeHeader)
+    {
+        chunk = chunk.substr(clientData[*i].header_length);
+        clientData[*i].removeHeader = true;
+    }
+
+    if (this->clients[client_socket].getIsContentLenght())
+        parseIfContentLength(client_socket, boundary, chunk, i, received_content_length, wholeContentLength);
+    else if (this->clients[client_socket].getIsChunked())
+    {
+        // parseIfChunked();
+    }
+    else
+    {
+        std::string response = this->clients[client_socket].getResponse();
+        send(client_socket, response.c_str(), response.length(), 0);
+        cleanUp(client_socket, i);
+    }
+}
+
+void TcpServer::handleClientsRequest(int client_socket, size_t *i)
+{
     ssize_t bytes_received;
     char buffer[BUFFER_SIZE];
-
     std::string &boundary = clientData[*i].boundary;
-    client_socket = poll_fds_vec[*i].fd;
 
     if (!clientData[*i].headerDataSet)
         getHeaderData(client_socket, &clientData[*i].headerDataSet, i, boundary);
 
-    // if (this->clients[client_socket].getMethod() != POST)
-    // {
-    //     // call bablil's function
-    // }
-    // else
+    if (this->clients[client_socket].getMethod() != POST)
+    {
+        std::cout << "!= POST" << std::endl;
+        std::string response = this->clients[client_socket].getResponse();
+        send(client_socket, response.c_str(), response.length(), 0);
+        cleanUp(client_socket, i);
+    }
+    else
     {
         bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
         if (bytes_received == 0)
@@ -204,16 +203,16 @@ void TcpServer::handle_clients(size_t *i)
             }
         }
         else
-            sendChunks(client_socket, buffer, bytes_received, i, boundary);
+            handlePostRequest(client_socket, buffer, bytes_received, i, boundary);
     }
 }
 
 int TcpServer::handleIncomingConnections()
 {
-    AddClientSocket(this->listener);
+    AddClientSocket(this->listener, POLLIN);
     while (true)
     {
-        int ret = poll(poll_fds_vec.data(), poll_fds_vec.size(), TIME_OUT);
+        int ret = poll(poll_fds_vec.data(), poll_fds_vec.size(), 100);
         if (ret == -1)
         {
             std::cout << "poll failed" << std::endl;
@@ -221,33 +220,42 @@ int TcpServer::handleIncomingConnections()
         }
         if (ret == 0)
             continue;
-        for (size_t i = 0; i < poll_fds_vec.size(); i++)
+        if (poll_fds_vec[0].revents & POLLIN)
+        {
+            int addrlen, new_socket;
+            addrlen = sizeof(this->serverAddress);
+            new_socket = accept(this->listener, (struct sockaddr *)&serverAddress, (socklen_t *)&addrlen);
+            if (new_socket == -1)
+            {
+                std::cerr << "Accept failed!" << std::endl;
+                continue;
+            }
+            setNonBlockingMode(new_socket);
+            AddClientSocket(new_socket, POLLIN);
+        }
+
+        for (size_t i = 1; i < poll_fds_vec.size(); i++)
         {
             if (poll_fds_vec[i].revents & POLLIN)
             {
-                if (poll_fds_vec[i].fd == this->listener)
-                {
-                    int res = acceptIncomingConnection();
-                    if (res == 0 || res == 2)
-                        break;
-                    else
-                        continue;
-                }
-                else
-                    handle_clients(&i);
+                int client_socket = poll_fds_vec[i].fd;
+                handleClientsRequest(client_socket, &i);
             }
+            // if (poll_fds_vec[i].revents & POLLOUT)
+            // {
+            // }
         }
     }
-    // closeFds(clientData.pfd);
+    closeFds();
     return 1;
 }
 
-// void TcpServer::closeFds(std::vector<pollfd> &poll_fds_vec)
-// {
+void TcpServer::closeFds()
+{
 
-//     for (size_t i = 0; i < poll_fds_vec.size(); ++i)
-//         close(poll_fds_vec[i].fd);
-// }
+    for (size_t i = 0; i < poll_fds_vec.size(); ++i)
+        close(poll_fds_vec[i].fd);
+}
 
 void TcpServer::setNonBlockingMode(int socket)
 {
@@ -264,7 +272,7 @@ void TcpServer::setNonBlockingMode(int socket)
     }
 }
 
-void TcpServer::AddClientSocket(int socket)
+void TcpServer::AddClientSocket(int socket, int event)
 {
 
     ClientData data;
@@ -278,6 +286,6 @@ void TcpServer::AddClientSocket(int socket)
 
     struct pollfd pfd;
     pfd.fd = socket;
-    pfd.events = POLLIN;
+    pfd.events = event;
     poll_fds_vec.push_back(pfd);
 }
