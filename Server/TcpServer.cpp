@@ -1,6 +1,6 @@
 #include "TcpServer.hpp"
 
-TcpServer::TcpServer(Config* config) : isNonBlocking(true), config(config) {}
+TcpServer::TcpServer(Config *config) : isNonBlocking(true), config(config) {}
 
 void TcpServer::initializeServer(const int port)
 {
@@ -37,7 +37,7 @@ void TcpServer::socketConfig(const int port)
     this->serverAddress.sin_addr.s_addr = INADDR_ANY;
 };
 
-int TcpServer::accept_IncomingConnection()
+int TcpServer::acceptIncomingConnection()
 {
     int addrlen, new_socket;
     addrlen = sizeof(this->serverAddress);
@@ -53,61 +53,42 @@ int TcpServer::accept_IncomingConnection()
     return 0;
 }
 
-size_t TcpServer::findContentLength(int client_socket, bool *flag)
+std::string getBoundary(std::string &header)
 {
-    *flag = true;
-    ssize_t bytes_received;
-    char buffer[BUFFER_SIZE];
-    std::string request;
-    int header_length = 0;
-    while ((bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, MSG_PEEK)) > 0)
+
+    size_t pos = header.find("boundary=");
+    if (pos != std::string::npos)
     {
-        // std::cout << "findContentLength" << std::endl;
-        request.append(buffer, bytes_received);
-        size_t pos = request.find("\r\n\r\n");
-        if (pos != std::string::npos)
-        {
-            std::string header = request.substr(0, pos);
-            header_length = header.length() + 4;
-            size_t content_length_pos = header.find("Content-Length: ");
-            if (content_length_pos != std::string::npos)
-            {
-                size_t content_length_end = header.find("\r\n", content_length_pos);
-                std::string content_length_str = header.substr(content_length_pos + 16, content_length_end - content_length_pos - 16);
-                return std::stoi(content_length_str) + header_length;
-            }
-            else
-                return 0;
-        }
+        size_t boundary_end = header.find("\r\n", pos);
+        std::string boundary = header.substr(pos + 9, boundary_end - pos - 9);
+        return "--" + boundary;
     }
-    return 0;
+    else
+        return "";
 }
 
-std::string getBoundary(int client_socket, bool *flag)
+void TcpServer::getHeaderData(int client_socket, bool *flag, size_t *i, std::string &boundary)
 {
-    *flag = true;
-    ssize_t bytes_received;
     char buffer[BUFFER_SIZE];
     std::string request;
+    std::string header;
+    ssize_t bytes_received;
+
+    *flag = true;
     while ((bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, MSG_PEEK)) > 0)
     {
         request.append(buffer, bytes_received);
         size_t pos = request.find("\r\n\r\n");
         if (pos != std::string::npos)
         {
-            std::string header = request.substr(0, pos);
-            size_t boundary_pos = header.find("boundary=");
-            if (boundary_pos != std::string::npos)
-            {
-                size_t boundary_end = header.find("\r\n", boundary_pos);
-                std::string boundary = header.substr(boundary_pos + 9, boundary_end - boundary_pos - 9);
-                return "--" + boundary;
-            }
-            else
-                return "";
+            header = request.substr(0, pos + 4);
+            clientData[*i].header_length = header.length();
+            break;
         }
     }
-    return "";
+    this->clients[client_socket].parse(header, this->BodyMap);
+    clientData[*i].wholeContentLength = this->clients[client_socket].getContentLength() + clientData[*i].header_length;
+    boundary = getBoundary(header);
 }
 
 void TcpServer::cleanUp(int client_socket, size_t *i)
@@ -125,7 +106,8 @@ void TcpServer::fileReachedEnd(std::string &chunk, int client_socket, size_t &re
     if (received_content_length >= wholeContentLength)
     {
         // std::cout << chunk << std::endl;
-        this->clients[client_socket].parse(chunk, this->BodyMap);
+        // this->clients[client_socket].parse(chunk, this->BodyMap);
+        BodyMap[client_socket].ParseBody(chunk, clientData[*i].boundary);
         chunk.clear();
         std::string response = this->clients[client_socket].getResponse();
         send(client_socket, response.c_str(), response.length(), 0);
@@ -136,7 +118,7 @@ void TcpServer::fileReachedEnd(std::string &chunk, int client_socket, size_t &re
 void TcpServer::sendChunks(int client_socket, char *buffer, ssize_t bytes_received, size_t *i, std::string &boundary)
 {
 
-    bool flag = false;
+    std::string boundaryString;
     size_t &wholeContentLength = clientData[*i].wholeContentLength;
     size_t &received_content_length = clientData[*i].received_content_length;
     std::string &chunk = clientData[*i].chunk;
@@ -144,26 +126,37 @@ void TcpServer::sendChunks(int client_socket, char *buffer, ssize_t bytes_receiv
     buffer[bytes_received] = '\0';
     chunk.append(buffer, bytes_received);
     received_content_length += bytes_received;
-    std::string boundaryString;
+    bool flag = false;
 
-    size_t pos = chunk.find(boundary);
+
+    if (!clientData[*i].removeHeader)
+    {
+        chunk = chunk.substr(clientData[*i].header_length);
+        clientData[*i].removeHeader = true;
+    }
+
+
+    // if (this->clients[client_socket].isContentLength)
+    size_t pos;
     if ((pos = chunk.find(boundary)) != std::string::npos)
     {
         if (pos != 0)
         {
             // std::cout << chunk.substr(0, pos);
-            this->clients[client_socket].parse(chunk.substr(0, pos), this->BodyMap);
+            // this->clients[client_socket].parse(chunk.substr(0, pos), this->BodyMap);
+            BodyMap[client_socket].ParseBody(chunk.substr(0, pos), boundary);
             chunk = chunk.substr(pos);
             pos = 0;
         }
         size_t boundaryLength = boundary.length();
         boundaryString = chunk.substr(pos, boundaryLength);
-        chunk = chunk.substr(pos + boundary.length());
+        chunk = chunk.substr(pos + boundaryLength);
         size_t pos2;
         if ((pos2 = chunk.find(boundaryString)) != std::string::npos)
         {
             // std::cout << boundaryString + chunk.substr(0, pos2);
-            this->clients[client_socket].parse(boundaryString + chunk.substr(0, pos2), this->BodyMap);
+            // this->clients[client_socket].parse(boundaryString + chunk.substr(0, pos2), this->BodyMap);
+            BodyMap[client_socket].ParseBody(boundaryString + chunk.substr(0, pos2), boundary);
             chunk = chunk.substr(pos2);
             fileReachedEnd(chunk, client_socket, received_content_length, wholeContentLength, i);
             return;
@@ -174,9 +167,17 @@ void TcpServer::sendChunks(int client_socket, char *buffer, ssize_t bytes_receiv
             // std::cout << "--------- chunk3 ---------" << std::endl;
         }
     }
-    this->clients[client_socket].parse((flag ? boundaryString : "") + chunk, this->BodyMap);
+    // else if chunked
+
+
+
+
+    // this->clients[client_socket].parse((flag ? boundaryString : "") + chunk, this->BodyMap);
+    BodyMap[client_socket].ParseBody((flag ? boundaryString : "") + chunk, boundary);
     fileReachedEnd(chunk, client_socket, received_content_length, wholeContentLength, i);
     chunk.clear();
+
+    // else
 }
 
 void TcpServer::handle_clients(size_t *i)
@@ -185,14 +186,18 @@ void TcpServer::handle_clients(size_t *i)
     ssize_t bytes_received;
     char buffer[BUFFER_SIZE];
 
-    client_socket = poll_fds_vec[*i].fd;
     std::string &boundary = clientData[*i].boundary;
+    client_socket = poll_fds_vec[*i].fd;
 
-    if (!clientData[*i].boundary_set)
-        boundary = getBoundary(client_socket, &clientData[*i].boundary_set);
-    if (!clientData[*i].length_set)
-        clientData[*i].wholeContentLength = findContentLength(client_socket, &clientData[*i].length_set);
+    if (!clientData[*i].headerDataSet)
+        getHeaderData(client_socket, &clientData[*i].headerDataSet, i, boundary);
 
+    // if (this->clients[client_socket].getMethod() != POST)
+    // {
+    //     std::string response = this->clients[client_socket].getResponse();
+    //     send(client_socket, response.c_str(), response.length(), 0);
+    //     return;
+    // }
     bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
     if (bytes_received == 0)
     {
@@ -220,7 +225,6 @@ int TcpServer::handleIncomingConnections()
     AddClientSocket(this->listener);
     while (true)
     {
-        // std::cout << "handleIncomingConnections" << std::endl;
         int ret = poll(poll_fds_vec.data(), poll_fds_vec.size(), TIME_OUT);
         if (ret == -1)
         {
@@ -235,7 +239,7 @@ int TcpServer::handleIncomingConnections()
             {
                 if (poll_fds_vec[i].fd == this->listener)
                 {
-                    int res = accept_IncomingConnection();
+                    int res = acceptIncomingConnection();
                     if (res == 0 || res == 2)
                         break;
                     else
