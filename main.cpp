@@ -5,7 +5,7 @@ int main(int ac, char **args)
 {
 	if (ac != 2)
 	{
-		std::cout << "Usage : ./webserv [config file path]" << std::endl;
+		std::cout << "Usage : ./webserv [configuration file]" << std::endl;
 		return 1;
 	}
 

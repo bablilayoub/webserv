@@ -14,7 +14,7 @@
 #include "../Client/Config.hpp"
 #include <map>
 
-#define PORT 8080
+#define PORT 9000
 #define BUFFER_SIZE 80001
 #define TIME_OUT 5000
 #define GET "GET"

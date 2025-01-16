@@ -223,8 +223,6 @@ FileUpload::~FileUpload() {
 
 void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
     size_t pos;
-    // Edited by Frida deja lboundary 3ando "--" at the begining
-    // Boundary = "--" + Boundary;
     std::string ContentDisposition = "Content-Disposition: form-data;";
     std::string FileNameString = "filename=\"";
     std::string ContentType = "Content-Type:";

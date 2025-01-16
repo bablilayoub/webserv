@@ -1,10 +1,50 @@
 <!DOCTYPE html>
 <html>
-  <head>
+
+<head>
     <title>Simple HTTP Response</title>
-  </head>
-  <body>
-    <h1>Welcome to My Simple HTTP Server</h1>
-    <p>This content is loaded from a file.</p>
-  </body>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<style>
+    body {
+        font-family: 'Arial', sans-serif;
+        background-color: #f0f0f0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
+    }
+
+    .container {
+        background-color: #fff;
+        padding: 40px;
+        border-radius: 12px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        max-width: 600px;
+        width: 100%;
+    }
+
+    h1 {
+        color: #333;
+        font-size: 28px;
+        margin-bottom: 20px;
+    }
+
+    p {
+        color: #555;
+        font-size: 18px;
+        line-height: 1.6;
+    }
+</style>
+
+<body>
+    <div class="container">
+        <h1>Welcome to My Simple HTTP Server</h1>
+        <p>This content is loaded from a file.</p>
+    </div>
+</body>
+
 </html>

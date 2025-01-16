@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 10:49:18 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/15 13:23:51 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/16 10:07:23 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -80,11 +80,22 @@ void Config::processClosingBrace()
 		if (locationPath.empty())
 			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Location path is not specified");
 		this->trimWhitespace(locationPath);
+		if (currentLocation.root_folder.empty())
+			currentLocation.root_folder = currentServer.root_folder;
+		if (std::find(currentLocation.accepted_methods.begin(), currentLocation.accepted_methods.end(), METHOD_POST) != currentLocation.accepted_methods.end())
+			if (currentLocation.upload_dir.empty())
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": An upload directory is required for the POST method.");
 		currentServer.locations[locationPath] = currentLocation;
 		locationPath.clear();
 	}
 	else if (closingBlock == "server")
+	{
+		if (currentServer.root_folder.empty())
+			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Root folder is not specified");
+		if (currentServer.listen_port < 1 || currentServer.listen_port > 65535)
+			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid port , Allowed ports (1 to 65535)");
 		servers.push_back(currentServer);
+	}
 }
 
 int Config::parseInt(const std::string &value)
@@ -121,6 +132,8 @@ void Config::handleKeyValue(const std::string &line)
 		}
 		else if (key == "limit_client_body_size")
 			currentServer.limit_client_body_size = value;
+		else if (key == "root_folder")
+			currentServer.root_folder = value;
 		else if (key == "error_page")
 		{
 			size_t pos = value.find(' ');
@@ -144,8 +157,6 @@ void Config::handleKeyValue(const std::string &line)
 			currentLocation.root_folder = value;
 		else if (key == "index")
 			currentLocation.index = value;
-		else if (key == "default_file")
-			currentLocation.default_file = value;
 		else if (key == "autoindex")
 		{
 			if (value == "on")
@@ -214,22 +225,4 @@ Config::Config(const std::string &filePath)
 		throw std::runtime_error("Invalid config file: Unclosed blocks");
 	if (this->servers.size() == 0)
 		throw std::runtime_error("Invalid config file: No server is found");
-	for (std::vector<Server>::iterator serverIt = servers.begin(); serverIt != servers.end(); ++serverIt)
-	{
-		if (serverIt->listen_port < 1 || serverIt->listen_port > 65535)
-			throw std::runtime_error("Invalid config file: Invalid port for server: " + (serverIt->server_names.size() > 0 ? serverIt->server_names[0] : "Unknown") + " . Allowed ports (1 to 65535)");
-
-		if (serverIt->locations.empty())
-			throw std::runtime_error("Invalid config file: No routes found for server: " + (serverIt->server_names.size() > 0 ? serverIt->server_names[0] : "Unknown"));
-
-		for (std::map<std::string, Location>::iterator locIt = serverIt->locations.begin(); locIt != serverIt->locations.end(); ++locIt)
-		{
-			if (locIt->second.accepted_methods.empty())
-				throw std::runtime_error("Invalid config file: No methods defined for route: " + locIt->first +
-										 " in server: " + (serverIt->server_names.size() > 0 ? serverIt->server_names[0] : "Unknown"));
-			if (locIt->second.root_folder.empty())
-				throw std::runtime_error("Invalid config file: No root_folder defined for route: " + locIt->first +
-										 " in server: " + (serverIt->server_names.size() > 0 ? serverIt->server_names[0] : "Unknown"));
-		}
-	}
 }

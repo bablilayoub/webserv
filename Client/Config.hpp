@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:07:41 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/14 18:47:07 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/16 09:04:01 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,6 @@ struct Location
     std::string upload_dir;
     std::string root_folder;
     std::string index;
-    std::string default_file;
     std::vector<std::string> accepted_methods;
 };
 
@@ -30,6 +29,7 @@ struct Server
     int listen_port;
     std::string limit_client_body_size;
     std::vector<std::string> server_names;
+    std::string root_folder;
     std::map<int, std::string> error_pages;
     std::map<std::string, Location> locations;
 };
