@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/15 17:47:54 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/16 12:06:15 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -231,12 +231,8 @@ std::string generate_random_string(int length) {
     return newstr;
 }
 
-void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
-
-    // std::cout << Body << std::endl;
-    // return ;
+void    FileUpload::ParseBody(std::string Body, std::string Boundary, std::string path) {
     size_t pos;
-    Boundary = "--" + Boundary;
     std::string ContentDisposition = "Content-Disposition: form-data;";
     std::string FileNameString = "filename=\"";
     std::string ContentType = "Content-Type:";
@@ -301,10 +297,10 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary) {
         close(this->fd);
         this->fd = -42;
         if (!this->FileName.empty()) {
-            std::string path = "/Users/aitaouss/Desktop/web-serve/files/" + this->FileName;
-            this->fd = open(path.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0666);
+            std::string OpenPath = path + "/" + this->FileName;
+            this->fd = open(OpenPath.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0666);
             if (this->fd < 0) {
-                std::cout << "Failed to open the file : " << this->FileName << std::endl;
+                std::cout << "Failed to open the file : " << OpenPath << std::endl;
                 return ;
             }
         }

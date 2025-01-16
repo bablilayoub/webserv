@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:33:18 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/14 09:33:55 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/16 12:01:38 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,6 +28,7 @@
 #define CONTENT_DISPOSITION_LENGHT 38
 #define CONTENT_DISPOSITION "Content-Disposition"
 #define CONTENT_TYPE "Content-Type"
+#define PATH_FRIDA "/Users/alaalalm/Desktop/webserv/files/"
 
 class   FileUpload {
     private:
@@ -44,6 +45,6 @@ class   FileUpload {
         FileUpload();
         ~FileUpload();
         std::string BoundaryString;
-        void    ParseBody(std::string Body, std::string Boundary);
+        void    ParseBody(std::string Body, std::string Boundary, std::string path);
         
 };
