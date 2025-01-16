@@ -10,6 +10,12 @@ void TcpServer::initializeServer(const int port)
         throw std::runtime_error("Socket creation failed");
 
     int optval = 1;
+    if (setsockopt(this->listener, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0)
+    {
+        close(this->listener);
+        throw std::runtime_error("setsockopt failed");
+    }
+
     if (setsockopt(this->listener, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval)) < 0)
     {
         close(this->listener);
