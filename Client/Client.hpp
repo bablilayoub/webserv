@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/16 12:35:55 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/16 13:47:06 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,6 +58,9 @@ private:
 	std::string getErrorPagePath(int errorCode);
 
 	void logRequest(int statusCode);
+	void handleCGIRequest(struct Response *response);
+	bool isCGIRequest(const std::string &path);
+
 public:
 	Client();
 	void setup(int fd, Config *config);

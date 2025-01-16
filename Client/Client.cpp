@@ -6,11 +6,60 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/16 12:37:49 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/16 16:05:13 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Client.hpp"
+
+bool Client::isCGIRequest(const std::string &path)
+{
+	// Check if the file extension is .py or .php
+	if (path.substr(path.find_last_of(".") + 1) == "py" || path.substr(path.find_last_of(".") + 1) == "php")
+		return true;
+	return false;
+}
+
+void Client::handleCGIRequest(struct Response *response)
+{
+	std::string scriptPath = "/Users/abablil/Desktop/webserv/Html" + this->path;
+	std::string command;
+
+	if (this->path.substr(this->path.find_last_of(".") + 1) == "py")
+	{
+		command = "python3 " + scriptPath;
+	}
+	else if (this->path.substr(this->path.find_last_of(".") + 1) == "php")
+	{
+		command = "php " + scriptPath;
+	}
+	else
+	{
+		response->content = this->loadErrorPage(this->getErrorPagePath(404), 404);
+		response->statusCode = 404;
+		return;
+	}
+
+	FILE *pipe = popen(command.c_str(), "r");
+	if (!pipe)
+	{
+		response->content = this->loadErrorPage(this->getErrorPagePath(500), 500);
+		response->statusCode = 500;
+		return;
+	}
+
+	char buffer[128];
+	std::string result = "";
+	while (fgets(buffer, sizeof(buffer), pipe) != nullptr)
+	{
+		result += buffer;
+	}
+
+	pclose(pipe);
+
+	response->content = result;
+	response->statusCode = 200;
+}
 
 Client::Client()
 {
@@ -38,33 +87,33 @@ void Client::setup(int fd, Config *config)
 
 void Client::logRequest(int statusCode)
 {
-    std::time_t now = std::time(0);
-    std::tm *localTime = std::localtime(&now);
+	std::time_t now = std::time(0);
+	std::tm *localTime = std::localtime(&now);
 
-    // Determine color based on status code
-    const char *statusColor;
-    if (statusCode >= 200 && statusCode < 300)
-        statusColor = GREEN; // Success
-    else if (statusCode >= 300 && statusCode < 400)
-        statusColor = CYAN; // Redirection
-    else if (statusCode >= 400 && statusCode < 500)
-        statusColor = YELLOW; // Client Error
-    else
-        statusColor = RED; // Server Error
+	// Determine color based on status code
+	const char *statusColor;
+	if (statusCode >= 200 && statusCode < 300)
+		statusColor = GREEN; // Success
+	else if (statusCode >= 300 && statusCode < 400)
+		statusColor = CYAN; // Redirection
+	else if (statusCode >= 400 && statusCode < 500)
+		statusColor = YELLOW; // Client Error
+	else
+		statusColor = RED; // Server Error
 
-    // Format and print the log
-    std::cout << "[" << (1900 + localTime->tm_year) << "-"
-              << std::setw(2) << std::setfill('0') << (localTime->tm_mon + 1) << "-"
-              << std::setw(2) << std::setfill('0') << localTime->tm_mday << " "
-              << std::setw(2) << std::setfill('0') << localTime->tm_hour << ":"
-              << std::setw(2) << std::setfill('0') << localTime->tm_min << ":"
-              << std::setw(2) << std::setfill('0') << localTime->tm_sec << "] "
+	// Format and print the log
+	std::cout << "[" << (1900 + localTime->tm_year) << "-"
+			  << std::setw(2) << std::setfill('0') << (localTime->tm_mon + 1) << "-"
+			  << std::setw(2) << std::setfill('0') << localTime->tm_mday << " "
+			  << std::setw(2) << std::setfill('0') << localTime->tm_hour << ":"
+			  << std::setw(2) << std::setfill('0') << localTime->tm_min << ":"
+			  << std::setw(2) << std::setfill('0') << localTime->tm_sec << "] "
 			  << std::setfill(' ')
-              << BOLD << "Server: " << BLUE << this->ip + ":" + std::to_string(this->port) << RESET << " "
-              << BOLD << "Method: " << BLUE << std::setw(8) << std::left << this->method << RESET
-              << BOLD << "Path: " << WHITE << std::setw(30) << this->path << RESET
-              << BOLD << "Status: " << statusColor << statusCode << RESET
-              << std::endl;
+			  << BOLD << "Server: " << BLUE << this->ip + ":" + std::to_string(this->port) << RESET << " "
+			  << BOLD << "Method: " << BLUE << std::setw(8) << std::left << this->method << RESET
+			  << BOLD << "Path: " << WHITE << std::setw(30) << this->path << RESET
+			  << BOLD << "Status: " << statusColor << statusCode << RESET
+			  << std::endl;
 }
 
 std::string Client::loadErrorPage(const std::string &filePath, int statusCode)
@@ -346,6 +395,12 @@ void Client::checkConfigs(struct Response *response)
 			response->statusCode = 200;
 			return;
 		}
+		// Check if the request is for a CGI script
+		if (isCGIRequest(this->path))
+		{
+			handleCGIRequest(response);
+			return;
+		}
 		if (fileExists(serverIt->root_folder + this->path))
 		{
 			response->content = loadFile(serverIt->root_folder + this->path);
@@ -479,6 +534,25 @@ void Client::parse(const std::string &request)
 			if (this->path == locIt->first)
 				this->upload_dir = locIt->second.upload_dir;
 		}
+	}
+
+	if (!this->isChunked && !this->isContentLenght && this->method == METHOD_POST)
+	{
+		struct Response response;
+
+		response.statusCode = 400;
+		logRequest(response.statusCode);
+
+		std::string mimeType = getMimeType(this->path);
+		response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
+		this->response =
+			"HTTP/1.1 " + std::to_string(response.statusCode) + " " + this->statusCodes[response.statusCode] + "\r\n" +
+			"Content-Type: " + mimeType + "\r\n" +
+			"Content-Length: " + std::to_string(response.content.size()) + "\r\n" +
+			"Connection: close\r\n"
+			"\r\n" +
+			response.content;
+		return;
 	}
 
 	this->generateResponse();
