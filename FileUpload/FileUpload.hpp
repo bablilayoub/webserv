@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:33:18 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/16 12:01:38 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/16 13:00:37 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,28 +23,28 @@
 #include <map>
 #include <algorithm>
 
-#define NAME_LENGHT 5
-#define FILE_NAME_LENGHT 9
-#define CONTENT_DISPOSITION_LENGHT 38
-#define CONTENT_DISPOSITION "Content-Disposition"
-#define CONTENT_TYPE "Content-Type"
-#define PATH_FRIDA "/Users/alaalalm/Desktop/webserv/files/"
+#define NAME_LENGHT 6
 
 class   FileUpload {
     private:
-        int DataFinish;
-        int FetchData;
-        std::string CurrentFileName;
+        // utils variables
+        std::string ContentDisposition;
+        std::string FileNameString;
+        std::string ContentType;
+        std::string NameString;
+        std::string substr;
+        size_t pos;
+
         std::string Name;
         std::string FileName;
         std::string MimeType;
         int HeaderFetched;
-        std::string Data;
-    public:
+        int DataFinish;
         int fd;
+        std::string generate_random_string(int length);
+    public:
         FileUpload();
         ~FileUpload();
-        std::string BoundaryString;
         void    ParseBody(std::string Body, std::string Boundary, std::string path);
-        
+        void    ParseContentDisposition(std::string &Body);
 };
