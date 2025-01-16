@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/14 18:46:49 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/16 08:34:57 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/16 12:28:31 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,3 +35,12 @@
 #define CONTENT_LENGTH_PREFIX "Content-Length: "
 #define HOST_PREFIX "Host: "
 #define TRANSFER_ENCODING "Transfer-Encoding: chunked"
+
+#define RESET "\033[0m"
+#define BOLD "\033[1m"
+#define RED "\033[31m"
+#define GREEN "\033[32m"
+#define YELLOW "\033[33m"
+#define BLUE "\033[34m"
+#define CYAN "\033[36m"
+#define WHITE "\033[37m"

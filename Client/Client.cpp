@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/16 11:39:34 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/16 12:37:49 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,6 +34,37 @@ void Client::setup(int fd, Config *config)
 {
 	this->clientFd = fd;
 	this->config = config;
+}
+
+void Client::logRequest(int statusCode)
+{
+    std::time_t now = std::time(0);
+    std::tm *localTime = std::localtime(&now);
+
+    // Determine color based on status code
+    const char *statusColor;
+    if (statusCode >= 200 && statusCode < 300)
+        statusColor = GREEN; // Success
+    else if (statusCode >= 300 && statusCode < 400)
+        statusColor = CYAN; // Redirection
+    else if (statusCode >= 400 && statusCode < 500)
+        statusColor = YELLOW; // Client Error
+    else
+        statusColor = RED; // Server Error
+
+    // Format and print the log
+    std::cout << "[" << (1900 + localTime->tm_year) << "-"
+              << std::setw(2) << std::setfill('0') << (localTime->tm_mon + 1) << "-"
+              << std::setw(2) << std::setfill('0') << localTime->tm_mday << " "
+              << std::setw(2) << std::setfill('0') << localTime->tm_hour << ":"
+              << std::setw(2) << std::setfill('0') << localTime->tm_min << ":"
+              << std::setw(2) << std::setfill('0') << localTime->tm_sec << "] "
+			  << std::setfill(' ')
+              << BOLD << "Server: " << BLUE << this->ip + ":" + std::to_string(this->port) << RESET << " "
+              << BOLD << "Method: " << BLUE << std::setw(8) << std::left << this->method << RESET
+              << BOLD << "Path: " << WHITE << std::setw(30) << this->path << RESET
+              << BOLD << "Status: " << statusColor << statusCode << RESET
+              << std::endl;
 }
 
 std::string Client::loadErrorPage(const std::string &filePath, int statusCode)
@@ -333,6 +364,8 @@ void Client::generateResponse()
 
 	this->checkConfigs(&response);
 
+	logRequest(response.statusCode);
+
 	// Determine MIME type based on path
 	std::string mimeType = getMimeType(this->path);
 
@@ -447,9 +480,6 @@ void Client::parse(const std::string &request)
 				this->upload_dir = locIt->second.upload_dir;
 		}
 	}
-
-	// if (this->method != METHOD_GET)
-	// 	BodyMap[this->clientFd].ParseBody(this->body, this->boundary);
 
 	this->generateResponse();
 }

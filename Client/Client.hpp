@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/16 11:36:22 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/16 12:35:55 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,10 +52,12 @@ private:
 	void checkConfigs(struct Response *response);
 
 	std::string loadFile(const std::string &filePath);
+
 	std::string loadErrorPage(const std::string &filePath, int statusCode);
 	std::string loadFiles(const std::string& directory);
-
 	std::string getErrorPagePath(int errorCode);
+
+	void logRequest(int statusCode);
 public:
 	Client();
 	void setup(int fd, Config *config);

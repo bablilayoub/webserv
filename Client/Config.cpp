@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 10:49:18 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/16 10:07:23 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/16 12:44:45 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,32 @@ Config::~Config()
 {
 	if (configFile)
 		configFile.close();
+}
+
+std::string Config::trimTrailingSlash(const std::string &path)
+{
+	if (path.empty())
+		return path;
+	std::string trimmed = path;
+	while (trimmed.back() == '/')
+		trimmed.pop_back();
+	return trimmed;
+}
+
+bool Config::isValidDirectory(const std::string &path)
+{
+	struct stat statbuf;
+
+	if (stat(path.c_str(), &statbuf) != 0)
+		return false;
+
+	if (!S_ISDIR(statbuf.st_mode))
+		return false;
+
+	if (access(path.c_str(), R_OK | W_OK | X_OK) != 0)
+		return false;
+
+	return true;
 }
 
 void Config::trimWhitespace(std::string &line)
@@ -133,7 +159,11 @@ void Config::handleKeyValue(const std::string &line)
 		else if (key == "limit_client_body_size")
 			currentServer.limit_client_body_size = value;
 		else if (key == "root_folder")
-			currentServer.root_folder = value;
+		{
+			currentServer.root_folder = trimTrailingSlash(value);
+			if (!isValidDirectory(currentServer.root_folder))
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid root_folder directory or permissions.");
+		}
 		else if (key == "error_page")
 		{
 			size_t pos = value.find(' ');
@@ -154,7 +184,11 @@ void Config::handleKeyValue(const std::string &line)
 		else if (key == "redirect")
 			currentLocation.redirect = value;
 		else if (key == "root_folder")
-			currentLocation.root_folder = value;
+		{
+			currentLocation.root_folder = trimTrailingSlash(value);
+			if (!isValidDirectory(currentLocation.root_folder))
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid root_folder directory or permissions.");
+		}
 		else if (key == "index")
 			currentLocation.index = value;
 		else if (key == "autoindex")

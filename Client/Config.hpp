@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:07:41 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/16 09:04:01 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/16 12:42:35 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,6 +52,8 @@ private:
     void processClosingBrace();
     void handleKeyValue(const std::string &line);
     void trimWhitespace(std::string &line);
+    std::string trimTrailingSlash(const std::string &path);
+    bool isValidDirectory(const std::string &path);
 
 public:
     std::vector<Server> servers;
