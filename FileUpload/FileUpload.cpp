@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/16 15:11:27 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/16 15:53:14 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -98,7 +98,6 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary, std::strin
         this->fd = -42;
         if (!this->FileName.empty()) {
             std::string OpenPath = path + "/" + this->FileName;
-            std::cout << OpenPath << std::endl;
             this->fd = open(OpenPath.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0666);
             if (this->fd < 0) {
                 std::cout << "Failed to open the file : " << OpenPath << std::endl;
