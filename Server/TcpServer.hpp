@@ -14,12 +14,13 @@
 #include "../Client/Config.hpp"
 #include <map>
 
-#define PORT 9000
 #define BUFFER_SIZE 80001
 #define TIME_OUT 5000
 #define GET "GET"
 #define POST "POST"
 #define DELETE "DELETE"
+
+// typedef std::vector<Server>::iterator iterator;
 
 struct ClientData
 {
@@ -50,15 +51,18 @@ private:
 	std::vector<ClientData> clientData;
 	std::vector<pollfd> poll_fds_vec;
 	int listener;
+	int listen_port;
 	bool isNonBlocking;
 	Config *config;
 
 public:
+	// TcpServer();
 	TcpServer(Config *config);
 	void initializeServer(const int port);
 	int handleIncomingConnections();
 	void setNonBlockingMode(int socket);
 	void socketConfig(const int port);
+	int getListner() const;
 	void closeFds();
 	void AddClientSocket(int socket, int event);
 	int acceptIncomingConnection();
@@ -68,6 +72,7 @@ public:
 	void cleanUp(int client_socket, size_t *i);
 	void parseIfContentLength(int client_socket, std::string &boundary, std::string &chunk, size_t *i, size_t &received_content_length, size_t &wholeContentLength);
 	void fileReachedEnd(std::string &chunk, int client_socket, size_t &received_content_length, size_t &wholeContentLength, size_t *i);
+
 	std::map<int, FileUpload> BodyMap;
 	std::map<int, Client> clients;
 };

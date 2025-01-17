@@ -1,4 +1,5 @@
 #include "TcpServer.hpp"
+// TcpServer::TcpServer() : TcpServer(config) {}
 
 TcpServer::TcpServer(Config *config) : isNonBlocking(true), config(config) {}
 
@@ -24,8 +25,8 @@ void TcpServer::initializeServer(const int port)
 
     if (isNonBlocking)
         this->setNonBlockingMode(this->listener);
+    this->socketConfig(port);
 
-    this->socketConfig(PORT);
     if (bind(this->listener, (struct sockaddr *)&this->serverAddress, sizeof(this->serverAddress)) < 0)
     {
         close(this->listener);
@@ -183,7 +184,6 @@ void TcpServer::handleClientsRequest(int client_socket, size_t *i)
 
     if (this->clients[client_socket].getMethod() != POST)
     {
-        std::cout << "!= POST" << std::endl;
         std::string response = this->clients[client_socket].getResponse();
         send(client_socket, response.c_str(), response.length(), 0);
         cleanUp(client_socket, i);
@@ -215,17 +215,17 @@ void TcpServer::handleClientsRequest(int client_socket, size_t *i)
 
 int TcpServer::handleIncomingConnections()
 {
-    AddClientSocket(this->listener, POLLIN);
-    while (true)
-    {
-        int ret = poll(poll_fds_vec.data(), poll_fds_vec.size(), 100);
+    // AddClientSocket(this->listener, POLLIN);
+    // while (true)
+    // {
+        int ret = poll(poll_fds_vec.data(), poll_fds_vec.size(), 0);
         if (ret == -1)
         {
             std::cout << "poll failed" << std::endl;
-            break;
+            return 1;
         }
-        if (ret == 0)
-            continue;
+        // if (ret == 0)
+        //     continue;
         if (poll_fds_vec[0].revents & POLLIN)
         {
             int addrlen, new_socket;
@@ -234,7 +234,7 @@ int TcpServer::handleIncomingConnections()
             if (new_socket == -1)
             {
                 std::cerr << "Accept failed!" << std::endl;
-                continue;
+                // continue;
             }
             setNonBlockingMode(new_socket);
             AddClientSocket(new_socket, POLLIN);
@@ -251,9 +251,10 @@ int TcpServer::handleIncomingConnections()
             // {
             // }
         }
-    }
-    closeFds();
-    return 1;
+        // break;
+    // }
+    // closeFds();
+    return 0;
 }
 
 void TcpServer::closeFds()
@@ -265,6 +266,7 @@ void TcpServer::closeFds()
 
 void TcpServer::setNonBlockingMode(int socket)
 {
+    // forbidden Macro => F_GETFL
     int flags = fcntl(socket, F_GETFL, 0);
     if (flags == -1)
     {
@@ -294,4 +296,9 @@ void TcpServer::AddClientSocket(int socket, int event)
     pfd.fd = socket;
     pfd.events = event;
     poll_fds_vec.push_back(pfd);
+}
+
+int TcpServer::getListner() const
+{
+    return this->listener;
 }
