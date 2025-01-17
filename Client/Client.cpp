@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/16 16:05:13 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/17 15:59:27 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -216,6 +216,7 @@ std::string getMimeType(const std::string &path)
 		mimeTypes[".xml"] = "application/xml";
 		mimeTypes[".pdf"] = "application/pdf";
 		mimeTypes[".zip"] = "application/zip";
+		mimeTypes[".ico"] = "image/x-icon";
 	}
 
 	size_t dotPos = path.find('.');
@@ -428,7 +429,7 @@ void Client::generateResponse()
 		"HTTP/1.1 " + std::to_string(response.statusCode) + " " + this->statusCodes[response.statusCode] + "\r\n" +
 		"Content-Type: " + mimeType + "\r\n" +
 		"Content-Length: " + std::to_string(response.content.size()) + "\r\n" +
-		"Connection: close\r\n"
+		"Connection: close\r\n" +
 		"\r\n" +
 		response.content;
 }
