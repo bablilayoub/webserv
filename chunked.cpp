@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/17 09:06:51 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/18 18:14:03 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/18 22:22:02 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -61,8 +61,15 @@ void eraseBody(std::string &Body, std::string StringtoErase) {
 // }
 
 int main() {
-    std::string data = "Hello World for the first Time im here 10000rncan u open this";
-    
-    std::string substr = data.substr(0, 5600);
-    std::cout << substr << std::endl;
+    std::string ChunkSizeString = "dady";
+    ChunkSizeString = ChunkSizeString.substr(2, 0);
+    size_t chunkSize;
+    std::istringstream iss(ChunkSizeString);
+    chunkSize = 0;
+    iss >> std::hex >> chunkSize;
+
+    if (ChunkSizeString.empty()) {
+        std::cout << ChunkSizeString << std::endl;
+        std::cout << chunkSize << std::endl;
+    }
 }

@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/18 20:09:05 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/18 23:03:26 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,12 +26,13 @@ FileUpload::FileUpload() {
     this->substr = "";
     this->pos = -42;
     this->FileNameEmpty = false;
-    this->IsChunked = true;
+    this->IsChunked = false;
     this->ChunkSizeString = "";
     this->FirstChunk = true;
     this->ChunkDone = false;
     this->FirstCRLF = true;
     this->bytesLeft = 0;
+    this->chunkSize = 0;
 }
 
 FileUpload::~FileUpload() {
@@ -130,34 +131,43 @@ void eraseBody(std::string &Body, const std::string &StringtoErase) {
 }
 
 void    FileUpload::HandleChunkedData(std::string &Body) {
-    if (FirstCRLF) 
+    while (true) 
     {
-        while (true) 
-        {
-            FirstCRLF = false;
-            pos = Body.find(CRLF);
-            ChunkSizeString = Body.substr(0, pos);
-                
-            std::istringstream iss(ChunkSizeString);
-            size_t chunkSize = 0;
-            iss >> std::hex >> chunkSize;
-
-            chunkData = Body.substr(pos + 2, chunkSize);
-
-            if (chunkData.length() < chunkSize) 
-            {
-                bytesLeft = chunkSize - chunkData.length();
-            }
-
-            Body = Body.substr(pos + 2 + chunkData.length(), Body.length());
-
+        if (bytesLeft > 0 && Body.length() >= bytesLeft) {
+            chunkData = Body.substr(0, bytesLeft);
             if (!chunkData.empty()) {
-                chunkData = chunkData + "\n";                
                 this->WriteToFile(chunkData);
             }
-
-            if (Body.length() == 0) 
-                break;
+            Body = Body.substr(chunkData.length(), Body.length());
+            bytesLeft = 0;
+        }
+        else {
+            if (bytesLeft > 0) {
+                chunkData = Body;
+                if (!chunkData.empty()) {
+                    this->WriteToFile(chunkData);
+                }
+                bytesLeft = bytesLeft - chunkData.length();
+                Body = "";
+            }
+        }
+        pos = Body.find(CRLF);
+        ChunkSizeString = Body.substr(0, pos);
+        std::istringstream iss(ChunkSizeString);
+        chunkSize = 0;
+        iss >> std::hex >> chunkSize;
+        chunkData = Body.substr(pos + 2, chunkSize);
+        if (chunkData.length() < chunkSize) 
+        {
+            bytesLeft = chunkSize - chunkData.length();
+        }
+        Body = Body.substr(pos + 2 + chunkData.length(), Body.length());
+        
+        if (!chunkData.empty()) {
+            this->WriteToFile(chunkData);
+        }
+        if (Body.length() == 0) {
+            break;
         }
     }
 }
@@ -174,15 +184,18 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary, std::strin
         return ;
     this->pos = Body.find(Boundary);
     if (this->pos == 0) {
+        this->chunkData = "";
+        this->bytesLeft = 0;
+        this->chunkSize = 0;
         this->pos = Body.find(this->ContentDisposition);
         if (this->pos != std::string::npos)
             this->ParseContentDisposition(Body);
         this->pos = Body.find(this->ContentType);
         if (this->pos != std::string::npos)
             this->ParseContentType(Body);
-        if (this->IsChunked) {
-            Body = Body.substr(2, Body.length());
-        }
+        // if (this->IsChunked) {
+        //     Body = Body.substr(2, Body.length());
+        // }
     }
     // std::cout << Body << std::endl;
     // exit(0);
@@ -191,7 +204,6 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary, std::strin
     if (this->IsChunked) {
         this->HandleChunkedData(Body);
     }
-
     else {
         this->WriteToFile(Body);
     }
