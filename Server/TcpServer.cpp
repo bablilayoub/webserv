@@ -151,8 +151,7 @@ void TcpServer::handlePostRequest(int client_socket, char *buffer, ssize_t bytes
         chunk = chunk.substr(clientData[*i].header_length);
         clientData[*i].removeHeader = true;
     }
-
-    if (this->clients[client_socket].getIsContentLenght())
+    if (this->clients[client_socket].getIsContentLenght() && !this->clients[client_socket].getIsChunked())
         parseIfContentLength(client_socket, boundary, chunk, i, received_content_length, wholeContentLength);
     else if (this->clients[client_socket].getIsChunked())
     {
