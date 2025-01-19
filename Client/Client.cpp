@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/17 15:59:27 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/19 16:09:50 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,51 +14,131 @@
 
 bool Client::isCGIRequest(const std::string &path)
 {
-	// Check if the file extension is .py or .php
 	if (path.substr(path.find_last_of(".") + 1) == "py" || path.substr(path.find_last_of(".") + 1) == "php")
 		return true;
 	return false;
 }
 
-void Client::handleCGIRequest(struct Response *response)
+void Client::handleCGIRequest(const std::string &indexPath)
 {
-	std::string scriptPath = "/Users/abablil/Desktop/webserv/Html" + this->path;
-	std::string command;
+	std::string cgiPath;
+	if (indexPath.find(".php") != std::string::npos)
+		cgiPath = "/Users/abablil/Desktop/webserv/Cgi/php-cgi";
+	else
+		cgiPath = "/Users/abablil/Desktop/webserv/Cgi/python-cgi";
+	const std::string outPutFile = "/tmp/cgi_out_" + std::to_string(this->clientFd);
+	const std::string tempDataFile = "/tmp/cgi_input_" + std::to_string(this->clientFd);
 
-	if (this->path.substr(this->path.find_last_of(".") + 1) == "py")
+	pid_t pid = fork();
+	if (pid < 0)
 	{
-		command = "python3 " + scriptPath;
+		std::cerr << "Failed to fork the process" << std::endl;
+		response.content = loadErrorPage(getErrorPagePath(500), 500);
+		response.statusCode = 500;
+		return;
 	}
-	else if (this->path.substr(this->path.find_last_of(".") + 1) == "php")
+
+	if (pid == 0)
 	{
-		command = "php " + scriptPath;
+		this->body = "name=John+Doe&email=johndoe%40example.com";
+
+		std::map<std::string, std::string> env;
+		env["GATEWAY_INTERFACE"] = "CGI/1.1";
+		env["SCRIPT_FILENAME"] = indexPath;
+		env["REQUEST_METHOD"] = method;
+		env["CONTENT_TYPE"] = this->content_type;
+		env["CONTENT_LENGTH"] = std::to_string(this->body.size());
+		env["REDIRECT_STATUS"] = "200";
+		env["REMOTE_ADDR"] = this->ip;
+		env["SERVER_PORT"] = std::to_string(port);
+		env["HTTP_USER_AGENT"] = "Client ID:" + std::to_string(clientFd);
+
+		char **envp = new char *[env.size() + 1];
+		int i = 0;
+		for (std::map<std::string, std::string>::iterator it = env.begin(); it != env.end(); ++it)
+		{
+			envp[i] = strdup((it->first + "=" + it->second).c_str());
+			++i;
+		}
+		envp[i] = NULL;
+
+		int outFd = open(outPutFile.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+		if (outFd < 0)
+		{
+			for (int j = 0; j < i; ++j)
+				free(envp[j]);
+			delete[] envp;
+			exit(EXIT_FAILURE);
+		}
+		dup2(outFd, STDOUT_FILENO);
+		close(outFd);
+
+		std::ofstream cgiInput(tempDataFile.c_str());
+		if (cgiInput)
+			cgiInput << this->body;
+		cgiInput.close();
+
+		const char *argv[] = {cgiPath.c_str(), indexPath.c_str(), NULL};
+
+		int inputFd = open(tempDataFile.c_str(), O_RDONLY);
+		if (inputFd < 0)
+		{
+			std::cerr << "Failed to open temp form data file" << std::endl;
+			exit(EXIT_FAILURE);
+		}
+		dup2(inputFd, STDIN_FILENO);
+		close(inputFd);
+
+		if (execve(cgiPath.c_str(), const_cast<char **>(argv), envp) == -1)
+		{
+			for (int j = 0; j < i; ++j)
+				free(envp[j]);
+			delete[] envp;
+			exit(EXIT_FAILURE);
+		}
+		for (int j = 0; j < i; ++j)
+			free(envp[j]);
+		delete[] envp;
 	}
 	else
 	{
-		response->content = this->loadErrorPage(this->getErrorPagePath(404), 404);
-		response->statusCode = 404;
-		return;
+		int status;
+		if (waitpid(pid, &status, 0) == -1)
+		{
+			response.content = loadErrorPage(getErrorPagePath(500), 500);
+			response.statusCode = 500;
+			return;
+		}
+
+		if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+		{
+			std::ifstream cgiOutput(outPutFile.c_str());
+			if (cgiOutput)
+			{
+				std::stringstream buffer;
+				buffer << cgiOutput.rdbuf();
+
+				size_t double_crlf = buffer.str().find("\r\n\r\n");
+				if (double_crlf != std::string::npos)
+					response.content = buffer.str().substr(double_crlf + 4);
+				else
+					response.content = buffer.str();
+				response.statusCode = 200;
+			}
+			else
+			{
+				response.content = loadErrorPage(getErrorPagePath(500), 500);
+				response.statusCode = 500;
+			}
+		}
+		else
+		{
+			response.content = loadErrorPage(getErrorPagePath(500), 500);
+			response.statusCode = 500;
+		}
+
+		unlink(outPutFile.c_str());
 	}
-
-	FILE *pipe = popen(command.c_str(), "r");
-	if (!pipe)
-	{
-		response->content = this->loadErrorPage(this->getErrorPagePath(500), 500);
-		response->statusCode = 500;
-		return;
-	}
-
-	char buffer[128];
-	std::string result = "";
-	while (fgets(buffer, sizeof(buffer), pipe) != nullptr)
-	{
-		result += buffer;
-	}
-
-	pclose(pipe);
-
-	response->content = result;
-	response->statusCode = 200;
 }
 
 Client::Client()
@@ -76,6 +156,7 @@ Client::Client()
 	this->statusCodes[404] = "Not Found";
 	this->statusCodes[405] = "Method Not Allowed";
 	this->statusCodes[500] = "Internal Server Error";
+	this->statusCodes[504] = "Gateway Timeout";
 	this->statusCodes[505] = "HTTP Version Not Supported";
 }
 
@@ -90,18 +171,16 @@ void Client::logRequest(int statusCode)
 	std::time_t now = std::time(0);
 	std::tm *localTime = std::localtime(&now);
 
-	// Determine color based on status code
-	const char *statusColor;
+	std::string statusColor;
 	if (statusCode >= 200 && statusCode < 300)
-		statusColor = GREEN; // Success
+		statusColor = GREEN;
 	else if (statusCode >= 300 && statusCode < 400)
-		statusColor = CYAN; // Redirection
+		statusColor = CYAN;
 	else if (statusCode >= 400 && statusCode < 500)
-		statusColor = YELLOW; // Client Error
+		statusColor = YELLOW;
 	else
-		statusColor = RED; // Server Error
+		statusColor = RED;
 
-	// Format and print the log
 	std::cout << "[" << (1900 + localTime->tm_year) << "-"
 			  << std::setw(2) << std::setfill('0') << (localTime->tm_mon + 1) << "-"
 			  << std::setw(2) << std::setfill('0') << localTime->tm_mday << " "
@@ -189,6 +268,11 @@ bool isDirectory(const std::string &path)
 	if (stat(path.c_str(), &statbuf) != 0)
 		return false;
 	return S_ISDIR(statbuf.st_mode);
+}
+
+bool hasReadPermission(const std::string &path)
+{
+	return (access(path.c_str(), R_OK) == 0);
 }
 
 std::string getMimeType(const std::string &path)
@@ -336,12 +420,11 @@ void Client::checkConfigs(struct Response *response)
 			// Check if the method is accepted for this location
 			if (std::find(location.accepted_methods.begin(), location.accepted_methods.end(), this->method) == location.accepted_methods.end())
 			{
-				response->content = this->loadErrorPage(this->getErrorPagePath(405), 405); // Method Not Allowed
+				response->content = this->loadErrorPage(this->getErrorPagePath(405), 405);
 				response->statusCode = 405;
 				return;
 			}
 
-			// Check for index file or autoindex functionality
 			if (!location.index.empty())
 			{
 				std::string indexPath = location.root_folder + "/" + location.index;
@@ -350,6 +433,19 @@ void Client::checkConfigs(struct Response *response)
 				{
 					response->content = this->loadErrorPage(this->getErrorPagePath(404), 404);
 					response->statusCode = 404;
+					return;
+				}
+
+				if (!hasReadPermission(indexPath))
+				{
+					response->content = this->loadErrorPage(this->getErrorPagePath(403), 403);
+					response->statusCode = 403;
+					return;
+				}
+
+				if (isCGIRequest(indexPath))
+				{
+					handleCGIRequest(indexPath);
 					return;
 				}
 
@@ -396,12 +492,7 @@ void Client::checkConfigs(struct Response *response)
 			response->statusCode = 200;
 			return;
 		}
-		// Check if the request is for a CGI script
-		if (isCGIRequest(this->path))
-		{
-			handleCGIRequest(response);
-			return;
-		}
+
 		if (fileExists(serverIt->root_folder + this->path))
 		{
 			response->content = loadFile(serverIt->root_folder + this->path);
@@ -416,7 +507,10 @@ void Client::checkConfigs(struct Response *response)
 
 void Client::generateResponse()
 {
-	struct Response response;
+	this->response.content.empty();
+	this->response.statusMessage.empty();
+	this->response.contentType.empty();
+	this->response.statusCode = 200;
 
 	this->checkConfigs(&response);
 
@@ -425,7 +519,7 @@ void Client::generateResponse()
 	// Determine MIME type based on path
 	std::string mimeType = getMimeType(this->path);
 
-	this->response =
+	this->responseString =
 		"HTTP/1.1 " + std::to_string(response.statusCode) + " " + this->statusCodes[response.statusCode] + "\r\n" +
 		"Content-Type: " + mimeType + "\r\n" +
 		"Content-Length: " + std::to_string(response.content.size()) + "\r\n" +
@@ -466,6 +560,7 @@ void Client::clear()
 	this->boundary.clear();
 	this->headers.clear();
 	this->upload_dir.empty();
+	this->content_type.empty();
 	this->isChunked = false;
 	this->isContentLenght = false;
 }
@@ -491,22 +586,28 @@ void Client::parse(const std::string &request)
 			if (rpos != std::string::npos)
 				line = line.substr(0, rpos);
 
-			size_t boundaryPos = line.find(BOUNDARY_PREFIX);
 			size_t contentLengthPos = line.find(CONTENT_LENGTH_PREFIX);
+			size_t contentTypePos = line.find(CONTENT_TYPE_PREFIX);
 			size_t hostPrefixPos = line.find(HOST_PREFIX);
 			size_t colonPos = line.find(':');
 			size_t transferEncoding = line.find(TRANSFER_ENCODING);
 
-			if (boundaryPos != std::string::npos)
-			{
-				boundaryPos += std::string(BOUNDARY_PREFIX).length();
-				this->boundary = line.substr(boundaryPos, line.size() - 1);
-			}
-			else if (contentLengthPos != std::string::npos)
+			if (contentLengthPos != std::string::npos)
 			{
 				contentLengthPos += std::string(CONTENT_LENGTH_PREFIX).length();
 				this->content_length = std::atof(line.substr(contentLengthPos).c_str());
 				this->isContentLenght = true;
+			}
+			else if (contentTypePos != std::string::npos)
+			{
+				contentTypePos += std::string(CONTENT_TYPE_PREFIX).length();
+				this->content_type = line.substr(contentTypePos, line.size() - 1).c_str();
+				size_t boundaryPos = this->content_type.find(BOUNDARY_PREFIX);
+				if (boundaryPos != std::string::npos)
+				{
+					boundaryPos += std::string(BOUNDARY_PREFIX).length();
+					this->boundary = this->content_type.substr(boundaryPos, this->content_type.size() - 1);
+				}
 			}
 			else if (hostPrefixPos != std::string::npos)
 			{
@@ -539,14 +640,12 @@ void Client::parse(const std::string &request)
 
 	if (!this->isChunked && !this->isContentLenght && this->method == METHOD_POST)
 	{
-		struct Response response;
-
 		response.statusCode = 400;
 		logRequest(response.statusCode);
 
 		std::string mimeType = getMimeType(this->path);
 		response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
-		this->response =
+		this->responseString =
 			"HTTP/1.1 " + std::to_string(response.statusCode) + " " + this->statusCodes[response.statusCode] + "\r\n" +
 			"Content-Type: " + mimeType + "\r\n" +
 			"Content-Length: " + std::to_string(response.content.size()) + "\r\n" +
@@ -559,7 +658,7 @@ void Client::parse(const std::string &request)
 	this->generateResponse();
 }
 
-const std::string &Client::getResponse() const { return this->response; }
+const std::string &Client::getResponse() const { return this->responseString; }
 
 const std::string &Client::getBody() const { return this->body; }
 

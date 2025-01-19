@@ -59,7 +59,6 @@ int TcpServer::acceptIncomingConnection()
 
 std::string getBoundary(std::string &header)
 {
-
     size_t pos = header.find("boundary=");
     if (pos != std::string::npos)
     {

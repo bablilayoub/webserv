@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/16 13:47:06 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/19 14:20:52 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,15 +36,16 @@ private:
 	std::string method;
 	std::string body;
 	std::string boundary;
+	std::string content_type;
 	std::map<std::string, std::string> headers;
 	
 	std::map<int, std::string> statusCodes;
 
 	Config* config;
-
 	std::string upload_dir;
 
-	std::string response;
+	std::string responseString;
+	Response response;
 
 	void handleFirstLine(std::istringstream &requestStream);
 	void generateResponse();
@@ -58,7 +59,7 @@ private:
 	std::string getErrorPagePath(int errorCode);
 
 	void logRequest(int statusCode);
-	void handleCGIRequest(struct Response *response);
+	void handleCGIRequest(const std::string &path);
 	bool isCGIRequest(const std::string &path);
 
 public:

@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/14 18:46:49 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/16 12:28:31 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/19 14:50:33 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <sys/socket.h>
+#include <signal.h>
 
 #include "../FileUpload/FileUpload.hpp"
 
@@ -33,6 +34,7 @@
 
 #define BOUNDARY_PREFIX "boundary="
 #define CONTENT_LENGTH_PREFIX "Content-Length: "
+#define CONTENT_TYPE_PREFIX "Content-Type: "
 #define HOST_PREFIX "Host: "
 #define TRANSFER_ENCODING "Transfer-Encoding: chunked"
 

@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:07:41 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/16 12:42:35 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/17 17:59:32 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,6 +27,7 @@ struct Location
 struct Server
 {
     int listen_port;
+    int cgi_timeout;
     std::string limit_client_body_size;
     std::vector<std::string> server_names;
     std::string root_folder;

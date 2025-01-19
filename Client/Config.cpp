@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 10:49:18 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/16 12:44:45 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/17 18:03:39 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -120,6 +120,9 @@ void Config::processClosingBrace()
 			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Root folder is not specified");
 		if (currentServer.listen_port < 1 || currentServer.listen_port > 65535)
 			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid port , Allowed ports (1 to 65535)");
+		if (currentServer.cgi_timeout < 1)
+			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid CGI Timeout, it must be 1 or bigger");
+
 		servers.push_back(currentServer);
 	}
 }
@@ -141,6 +144,8 @@ void Config::handleKeyValue(const std::string &line)
 	{
 		if (key == "listen")
 			currentServer.listen_port = this->parseInt(value);
+		else if (key == "cgi_timeout")
+			currentServer.cgi_timeout = this->parseInt(value);
 		else if (key == "server_names")
 		{
 			currentServer.server_names.clear();
