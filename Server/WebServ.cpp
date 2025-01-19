@@ -110,6 +110,8 @@ void WebServ::handleServersIncomingConnections()
 {
   while (true)
   {
+    std::cout << "at the rop" << std::endl;
+
     int ret = poll(fds.data(), fds.size(), TIME_OUT);
     if (ret == -1)
     {
@@ -123,10 +125,30 @@ void WebServ::handleServersIncomingConnections()
     {
       if (fds[i].revents & POLLIN)
       {
+        std::cerr << "POLLIN" << std::endl;
         if (std::find(listeners.begin(), listeners.end(), fds[i].fd) != listeners.end())
           acceptConnectionsFromListner(fds[i].fd);
         else
           handleClientsRequest(fds[i].fd, i);
+      }
+      if (fds[i].revents & POLLOUT)
+      {
+        std::cerr << "POLLOUT" << std::endl;
+        int client_socket = fds[i].fd;
+        std::string response = "HTTP/1.1 200 OK\r\n"
+                               "Content-Type: text/plain\r\n"
+                               "Content-Length: 13\r\n"
+                               "\r\n"
+                               "Hello, world!";
+        ssize_t &client_sentBytes = this->clientDataMap[client_socket].sent_bytes;
+        ssize_t bytes_sent = send(client_socket, response.c_str() + client_sentBytes,
+                                  response.length() - client_sentBytes, 0);
+        if (bytes_sent > 0)
+        {
+          client_sentBytes += bytes_sent;
+          if ((size_t)client_sentBytes == response.length())
+            cleanUp(client_socket, i);
+        }
       }
     }
   }
@@ -191,31 +213,35 @@ void WebServ::getHeaderData(int client_socket, bool *flag, std::string &boundary
     }
   }
   this->clients[client_socket].parse(header);
-  this->clientDataMap[client_socket].wholeContentLength = this->clients[client_socket].getContentLength() + this->clientDataMap[client_socket].header_length;
+  this->clientDataMap[client_socket].wcl = this->clients[client_socket].getContentLength() + this->clientDataMap[client_socket].header_length;
   boundary = getBoundary(header);
 }
 
-void WebServ::fileReachedEnd(std::string &chunk, int client_socket, size_t &received_content_length, size_t &wholeContentLength)
+int WebServ::getClientIndex(int client_socket)
 {
-  if (received_content_length >= wholeContentLength)
+  for (size_t i = 0; i < fds.size(); ++i)
+  {
+    if (fds[i].fd == client_socket)
+    {
+      return i; // Return the index if found
+    }
+  }
+  return -1; // Return -1 if not found
+}
+
+void WebServ::fileReachedEnd(std::string &chunk, int client_socket, size_t &rcl, size_t &wcl)
+{
+  if (rcl >= wcl)
   {
     std::cout << chunk << std::endl;
-    // std::cerr << "entered" << std::endl;
     // BodyMap[client_socket].ParseBody(chunk, this->clientDataMap[client_socket].boundary, clients[client_socket].getUploadDir());
+    size_t index = getClientIndex(client_socket);
+    fds[index].events = POLLOUT;
     chunk.clear();
-    // cleanUp(client_socket, i);
-    // send data received message
-    std::string response = "HTTP/1.1 200 OK\r\n"
-                           "Content-Type: text/plain\r\n"
-                           "Content-Length: 13\r\n"
-                           "\r\n"
-                           "Hello, world!";
-    send(client_socket, response.c_str(), response.length(), 0);
-    // this->clientDataMap[client_socket].clientServed = true;
   }
 }
 
-void WebServ::parseIfContentLength(int client_socket, std::string &boundary, std::string &chunk, size_t &received_content_length, size_t &wholeContentLength)
+void WebServ::parseIfContentLength(int client_socket, std::string &boundary, std::string &chunk, size_t &rcl, size_t &wcl)
 {
   bool flag = false;
   std::string boundaryString;
@@ -239,7 +265,7 @@ void WebServ::parseIfContentLength(int client_socket, std::string &boundary, std
       std::cout << boundaryString + chunk.substr(0, pos2);
       // BodyMap[client_socket].ParseBody(boundaryString + chunk.substr(0, pos2), boundary, clients[client_socket].getUploadDir());
       chunk = chunk.substr(pos2);
-      fileReachedEnd(chunk, client_socket, received_content_length, wholeContentLength);
+      fileReachedEnd(chunk, client_socket, rcl, wcl);
       return;
     }
     else
@@ -250,7 +276,7 @@ void WebServ::parseIfContentLength(int client_socket, std::string &boundary, std
   }
   std::cout << (flag ? boundaryString : "") + chunk;
   // BodyMap[client_socket].ParseBody((flag ? boundaryString : "") + chunk, boundary, clients[client_socket].getUploadDir());
-  fileReachedEnd(chunk, client_socket, received_content_length, wholeContentLength);
+  fileReachedEnd(chunk, client_socket, rcl, wcl);
   chunk.clear();
 }
 
@@ -277,22 +303,22 @@ void WebServ::AddSocket(int socket, bool isListener, int event)
 void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_received, std::string &boundary)
 {
 
-  size_t &wholeContentLength = this->clientDataMap[client_socket].wholeContentLength;
-  size_t &received_content_length = this->clientDataMap[client_socket].received_content_length;
+  size_t &wcl = this->clientDataMap[client_socket].wcl;
+  size_t &rcl = this->clientDataMap[client_socket].rcl;
   std::string &chunk = this->clientDataMap[client_socket].chunk;
 
   buffer[bytes_received] = '\0';
   chunk.append(buffer, bytes_received);
-  received_content_length += bytes_received;
+  rcl += bytes_received;
 
-  // if (!this->clientDataMap[client_socket].removeHeader)
-  // {
-  //   chunk = chunk.substr(this->clientDataMap[client_socket].header_length);
-  //   // this->clientDataMap[client_socket].removeHeader = true;
-  // }
+  if (!this->clientDataMap[client_socket].removeHeader)
+  {
+    chunk = chunk.substr(this->clientDataMap[client_socket].header_length);
+    // this->clientDataMap[client_socket].removeHeader = true;
+  }
 
   if (this->clients[client_socket].getIsContentLenght())
-    parseIfContentLength(client_socket, boundary, chunk, received_content_length, wholeContentLength);
+    parseIfContentLength(client_socket, boundary, chunk, rcl, wcl);
   // else if (this->clients[client_socket].getIsChunked())
   // {
   //   // parseIfChunked();
@@ -324,11 +350,11 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
   // {
 
   bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
+  size_t index = getClientIndex(client_socket);
   if (bytes_received == 0)
   {
     std::cout << "Client disconnected" << std::endl;
-    cleanUp(client_socket, i);
-    // this->clientDataMap[client_socket].clientServed = true;
+    fds[index].events = POLLOUT;
     return;
   }
   else if (bytes_received == -1)
@@ -338,9 +364,7 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
     else
     {
       std::cerr << "Failed to receive data from client" << std::endl;
-      cleanUp(client_socket, i);
-
-      // this->clientDataMap[client_socket].clientServed = true;
+      fds[index].events = POLLOUT;
       return;
     }
   }

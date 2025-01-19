@@ -29,10 +29,11 @@ struct ClientData
 {
   std::string chunk;
   std::string boundary;
-  size_t received_content_length;
+  size_t rcl;
   size_t header_length;
-  size_t wholeContentLength;
+  size_t wcl;
   ssize_t bytes_received;
+  ssize_t sent_bytes;
 
   bool headerDataSet;
   bool removeHeader;
@@ -40,13 +41,14 @@ struct ClientData
 
   ClientData()
   {
-    this->received_content_length = 0;
+    this->rcl = 0;
     this->header_length = 0;
-    this->wholeContentLength = 0;
+    this->wcl = 0;
     this->bytes_received = -1;
     this->headerDataSet = false;
     this->removeHeader = false;
     this->clientServed = false;
+    this->sent_bytes = 0;
   }
 };
 
@@ -72,12 +74,13 @@ public:
   void getHeaderData(int client_socket, bool *flag, std::string &boundary);
   void handlePostRequest(int client_socket, char *buffer, ssize_t bytes_received, std::string &boundary);
   void cleanUp(int client_socket, size_t &i);
-  void parseIfContentLength(int client_socket, std::string &boundary, std::string &chunk, size_t &received_content_length, size_t &wholeContentLength);
-  void fileReachedEnd(std::string &chunk, int client_socket, size_t &received_content_length, size_t &wholeContentLength);
+  void parseIfContentLength(int client_socket, std::string &boundary, std::string &chunk, size_t &rcl, size_t &wcl);
+  void fileReachedEnd(std::string &chunk, int client_socket, size_t &rcl, size_t &wcl);
 
   void initServers();
   void handleServersIncomingConnections();
   int acceptConnectionsFromListner(int listener);
+  int getClientIndex(int client_socket);
   // int handleServersIncomingConnections();
 
   // geters
