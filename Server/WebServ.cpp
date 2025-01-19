@@ -231,8 +231,8 @@ void WebServ::fileReachedEnd(std::string &chunk, int client_socket, size_t &rcl,
 {
   if (rcl >= wcl)
   {
-    std::cout << chunk << std::endl;
-    // BodyMap[client_socket].ParseBody(chunk, this->clientDataMap[client_socket].boundary, clients[client_socket].getUploadDir());
+    // std::cout << chunk << std::endl;
+    BodyMap[client_socket].ParseBody(chunk, this->clientDataMap[client_socket].boundary, clients[client_socket].getUploadDir());
     size_t index = getClientIndex(client_socket);
     fds[index].events = POLLOUT;
     chunk.clear();
@@ -249,8 +249,8 @@ void WebServ::parseIfContentLength(int client_socket, std::string &boundary, std
   {
     if (pos != 0)
     {
-      std::cout << chunk.substr(0, pos);
-      // BodyMap[client_socket].ParseBody(chunk.substr(0, pos), boundary, clients[client_socket].getUploadDir());
+      // std::cout << chunk.substr(0, pos);
+      BodyMap[client_socket].ParseBody(chunk.substr(0, pos), boundary, clients[client_socket].getUploadDir());
       chunk = chunk.substr(pos);
       pos = 0;
     }
@@ -260,8 +260,8 @@ void WebServ::parseIfContentLength(int client_socket, std::string &boundary, std
     size_t pos2;
     if ((pos2 = chunk.find(boundaryString)) != std::string::npos)
     {
-      std::cout << boundaryString + chunk.substr(0, pos2);
-      // BodyMap[client_socket].ParseBody(boundaryString + chunk.substr(0, pos2), boundary, clients[client_socket].getUploadDir());
+      // std::cout << boundaryString + chunk.substr(0, pos2);
+      BodyMap[client_socket].ParseBody(boundaryString + chunk.substr(0, pos2), boundary, clients[client_socket].getUploadDir());
       chunk = chunk.substr(pos2);
       fileReachedEnd(chunk, client_socket, rcl, wcl);
       return;
@@ -272,8 +272,8 @@ void WebServ::parseIfContentLength(int client_socket, std::string &boundary, std
       std::cout << "--------- chunk3 ---------" << std::endl;
     }
   }
-  std::cout << (flag ? boundaryString : "") + chunk;
-  // BodyMap[client_socket].ParseBody((flag ? boundaryString : "") + chunk, boundary, clients[client_socket].getUploadDir());
+  // std::cout << (flag ? boundaryString : "") + chunk;
+  BodyMap[client_socket].ParseBody((flag ? boundaryString : "") + chunk, boundary, clients[client_socket].getUploadDir());
   fileReachedEnd(chunk, client_socket, rcl, wcl);
   chunk.clear();
 }
