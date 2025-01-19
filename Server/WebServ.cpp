@@ -110,8 +110,6 @@ void WebServ::handleServersIncomingConnections()
 {
   while (true)
   {
-    std::cout << "at the rop" << std::endl;
-
     int ret = poll(fds.data(), fds.size(), TIME_OUT);
     if (ret == -1)
     {
@@ -125,7 +123,7 @@ void WebServ::handleServersIncomingConnections()
     {
       if (fds[i].revents & POLLIN)
       {
-        std::cerr << "POLLIN" << std::endl;
+        // std::cerr << "POLLIN" << std::endl;
         if (std::find(listeners.begin(), listeners.end(), fds[i].fd) != listeners.end())
           acceptConnectionsFromListner(fds[i].fd);
         else
@@ -133,7 +131,7 @@ void WebServ::handleServersIncomingConnections()
       }
       if (fds[i].revents & POLLOUT)
       {
-        std::cerr << "POLLOUT" << std::endl;
+        // std::cerr << "POLLOUT" << std::endl;
         int client_socket = fds[i].fd;
         std::string response = "HTTP/1.1 200 OK\r\n"
                                "Content-Type: text/plain\r\n"
@@ -339,36 +337,34 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
   if (!this->clientDataMap[client_socket].headerDataSet)
     getHeaderData(client_socket, &this->clientDataMap[client_socket].headerDataSet, boundary);
 
-  // if (this->clients[client_socket].getMethod() != POST)
-  // {
-
-  //     std::string response = this->clients[client_socket].getResponse();
-  //     send(client_socket, response.c_str(), response.length(), 0);
-  //     this->clientDataMap[client_socket].clientServed = true;
-  // }
-  // else
-  // {
-
-  bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
-  size_t index = getClientIndex(client_socket);
-  if (bytes_received == 0)
+  if (this->clients[client_socket].getMethod() != POST)
   {
-    std::cout << "Client disconnected" << std::endl;
-    fds[index].events = POLLOUT;
-    return;
+    std::cout << this->clients[client_socket].getMethod() << std::endl;
+    fds[i].events = POLLOUT;
   }
-  else if (bytes_received == -1)
+  else
   {
-    if (errno == EAGAIN || errno == EWOULDBLOCK)
-      std::cout << "EAGAIN or EWOULDBLOCK" << std::endl;
-    else
+
+    bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
+    size_t index = getClientIndex(client_socket);
+    if (bytes_received == 0)
     {
-      std::cerr << "Failed to receive data from client" << std::endl;
+      std::cout << "Client disconnected" << std::endl;
       fds[index].events = POLLOUT;
       return;
     }
+    else if (bytes_received == -1)
+    {
+      if (errno == EAGAIN || errno == EWOULDBLOCK)
+        std::cout << "EAGAIN or EWOULDBLOCK" << std::endl;
+      else
+      {
+        std::cerr << "Failed to receive data from client" << std::endl;
+        fds[index].events = POLLOUT;
+        return;
+      }
+    }
+    else
+      handlePostRequest(client_socket, buffer, bytes_received, boundary);
   }
-  else
-    handlePostRequest(client_socket, buffer, bytes_received, boundary);
-  // }
 }
