@@ -177,6 +177,7 @@ void TcpServer::handleClientsRequest(int client_socket, size_t *i)
     if (this->clients[client_socket].getMethod() != POST)
     {
         std::cout << "!= POST" << std::endl;
+        std::cout << this->clients[client_socket].getUploadDir() << std::endl;
         std::string response = this->clients[client_socket].getResponse();
         send(client_socket, response.c_str(), response.length(), 0);
         cleanUp(client_socket, i);

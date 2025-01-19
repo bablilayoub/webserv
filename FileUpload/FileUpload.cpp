@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/18 23:03:26 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/19 15:36:34 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,13 +26,15 @@ FileUpload::FileUpload() {
     this->substr = "";
     this->pos = -42;
     this->FileNameEmpty = false;
-    this->IsChunked = false;
+
+    this->IsChunked = true;
     this->ChunkSizeString = "";
     this->FirstChunk = true;
     this->ChunkDone = false;
     this->FirstCRLF = true;
     this->bytesLeft = 0;
     this->chunkSize = 0;
+
 }
 
 FileUpload::~FileUpload() {
@@ -93,8 +95,9 @@ void    FileUpload::ParseContentType(std::string &Body) {
 }
 
 void    FileUpload::OpenFile(std::string &path) {
-    if (this->HeaderFetched) 
+    if (this->HeaderFetched)
     {
+        std::cout << "Header Fetched Open FIle : " << FileName << std::endl;
         this->HeaderFetched = false;
         close(this->fd);
         this->fd = -42;
@@ -130,54 +133,102 @@ void eraseBody(std::string &Body, const std::string &StringtoErase) {
         Body.erase(pos, StringtoErase.length());
 }
 
-void    FileUpload::HandleChunkedData(std::string &Body) {
-    while (true) 
-    {
+// void    FileUpload::HandleChunkedData(std::string &Body) {
+//     while (true) 
+//     {
+//         if (bytesLeft > 0 && Body.length() >= bytesLeft) {
+//             chunkData = Body.substr(0, bytesLeft);
+//             if (!chunkData.empty()) {
+//                 this->WriteToFile(chunkData);
+//             }
+//             Body = Body.substr(chunkData.length(), Body.length());
+//             bytesLeft = 0;
+//         }
+//         else {
+//             if (bytesLeft > 0) {
+//                 chunkData = Body;
+//                 if (!chunkData.empty()) {
+//                     this->WriteToFile(chunkData);
+//                 }
+//                 bytesLeft = bytesLeft - chunkData.length();
+//                 Body = "";
+//             }
+//         }
+//         pos = Body.find(CRLF);
+//         ChunkSizeString = Body.substr(0, pos);
+//         std::istringstream iss(ChunkSizeString);
+//         chunkSize = 0;
+//         iss >> std::hex >> chunkSize;
+//         chunkData = Body.substr(pos + 2, chunkSize);
+//         if (chunkData.length() < chunkSize) 
+//         {
+//             bytesLeft = chunkSize - chunkData.length();
+//         }
+//         Body = Body.substr(pos + 2 + chunkData.length(), Body.length());
+        
+//         if (!chunkData.empty()) {
+//             this->WriteToFile(chunkData);
+//         }
+//         if (Body.length() == 0) {
+//             break;
+//         }
+//     }
+// }
+
+void FileUpload::HandleChunkedData(std::string &Body) {
+    while (true) {
         if (bytesLeft > 0 && Body.length() >= bytesLeft) {
             chunkData = Body.substr(0, bytesLeft);
             if (!chunkData.empty()) {
                 this->WriteToFile(chunkData);
             }
-            Body = Body.substr(chunkData.length(), Body.length());
+            Body = Body.substr(bytesLeft);
             bytesLeft = 0;
-        }
-        else {
-            if (bytesLeft > 0) {
-                chunkData = Body;
-                if (!chunkData.empty()) {
-                    this->WriteToFile(chunkData);
-                }
-                bytesLeft = bytesLeft - chunkData.length();
-                Body = "";
+        } else if (bytesLeft > 0) {
+            chunkData = Body;
+            if (!chunkData.empty()) {
+                this->WriteToFile(chunkData);
             }
+            bytesLeft -= chunkData.length();
+            Body.clear();
         }
+
         pos = Body.find(CRLF);
+        if (pos == std::string::npos) {
+            break;
+        }
+
         ChunkSizeString = Body.substr(0, pos);
         std::istringstream iss(ChunkSizeString);
         chunkSize = 0;
         iss >> std::hex >> chunkSize;
-        chunkData = Body.substr(pos + 2, chunkSize);
-        if (chunkData.length() < chunkSize) 
-        {
-            bytesLeft = chunkSize - chunkData.length();
+
+        if (pos + 2 + chunkSize > Body.length()) {
+            bytesLeft = chunkSize - (Body.length() - pos - 2);
+            chunkData = Body.substr(pos + 2);
+            Body.clear();
+        } 
+        else {
+            chunkData = Body.substr(pos + 2, chunkSize);
+            Body = Body.substr(pos + 2 + chunkSize);
+            bytesLeft = 0;
         }
-        Body = Body.substr(pos + 2 + chunkData.length(), Body.length());
-        
+
         if (!chunkData.empty()) {
             this->WriteToFile(chunkData);
         }
-        if (Body.length() == 0) {
+
+        if (Body.empty()) {
             break;
         }
     }
 }
 
+
 void    FileUpload::ParseBody(std::string Body, std::string Boundary, std::string path) 
 {
-    if (this->IsChunked && this->FirstChunk) {
-        this->FirstChunk = false;
-        return ;
-    }
+    // std::cout << Body << std::endl;
+    // return ;
     if (Body.find(Boundary + "--") != std::string::npos) 
         return ;
     if (this->DataFinish)
@@ -193,6 +244,7 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary, std::strin
         this->pos = Body.find(this->ContentType);
         if (this->pos != std::string::npos)
             this->ParseContentType(Body);
+        // this->HeaderFetched = true;
         // if (this->IsChunked) {
         //     Body = Body.substr(2, Body.length());
         // }
@@ -207,5 +259,4 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary, std::strin
     else {
         this->WriteToFile(Body);
     }
-
 }
