@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/19 16:09:50 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/19 21:02:40 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,9 +23,9 @@ void Client::handleCGIRequest(const std::string &indexPath)
 {
 	std::string cgiPath;
 	if (indexPath.find(".php") != std::string::npos)
-		cgiPath = "/Users/abablil/Desktop/webserv/Cgi/php-cgi";
+		cgiPath = "/Users/apple/Desktop/webserv/Cgi/php-cgi";
 	else
-		cgiPath = "/Users/abablil/Desktop/webserv/Cgi/python-cgi";
+		cgiPath = "/Users/apple/Desktop/webserv/Cgi/python-cgi";
 	const std::string outPutFile = "/tmp/cgi_out_" + std::to_string(this->clientFd);
 	const std::string tempDataFile = "/tmp/cgi_input_" + std::to_string(this->clientFd);
 
