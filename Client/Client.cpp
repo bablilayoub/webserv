@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/20 17:22:22 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/20 17:57:51 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -112,7 +112,7 @@ void Client::handleCGIRequest(const std::string &indexPath)
 		env["SERVER_PORT"] = std::to_string(port);
 		env["HTTP_USER_AGENT"] = "Client ID:" + std::to_string(clientFd);
 		env["QUERY_STRING"] = this->query;
-		
+
 		char **envp = new char *[env.size() + 1];
 		int i = 0;
 		for (std::map<std::string, std::string>::iterator it = env.begin(); it != env.end(); ++it)
@@ -509,9 +509,6 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 		fullPath = fullPath.substr(0, queryPos);
 	}
 	this->path = fullPath;
-
-	if (this->isCGIRequest(this->path))
-		this->isCGI = true;
 }
 
 void Client::clear()
@@ -595,8 +592,12 @@ void Client::parse(const std::string &request)
 	}
 
 	Location *location = this->getLocation();
-	if (this->getLocation())
+	if (location)
+	{
 		this->upload_dir = location->upload_dir;
+		if (this->isCGIRequest(location->index))
+			this->isCGI = true;
+	}
 
 	if (!this->isChunked && !this->isContentLenght && this->method == METHOD_POST)
 	{
