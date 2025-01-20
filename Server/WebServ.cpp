@@ -246,7 +246,7 @@ void WebServ::parseFormData(int client_socket, std::string &boundary, std::strin
 {
   bool flag = false;
   std::string boundaryString;
-  std::ofstream cgiInput("/tmp/cgiInput_" + std::to_string(client_socket), std::ios::app);
+  std::ofstream cgiInput("/tmp/cgi_input_" + std::to_string(client_socket), std::ios::app);
 
   size_t pos;
   if ((pos = chunk.find(boundary)) != std::string::npos)
@@ -298,7 +298,7 @@ void WebServ::AddSocket(int socket, bool isListener, int event)
     this->clients[socket].setup(socket, this->config);
     ClientData clientData;
     clientDataMap[socket] = clientData;
-    std::remove(("/tmp/cgiInput_" + std::to_string(socket)).c_str());
+    std::remove(("/tmp/cgi_input_" + std::to_string(socket)).c_str());
   }
   struct pollfd pfd;
   pfd.fd = socket;
