@@ -82,7 +82,7 @@ void WebServ::initServers()
 
   for (size_t i = 0; i < serversSize; i++)
   {
-    int listener = this->init(this->config->servers[i].listen_port);
+    int listener = this->init(this->config->servers[i].ports[0]);
     this->listeners.push_back(listener);
     this->AddSocket(listener, true, POLLIN);
   }
@@ -239,7 +239,7 @@ void WebServ::parseIfContentLength(int client_socket, std::string &boundary, std
 {
   bool flag = false;
   std::string boundaryString;
-
+ 
   size_t pos;
   if ((pos = chunk.find(boundary)) != std::string::npos)
   {
@@ -308,7 +308,7 @@ void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_r
   if (!this->clientDataMap[client_socket].removeHeader)
   {
     chunk = chunk.substr(this->clientDataMap[client_socket].header_length);
-    // this->clientDataMap[client_socket].removeHeader = true;
+    this->clientDataMap[client_socket].removeHeader = true;
   }
 
   if (this->clients[client_socket].getIsContentLenght())
@@ -335,7 +335,7 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
 
   if (this->clients[client_socket].getMethod() != POST)
   {
-    std::cout << this->clients[client_socket].getMethod() << std::endl;
+    // std::cout << this->clients[client_socket].getMethod() << std::endl;
     fds[i].events = POLLOUT;
   }
   else

@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:07:41 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/17 17:59:32 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/20 11:14:09 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,11 +26,12 @@ struct Location
 
 struct Server
 {
-    int listen_port;
     int cgi_timeout;
+    std::string host;
+    std::string root_folder;
+    std::vector<int> ports;
     std::string limit_client_body_size;
     std::vector<std::string> server_names;
-    std::string root_folder;
     std::map<int, std::string> error_pages;
     std::map<std::string, Location> locations;
 };
@@ -46,19 +47,27 @@ private:
     std::string locationPath;
     std::stack<std::string> blockStack;
 
-    void parseKeyValue(const std::string &line, std::string &key, std::string &value);
     int parseInt(const std::string &value);
+
+    bool isValidDirectory(const std::string &path);
+    
+    std::string trimTrailingSlash(const std::string &path);
+
+    void parseKeyValue(const std::string &line, std::string &key, std::string &value);
     void processServerBlock();
     void processLocationBlock(const std::string &line);
     void processClosingBrace();
     void handleKeyValue(const std::string &line);
     void trimWhitespace(std::string &line);
-    std::string trimTrailingSlash(const std::string &path);
-    bool isValidDirectory(const std::string &path);
+    void initStatusCodes();
+    void initMimeTypes();
+    bool isValidIpv4(const std::string &ip);
 
 public:
     std::vector<Server> servers;
-
+    std::map<std::string, std::string> mimeTypes;
+	std::map<int, std::string> statusCodes;
+    
     Config(const std::string &filePath);
     ~Config();
 };

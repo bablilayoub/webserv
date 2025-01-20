@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/19 14:20:52 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/20 10:21:02 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,6 +31,7 @@ private:
 	int content_length;
 	bool isChunked;
 	bool isContentLenght;
+	bool isBinary;
 	std::string ip;
 	std::string path;
 	std::string method;
@@ -38,32 +39,32 @@ private:
 	std::string boundary;
 	std::string content_type;
 	std::map<std::string, std::string> headers;
-	
-	std::map<int, std::string> statusCodes;
 
-	Config* config;
+	Config *config;
 	std::string upload_dir;
 
 	std::string responseString;
 	Response response;
 
+	void clear();
+
 	void handleFirstLine(std::istringstream &requestStream);
 	void generateResponse();
-	void clear();
 	void checkConfigs(struct Response *response);
 
 	std::string loadFile(const std::string &filePath);
-
+	std::string loadFiles(const std::string &directory);
 	std::string loadErrorPage(const std::string &filePath, int statusCode);
-	std::string loadFiles(const std::string& directory);
 	std::string getErrorPagePath(int errorCode);
 
+	std::string getMimeType(const std::string &path);
 	void logRequest(int statusCode);
+
 	void handleCGIRequest(const std::string &path);
 	bool isCGIRequest(const std::string &path);
+	void setErrorResponse(int statusCode);
 
 public:
-	Client();
 	void setup(int fd, Config *config);
 	void parse(const std::string &request);
 	const std::string &getBody() const;
