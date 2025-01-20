@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/20 17:57:51 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/20 18:39:58 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -532,7 +532,7 @@ void Client::parse(const std::string &request)
 {
 	size_t pos = 0;
 	size_t endPos = request.find("\r\n\r\n", pos);
-
+	
 	if (endPos != std::string::npos)
 	{
 		this->clear();
@@ -584,10 +584,10 @@ void Client::parse(const std::string &request)
 												colonPos - (hostPrefixPos + std::string(HOST_PREFIX).length()));
 				this->port = std::atof(line.substr(colonPos + 1).c_str());
 			}
-			else if (colonPos != std::string::npos)
-				this->headers[line.substr(0, colonPos)] = line.substr(colonPos + 2);
 			else if (transferEncoding != std::string::npos)
 				this->isChunked = true;
+			else if (colonPos != std::string::npos)
+				this->headers[line.substr(0, colonPos)] = line.substr(colonPos + 2);
 		}
 	}
 
