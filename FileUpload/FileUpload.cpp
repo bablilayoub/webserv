@@ -228,7 +228,7 @@ void FileUpload::HandleChunkedData(std::string &Body) {
 void    FileUpload::ParseBody(std::string Body, std::string Boundary, std::string path) 
 {
     // std::cout << Body << std::endl;
-    // return ;
+    return ;
     if (Body.find(Boundary + "--") != std::string::npos) 
         return ;
     if (this->DataFinish)
