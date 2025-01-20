@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/20 12:37:27 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/20 16:10:51 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -49,7 +49,6 @@ private:
 	void clear();
 
 	void handleFirstLine(std::istringstream &requestStream);
-	void generateResponse();
 	void checkConfigs();
 
 	Server *getServer();
@@ -76,6 +75,7 @@ private:
 public:
 	void setup(int fd, Config *config);
 	void parse(const std::string &request);
+	void generateResponse();
 	const std::string &getBody() const;
 	const std::string &getBoundary() const;
 	const std::string &getMethod() const;

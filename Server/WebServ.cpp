@@ -138,6 +138,7 @@ void WebServ::handleServersIncomingConnections()
       {
         // std::cerr << "POLLOUT" << std::endl;
         int client_socket = fds[i].fd;
+        this->clients[client_socket].generateResponse();
         std::string response = this->clients[client_socket].getResponse();
         ssize_t &client_sentBytes = this->clientDataMap[client_socket].sent_bytes;
         ssize_t bytes_sent = send(client_socket, response.c_str() + client_sentBytes,
@@ -322,8 +323,8 @@ void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_r
     this->clientDataMap[client_socket].removeHeader = true;
   }
 
-  if (this->clients[client_socket].getContentType().find("multipart/form-data;") != std::string::npos)
-    parseFormData(client_socket, boundary, chunk, rcl, wcl);
+  // if (this->clients[client_socket].getContentType().find("multipart/form-data;") != std::string::npos)
+  parseFormData(client_socket, boundary, chunk, rcl, wcl);
   // else if (this->clients[client_socket].getIsBinary())
   // {
   //   BodyMap[client_socket].ParseBody(chunk, "", clients[client_socket].getUploadDir());

@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/20 14:48:37 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/20 16:10:39 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -597,8 +597,6 @@ void Client::parse(const std::string &request)
 		this->responseString = this->getHttpHeaders() + response.content;
 		return;
 	}
-
-	this->generateResponse();
 }
 
 const std::string &Client::getResponse() const { return this->responseString; }
