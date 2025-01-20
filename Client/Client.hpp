@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/20 12:19:19 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/20 17:22:06 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,17 +29,22 @@ private:
 	int port;
 	int clientFd;
 	int content_length;
+	
+	bool isCGI;
+	bool isBinary;
 	bool isChunked;
 	bool isContentLenght;
-	bool isBinary;
-	std::string server_name;
-	std::string path;
-	std::string method;
-	std::string body;
-	std::string boundary;
-	std::string content_type;
-	std::map<std::string, std::string> headers;
 
+	std::string path;
+	std::string body;
+	std::string query;
+	std::string method;
+	std::string boundary;
+	std::string server_name;
+	std::string content_type;
+	
+	std::map<std::string, std::string> headers;
+	
 	Config *config;
 	std::string upload_dir;
 
@@ -49,7 +54,6 @@ private:
 	void clear();
 
 	void handleFirstLine(std::istringstream &requestStream);
-	void generateResponse();
 	void checkConfigs();
 
 	Server *getServer();
@@ -67,10 +71,16 @@ private:
 	bool isCGIRequest(const std::string &path);
 	void setErrorResponse(int statusCode);
 	void setSuccessResponse(int statusCode, const std::string &path);
-	
+	std::string getHttpHeaders();
+
+	bool fileExists(const std::string &path);
+	bool isDirectory(const std::string &path);
+	bool hasReadPermission(const std::string &path);
+
 public:
 	void setup(int fd, Config *config);
 	void parse(const std::string &request);
+	void generateResponse();
 	const std::string &getBody() const;
 	const std::string &getBoundary() const;
 	const std::string &getMethod() const;
@@ -79,6 +89,7 @@ public:
 	const bool &getIsChunked() const;
 	const bool &getIsBinary() const;
 	const bool &getIsContentLenght() const;
+	const bool &getIsCGI() const;
 	const std::string &getResponse() const;
 	const std::string &getUploadDir() const;
 	const std::string &getContentType() const;

@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/20 12:24:39 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/20 17:22:22 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,6 +22,18 @@ bool Client::isCGIRequest(const std::string &path)
 void Client::setErrorResponse(int statusCode)
 {
 	response.content = loadErrorPage(getErrorPagePath(statusCode), statusCode);
+	response.statusCode = statusCode;
+}
+
+void Client::setSuccessResponse(int statusCode, const std::string &path)
+{
+	if (this->isDirectory(path))
+	{
+		response.content = this->loadFiles(path);
+		response.statusCode = statusCode;
+		return;
+	}
+	response.content = this->loadFile(path);
 	response.statusCode = statusCode;
 }
 
@@ -59,8 +71,8 @@ void Client::handleCGIRequest(const std::string &indexPath)
 		cgiPath = "/Users/alaalalm/Desktop/webserv/Cgi/php-cgi";
 	else
 		cgiPath = "/Users/alaalalm/Desktop/webserv/Cgi/python-cgi";
-	const std::string outPutFile = "/tmp/cgi_out_" + std::to_string(this->clientFd);
-	const std::string tempDataFile = "/tmp/cgi_input_" + std::to_string(this->clientFd);
+	const std::string cgiOutputPath = "/tmp/cgi_out_" + std::to_string(this->clientFd);
+	const std::string cgiInputPath = "/tmp/cgi_input_" + std::to_string(this->clientFd);
 
 	pid_t pid = fork();
 	if (pid < 0)
@@ -72,7 +84,22 @@ void Client::handleCGIRequest(const std::string &indexPath)
 
 	if (pid == 0)
 	{
-		this->body = "name=John+Doe&email=johndoe%40example.com";
+		if (this->method == METHOD_POST)
+		{
+			std::ifstream inputFile(cgiInputPath);
+			if (inputFile)
+			{
+				std::stringstream inputBuffer;
+				inputBuffer << inputFile.rdbuf();
+				this->body = inputBuffer.str();
+			}
+			else
+			{
+				std::cerr << cgiInputPath << std::endl;
+				std::cerr << "Failed to read input file" << std::endl;
+				exit(EXIT_FAILURE);
+			}
+		}
 
 		std::map<std::string, std::string> env;
 		env["GATEWAY_INTERFACE"] = "CGI/1.1";
@@ -84,7 +111,8 @@ void Client::handleCGIRequest(const std::string &indexPath)
 		env["REMOTE_ADDR"] = this->server_name;
 		env["SERVER_PORT"] = std::to_string(port);
 		env["HTTP_USER_AGENT"] = "Client ID:" + std::to_string(clientFd);
-
+		env["QUERY_STRING"] = this->query;
+		
 		char **envp = new char *[env.size() + 1];
 		int i = 0;
 		for (std::map<std::string, std::string>::iterator it = env.begin(); it != env.end(); ++it)
@@ -94,7 +122,7 @@ void Client::handleCGIRequest(const std::string &indexPath)
 		}
 		envp[i] = NULL;
 
-		int outFd = open(outPutFile.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+		int outFd = open(cgiOutputPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
 		if (outFd < 0)
 		{
 			for (int j = 0; j < i; ++j)
@@ -105,21 +133,19 @@ void Client::handleCGIRequest(const std::string &indexPath)
 		dup2(outFd, STDOUT_FILENO);
 		close(outFd);
 
-		std::ofstream cgiInput(tempDataFile.c_str());
-		if (cgiInput)
-			cgiInput << this->body;
-		cgiInput.close();
+		if (this->method == METHOD_POST)
+		{
+			int inputFd = open(cgiInputPath.c_str(), O_RDONLY);
+			if (inputFd < 0)
+			{
+				std::cerr << "Failed to open temp form data file" << std::endl;
+				exit(EXIT_FAILURE);
+			}
+			dup2(inputFd, STDIN_FILENO);
+			close(inputFd);
+		}
 
 		const char *argv[] = {cgiPath.c_str(), indexPath.c_str(), NULL};
-
-		int inputFd = open(tempDataFile.c_str(), O_RDONLY);
-		if (inputFd < 0)
-		{
-			std::cerr << "Failed to open temp form data file" << std::endl;
-			exit(EXIT_FAILURE);
-		}
-		dup2(inputFd, STDIN_FILENO);
-		close(inputFd);
 
 		if (execve(cgiPath.c_str(), const_cast<char **>(argv), envp) == -1)
 		{
@@ -143,7 +169,7 @@ void Client::handleCGIRequest(const std::string &indexPath)
 
 		if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
 		{
-			std::ifstream cgiOutput(outPutFile.c_str());
+			std::ifstream cgiOutput(cgiOutputPath.c_str());
 			if (cgiOutput)
 			{
 				std::stringstream buffer;
@@ -162,7 +188,7 @@ void Client::handleCGIRequest(const std::string &indexPath)
 		else
 			this->setErrorResponse(500);
 
-		unlink(outPutFile.c_str());
+		unlink(cgiOutputPath.c_str());
 	}
 }
 
@@ -262,13 +288,13 @@ std::string Client::loadErrorPage(const std::string &filePath, int statusCode)
 	return html;
 }
 
-bool fileExists(const std::string &path)
+bool Client::fileExists(const std::string &path)
 {
 	struct stat buffer;
 	return (stat(path.c_str(), &buffer) == 0);
 }
 
-bool isDirectory(const std::string &path)
+bool Client::isDirectory(const std::string &path)
 {
 	struct stat statbuf;
 	if (stat(path.c_str(), &statbuf) != 0)
@@ -276,7 +302,7 @@ bool isDirectory(const std::string &path)
 	return S_ISDIR(statbuf.st_mode);
 }
 
-bool hasReadPermission(const std::string &path)
+bool Client::hasReadPermission(const std::string &path)
 {
 	return (access(path.c_str(), R_OK) == 0);
 }
@@ -347,20 +373,16 @@ std::string Client::loadFiles(const std::string &directory)
 
 	while ((entry = readdir(dir)) != NULL)
 	{
-		// Skip "." and ".." entries
 		if (std::strcmp(entry->d_name, ".") == 0 || std::strcmp(entry->d_name, "..") == 0)
 			continue;
 
 		std::string entryPath = directory + "/" + entry->d_name;
 
-		// Get file status
 		if (stat(entryPath.c_str(), &entryStat) != 0)
 			continue;
 
-		// Determine file type
 		std::string fileType = S_ISDIR(entryStat.st_mode) ? "Directory" : "File";
 
-		// Add row to the table
 		fileListHTML += "<tr>";
 		fileListHTML += "<td><a href='/";
 		fileListHTML += entry->d_name;
@@ -379,46 +401,29 @@ void Client::checkConfigs()
 	Server *server = this->getServer();
 
 	if (!server)
-	{
-		this->setErrorResponse(404);
-		return;
-	}
+		return this->setErrorResponse(404);
 
 	Location *location = this->getLocation();
 
 	if (location)
 	{
 		if (std::find(location->accepted_methods.begin(), location->accepted_methods.end(), this->method) == location->accepted_methods.end())
-		{
-			this->setErrorResponse(405);
-			return;
-		}
+			return this->setErrorResponse(405);
 
 		if (!location->index.empty())
 		{
 			std::string indexPath = location->root_folder + "/" + location->index;
 
 			if (!fileExists(indexPath))
-			{
-				this->setErrorResponse(404);
-				return;
-			}
+				return this->setErrorResponse(404);
 
 			if (!hasReadPermission(indexPath))
-			{
-				this->setErrorResponse(403);
-				return;
-			}
+				return this->setErrorResponse(403);
 
 			if (isCGIRequest(indexPath))
-			{
-				handleCGIRequest(indexPath);
-				return;
-			}
+				return handleCGIRequest(indexPath);
 
-			response.content = this->loadFile(indexPath);
-			response.statusCode = 200;
-			return;
+			return this->setSuccessResponse(200, indexPath);
 		}
 
 		if (location->autoindex)
@@ -429,50 +434,33 @@ void Client::checkConfigs()
 			{
 				std::string fullPath = location->root_folder + this->path;
 				if (!isDirectory(fullPath))
-				{
-					this->setErrorResponse(404);
-					return;
-				}
+					return this->setErrorResponse(404);
 
-				response.content = this->loadFiles(fullPath);
-				response.statusCode = 200;
-				return;
+				return this->setSuccessResponse(200, fullPath);
 			}
 
-			response.content = this->loadFile(defaultFilePath);
-			response.statusCode = 200;
-			return;
+			return this->setSuccessResponse(200, defaultFilePath);
 		}
 
 		if (location->index.empty())
-		{
-			this->setErrorResponse(404);
-			return;
-		}
-	}
-	
-	if (isDirectory(server->root_folder + this->path))
-	{
-		response.content = this->loadFiles(server->root_folder + this->path);
-		response.statusCode = 200;
-		return;
+			return this->setErrorResponse(404);
 	}
 
+	if (isDirectory(server->root_folder + this->path))
+		return this->setSuccessResponse(200, server->root_folder + this->path);
+
 	if (fileExists(server->root_folder + this->path))
-	{
-		response.content = loadFile(server->root_folder + this->path);
-		response.statusCode = 200;
-		return;
-	}
+		return this->setSuccessResponse(200, server->root_folder + this->path);
 
 	this->setErrorResponse(404);
 }
 
-std::string setHttpHeaders(const std::string &contentType, const std::string &content)
+std::string Client::getHttpHeaders()
 {
-	std::string headers = "HTTP/1.1 200 OK\r\n";
-	headers += "Content-Type: " + contentType + "\r\n";
-	headers += "Content-Length: " + std::to_string(content.size()) + "\r\n";
+	int statusCode = this->response.statusCode;
+	std::string headers = "HTTP/1.1 " + std::to_string(statusCode) + " " + this->config->statusCodes[statusCode] + "\r\n";
+	headers += "Content-Type: " + this->response.contentType + "\r\n";
+	headers += "Content-Length: " + std::to_string(this->response.content.size()) + "\r\n";
 	headers += "Connection: close\r\n";
 	headers += "\r\n";
 	return headers;
@@ -489,11 +477,9 @@ void Client::generateResponse()
 
 	logRequest(response.statusCode);
 
-	std::string mimeType = getMimeType(this->path);
+	this->response.contentType = getMimeType(this->path);
 
-	this->responseString =
-		setHttpHeaders(mimeType, response.content) +
-		response.content;
+	this->responseString = getHttpHeaders() + response.content;
 }
 
 void Client::handleFirstLine(std::istringstream &requestStream)
@@ -514,7 +500,18 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 	if (secondSpace == std::string::npos)
 		throw std::runtime_error("Invalid request line format");
 
-	this->path = line.substr(firstSpace + 1, secondSpace - firstSpace - 1);
+	std::string fullPath = line.substr(firstSpace + 1, secondSpace - firstSpace - 1);
+
+	size_t queryPos = fullPath.find('?');
+	if (queryPos != std::string::npos)
+	{
+		this->query = fullPath.substr(queryPos + 1);
+		fullPath = fullPath.substr(0, queryPos);
+	}
+	this->path = fullPath;
+
+	if (this->isCGIRequest(this->path))
+		this->isCGI = true;
 }
 
 void Client::clear()
@@ -597,37 +594,21 @@ void Client::parse(const std::string &request)
 		}
 	}
 
-	for (std::vector<Server>::const_iterator serverIt = config->servers.begin(); serverIt != config->servers.end(); ++serverIt)
-	{
-		// if (std::find(serverIt->server_names.begin(), serverIt->server_names.end(), this->server_name) == serverIt->server_names.end() || serverIt->listen_port != this->port)
-		if (std::find(serverIt->server_names.begin(), serverIt->server_names.end(), this->server_name) == serverIt->server_names.end())
-			continue;
-
-		for (std::map<std::string, Location>::const_iterator locIt = serverIt->locations.begin(); locIt != serverIt->locations.end(); ++locIt)
-		{
-			if (this->path == locIt->first)
-				this->upload_dir = locIt->second.upload_dir;
-		}
-	}
+	Location *location = this->getLocation();
+	if (this->getLocation())
+		this->upload_dir = location->upload_dir;
 
 	if (!this->isChunked && !this->isContentLenght && this->method == METHOD_POST)
 	{
 		response.statusCode = 400;
+		response.contentType = getMimeType(this->path);
+		response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
+
 		logRequest(response.statusCode);
 
-		std::string mimeType = getMimeType(this->path);
-		response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
-		this->responseString =
-			"HTTP/1.1 " + std::to_string(response.statusCode) + " " + this->config->statusCodes[response.statusCode] + "\r\n" +
-			"Content-Type: " + mimeType + "\r\n" +
-			"Content-Length: " + std::to_string(response.content.size()) + "\r\n" +
-			"Connection: close\r\n"
-			"\r\n" +
-			response.content;
+		this->responseString = this->getHttpHeaders() + response.content;
 		return;
 	}
-
-	this->generateResponse();
 }
 
 const std::string &Client::getResponse() const { return this->responseString; }
@@ -647,6 +628,8 @@ const bool &Client::getIsChunked() const { return this->isChunked; }
 const bool &Client::getIsBinary() const { return this->isBinary; }
 
 const bool &Client::getIsContentLenght() const { return this->isContentLenght; }
+
+const bool &Client::getIsCGI() const { return this->isCGI; }
 
 const std::string &Client::getUploadDir() const { return this->upload_dir; }
 

@@ -128,7 +128,6 @@ void WebServ::AddSocket(int socket, bool isListener, int event)
   fds.push_back(pfd);
 }
 
-
 void WebServ::handleServersIncomingConnections()
 {
   while (true)
@@ -156,6 +155,7 @@ void WebServ::handleServersIncomingConnections()
       {
         // std::cerr << "POLLOUT" << std::endl;
         int client_socket = fds[i].fd;
+        this->clients[client_socket].generateResponse();
         std::string response = this->clients[client_socket].getResponse();
         ssize_t &client_sentBytes = this->clientDataMap[client_socket].sent_bytes;
         ssize_t bytes_sent = send(client_socket, response.c_str() + client_sentBytes,
@@ -250,10 +250,8 @@ void WebServ::fileReachedEnd(std::string &chunk, int client_socket, size_t &rcl,
 {
   if (rcl >= wcl)
   {
-    std::cout << chunk << std::endl;
     if (!this->clients[client_socket].getIsCGI())
       BodyMap[client_socket].ParseBody(chunk, this->clientDataMap[client_socket].boundary, clients[client_socket].getUploadDir());
-    cgiInput << chunk;
     cgiInput.close();
     size_t index = getClientIndex(client_socket);
     fds[index].events = POLLOUT;
@@ -273,7 +271,7 @@ void WebServ::parseFormData(int client_socket, std::string &boundary, std::strin
     {
       // std::cout << chunk.substr(0, pos);
       BodyMap[client_socket].ParseBody(chunk.substr(0, pos), boundary, clients[client_socket].getUploadDir());
-      cgiInput << chunk.substr(0, pos);
+      // cgiInput << chunk.substr(0, pos);
       chunk = chunk.substr(pos);
       pos = 0;
     }
@@ -285,7 +283,7 @@ void WebServ::parseFormData(int client_socket, std::string &boundary, std::strin
     {
       // std::cout << boundaryString + chunk.substr(0, pos2);
       BodyMap[client_socket].ParseBody(boundaryString + chunk.substr(0, pos2), boundary, clients[client_socket].getUploadDir());
-      cgiInput << boundaryString + chunk.substr(0, pos2);
+      // cgiInput << boundaryString + chunk.substr(0, pos2);
       chunk = chunk.substr(pos2);
       fileReachedEnd(chunk, client_socket, rcl, wcl, cgiInput);
       return;
@@ -298,7 +296,7 @@ void WebServ::parseFormData(int client_socket, std::string &boundary, std::strin
   }
   // std::cout << (flag ? boundaryString : "") + chunk;
   BodyMap[client_socket].ParseBody((flag ? boundaryString : "") + chunk, boundary, clients[client_socket].getUploadDir());
-  cgiInput << (flag ? boundaryString : "") + chunk;
+  // cgiInput << (flag ? boundaryString : "") + chunk;
   chunk.clear();
   fileReachedEnd(chunk, client_socket, rcl, wcl, cgiInput);
 }
@@ -306,8 +304,6 @@ void WebServ::parseFormData(int client_socket, std::string &boundary, std::strin
 ////////////////////////////////////////
 ///             CLIENTS              ///
 ////////////////////////////////////////
-
-
 
 void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_received, std::string &boundary)
 {
@@ -325,16 +321,16 @@ void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_r
     chunk = chunk.substr(this->clientDataMap[client_socket].header_length);
     this->clientDataMap[client_socket].removeHeader = true;
   }
-
+  std::cout << "chunk: " << this->clients[client_socket].getIsCGI() << std::endl;
   if (this->clients[client_socket].getIsCGI())
   {
+    std::cout << "CGI" << std::endl;
     cgiInput << chunk;
     chunk.clear();
     fileReachedEnd(chunk, client_socket, rcl, wcl, cgiInput);
   }
-  else if (this->clients[client_socket].getContentType().find("multipart/form-data;") != std::string::npos) {
+  else if (this->clients[client_socket].getContentType().find("multipart/form-data;") != std::string::npos)
     parseFormData(client_socket, boundary, chunk, rcl, wcl, cgiInput);
-  }
   else if (this->clients[client_socket].getIsBinary())
   {
     BodyMap[client_socket].ParseBody(chunk, "", clients[client_socket].getUploadDir());
