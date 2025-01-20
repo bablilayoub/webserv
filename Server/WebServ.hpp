@@ -26,6 +26,7 @@
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
 
+// class Client;
 struct ClientData
 {
   std::string chunk;
@@ -75,7 +76,7 @@ public:
   void getHeaderData(int client_socket, bool *flag, std::string &boundary);
   void handlePostRequest(int client_socket, char *buffer, ssize_t bytes_received, std::string &boundary);
   void cleanUp(int client_socket, size_t &i);
-  void parseFormData(int client_socket, std::string &boundary, std::string &chunk, size_t &rcl, size_t &wcl);
+  void parseFormData(int client_socket, std::string &boundary, std::string &chunk, size_t &rcl, size_t &wcl, std::ofstream &cgiInput);
   void fileReachedEnd(std::string &chunk, int client_socket, size_t &rcl, size_t &wcl, std::ofstream &cgiInput);
 
   void initServers();
