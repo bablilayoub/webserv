@@ -27,7 +27,7 @@ FileUpload::FileUpload() {
     this->pos = -42;
     this->FileNameEmpty = false;
 
-    this->IsChunked = false;
+    this->IsChunked = true;
     this->ChunkSizeString = "";
     this->FirstChunk = true;
     this->ChunkDone = false;
@@ -104,7 +104,7 @@ void    FileUpload::OpenFile(std::string &path) {
         if (!this->FileName.empty()) 
         {
             std::string OpenPath = path + "/" + this->FileName;
-            this->fd = open(OpenPath.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0666);
+            this->fd = open(OpenPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0666);
             if (this->fd < 0) 
             {
                 std::cout << "Failed to open the file : " << OpenPath << std::endl;

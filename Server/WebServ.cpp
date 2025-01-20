@@ -321,10 +321,9 @@ void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_r
     chunk = chunk.substr(this->clientDataMap[client_socket].header_length);
     this->clientDataMap[client_socket].removeHeader = true;
   }
-  std::cout << "chunk: " << this->clients[client_socket].getIsCGI() << std::endl;
+
   if (this->clients[client_socket].getIsCGI())
   {
-    std::cout << "CGI" << std::endl;
     cgiInput << chunk;
     chunk.clear();
     fileReachedEnd(chunk, client_socket, rcl, wcl, cgiInput);
