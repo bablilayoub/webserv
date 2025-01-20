@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/19 15:36:34 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/19 21:41:16 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,7 +27,7 @@ FileUpload::FileUpload() {
     this->pos = -42;
     this->FileNameEmpty = false;
 
-    this->IsChunked = true;
+    this->IsChunked = false;
     this->ChunkSizeString = "";
     this->FirstChunk = true;
     this->ChunkDone = false;
@@ -227,8 +227,8 @@ void FileUpload::HandleChunkedData(std::string &Body) {
 
 void    FileUpload::ParseBody(std::string Body, std::string Boundary, std::string path) 
 {
-    // std::cout << Body << std::endl;
-    // return ;
+    std::cout << Body << std::endl;
+    return ;
     if (Body.find(Boundary + "--") != std::string::npos) 
         return ;
     if (this->DataFinish)
@@ -244,7 +244,6 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary, std::strin
         this->pos = Body.find(this->ContentType);
         if (this->pos != std::string::npos)
             this->ParseContentType(Body);
-        // this->HeaderFetched = true;
         // if (this->IsChunked) {
         //     Body = Body.substr(2, Body.length());
         // }
