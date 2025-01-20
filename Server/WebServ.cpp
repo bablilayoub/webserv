@@ -82,7 +82,6 @@ void WebServ::initServers()
     host = this->config->servers[i].host;
     ports = this->config->servers[i].ports;
 
-
     for (size_t j = 0; j < ports.size(); j++)
     {
       // if (std::find(ports.begin(), ports.end(), ports[i]) != ports.end())
@@ -243,7 +242,7 @@ void WebServ::fileReachedEnd(std::string &chunk, int client_socket, size_t &rcl,
   }
 }
 
-void WebServ::parseIfContentLength(int client_socket, std::string &boundary, std::string &chunk, size_t &rcl, size_t &wcl)
+void WebServ::parseFormData(int client_socket, std::string &boundary, std::string &chunk, size_t &rcl, size_t &wcl)
 {
   bool flag = false;
   std::string boundaryString;
@@ -324,11 +323,11 @@ void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_r
     this->clientDataMap[client_socket].removeHeader = true;
   }
 
-  if (this->clients[client_socket].getIsContentLenght())
-    parseIfContentLength(client_socket, boundary, chunk, rcl, wcl);
-  // else if (this->clients[client_socket].getIsChunked())
+  if (this->clients[client_socket].getContentType().find("multipart/form-data;") != std::string::npos)
+    parseFormData(client_socket, boundary, chunk, rcl, wcl);
+  // else if (this->clients[client_socket].getIsBinary())
   // {
-  //   // parseIfChunked();
+  //   BodyMap[client_socket].ParseBody(chunk, "", clients[client_socket].getUploadDir());
   // }
   // else
   // {
