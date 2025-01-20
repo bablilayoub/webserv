@@ -59,7 +59,7 @@ private:
   std::map<int, ClientData> clientDataMap;
   std::vector<pollfd> fds;
   std::vector<int> listeners;
-  int listen_port;
+  std::vector<int> ports;
   Config *config;
 
 public:
@@ -75,7 +75,7 @@ public:
   void handlePostRequest(int client_socket, char *buffer, ssize_t bytes_received, std::string &boundary);
   void cleanUp(int client_socket, size_t &i);
   void parseIfContentLength(int client_socket, std::string &boundary, std::string &chunk, size_t &rcl, size_t &wcl);
-  void fileReachedEnd(std::string &chunk, int client_socket, size_t &rcl, size_t &wcl);
+  void fileReachedEnd(std::string &chunk, int client_socket, size_t &rcl, size_t &wcl, std::ofstream &cgiInput);
 
   void initServers();
   void handleServersIncomingConnections();
