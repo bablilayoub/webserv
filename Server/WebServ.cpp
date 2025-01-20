@@ -77,7 +77,7 @@ void WebServ::initServers()
   {
     // if (std::find(ports.begin(), ports.end(), this->config->servers[i].listen_port) != ports.end())
     //   continue;
-    int listener = this->init(this->config->servers[i].listen_port);
+    int listener = this->init(this->config->servers[i].ports[0]);
     this->listeners.push_back(listener);
     this->AddSocket(listener, true, POLLIN);
     // ports.push_back(this->config->servers[i].listen_port);
