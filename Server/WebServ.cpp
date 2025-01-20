@@ -212,7 +212,6 @@ void WebServ::getHeaderData(int client_socket, bool *flag, std::string &boundary
     }
   }
   this->clients[client_socket].parse(header);
-  // std::cout << header << std::endl;
   this->clientDataMap[client_socket].wcl = this->clients[client_socket].getContentLength() + this->clientDataMap[client_socket].header_length;
   boundary = getBoundary(header);
 }
