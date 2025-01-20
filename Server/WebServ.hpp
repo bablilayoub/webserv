@@ -14,6 +14,7 @@
 #include "../Client/Config.hpp"
 #include <map>
 #include <signal.h>
+#include <arpa/inet.h>
 
 #define BUFFER_SIZE 80001
 #define TIME_OUT 5000
@@ -65,9 +66,9 @@ private:
 public:
   // WebServ();
   WebServ(Config *config);
-  int init(const int port);
+  int init(std::string host, const int port);
   void setNonBlockingMode(int socket);
-  void socketConfig(const int port);
+  void socketConfig(std::string host, const int port);
   void closeFds();
   void AddSocket(int socket, bool isListener, int event);
   void handleClientsRequest(int client_socket, size_t &i);

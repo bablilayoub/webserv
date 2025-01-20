@@ -28,9 +28,9 @@ void Client::handleCGIRequest(const std::string &indexPath)
 {
 	std::string cgiPath;
 	if (indexPath.find(".php") != std::string::npos)
-		cgiPath = "/Users/abablil/Desktop/webserv/Cgi/php-cgi";
+		cgiPath = "/Users/alaalalm/Desktop/webserv/Cgi/php-cgi";
 	else
-		cgiPath = "/Users/abablil/Desktop/webserv/Cgi/python-cgi";
+		cgiPath = "/Users/alaalalm/Desktop/webserv/Cgi/python-cgi";
 	const std::string outPutFile = "/tmp/cgi_out_" + std::to_string(this->clientFd);
 	const std::string tempDataFile = "/tmp/cgi_input_" + std::to_string(this->clientFd);
 

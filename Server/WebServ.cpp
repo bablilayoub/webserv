@@ -6,7 +6,7 @@
 
 WebServ::WebServ(Config *config) : config(config) {}
 
-int WebServ::init(const int port)
+int WebServ::init(std::string host, const int port)
 {
   int listener = socket(AF_INET, SOCK_STREAM, 0);
   if (listener == INVALID_SOCKET)
@@ -30,7 +30,7 @@ int WebServ::init(const int port)
     // continue;
   }
 
-  this->socketConfig(port);
+  this->socketConfig(host, port);
   this->setNonBlockingMode(listener);
 
   if (bind(listener, (sockaddr *)&this->hint, sizeof(this->hint)) == SOCKET_ERROR)
@@ -52,12 +52,13 @@ int WebServ::init(const int port)
   return listener;
 }
 
-void WebServ::socketConfig(const int port)
+void WebServ::socketConfig(std::string host, const int port)
 {
   memset(&this->hint, 0, sizeof(this->hint));
   this->hint.sin_family = AF_INET;
   this->hint.sin_port = htons(port);
-  this->hint.sin_addr.s_addr = INADDR_ANY;
+  if (inet_pton(AF_INET, host.c_str(), &this->hint.sin_addr) <= 0)
+    std::cerr << "Invalid address: " << host << std::endl; // to remove
 };
 
 void WebServ::setNonBlockingMode(int socket)
@@ -72,15 +73,24 @@ void WebServ::setNonBlockingMode(int socket)
 void WebServ::initServers()
 {
   uint16_t serversSize = this->config->servers.size();
+  std::string host;
+  std::vector<int> ports;
+  int listener;
 
   for (size_t i = 0; i < serversSize; i++)
   {
-    // if (std::find(ports.begin(), ports.end(), this->config->servers[i].listen_port) != ports.end())
-    //   continue;
-    int listener = this->init(this->config->servers[i].ports[0]);
-    this->listeners.push_back(listener);
-    this->AddSocket(listener, true, POLLIN);
-    // ports.push_back(this->config->servers[i].listen_port);
+    host = this->config->servers[i].host;
+    ports = this->config->servers[i].ports;
+
+
+    for (size_t j = 0; j < ports.size(); j++)
+    {
+      // if (std::find(ports.begin(), ports.end(), ports[i]) != ports.end())
+      //   continue;
+      listener = this->init(host, ports[j]);
+      this->listeners.push_back(listener);
+      this->AddSocket(listener, true, POLLIN);
+    }
   }
 }
 
@@ -203,6 +213,7 @@ void WebServ::getHeaderData(int client_socket, bool *flag, std::string &boundary
     }
   }
   this->clients[client_socket].parse(header);
+  // std::cout << header << std::endl;
   this->clientDataMap[client_socket].wcl = this->clients[client_socket].getContentLength() + this->clientDataMap[client_socket].header_length;
   boundary = getBoundary(header);
 }
@@ -223,7 +234,6 @@ void WebServ::fileReachedEnd(std::string &chunk, int client_socket, size_t &rcl,
 {
   if (rcl >= wcl)
   {
-    // std::cout << chunk << std::endl;
     BodyMap[client_socket].ParseBody(chunk, this->clientDataMap[client_socket].boundary, clients[client_socket].getUploadDir());
     cgiInput << chunk;
     cgiInput.close();
