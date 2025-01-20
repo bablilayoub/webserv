@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/20 11:16:06 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/20 12:24:39 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,9 +19,37 @@ bool Client::isCGIRequest(const std::string &path)
 	return false;
 }
 
-void Client::setErrorResponse(int statusCode) {
-    response.content = loadErrorPage(getErrorPagePath(statusCode), statusCode);
-    response.statusCode = statusCode;
+void Client::setErrorResponse(int statusCode)
+{
+	response.content = loadErrorPage(getErrorPagePath(statusCode), statusCode);
+	response.statusCode = statusCode;
+}
+
+Server *Client::getServer()
+{
+	for (std::vector<Server>::iterator serverIt = this->config->servers.begin(); serverIt != this->config->servers.end(); ++serverIt)
+	{
+		if (std::find(serverIt->ports.begin(), serverIt->ports.end(), this->port) != serverIt->ports.end())
+		{
+			if (std::find(serverIt->server_names.begin(), serverIt->server_names.end(), this->server_name) != serverIt->server_names.end())
+				return &(*serverIt);
+		}
+	}
+	return NULL;
+}
+
+Location *Client::getLocation()
+{
+	Server *server = this->getServer();
+	if (server == NULL)
+		return NULL;
+
+	for (std::map<std::string, Location>::iterator locIt = server->locations.begin(); locIt != server->locations.end(); ++locIt)
+	{
+		if (locIt->first == this->path)
+			return &locIt->second;
+	}
+	return NULL;
 }
 
 void Client::handleCGIRequest(const std::string &indexPath)
@@ -53,7 +81,7 @@ void Client::handleCGIRequest(const std::string &indexPath)
 		env["CONTENT_TYPE"] = this->content_type;
 		env["CONTENT_LENGTH"] = std::to_string(this->body.size());
 		env["REDIRECT_STATUS"] = "200";
-		env["REMOTE_ADDR"] = this->ip;
+		env["REMOTE_ADDR"] = this->server_name;
 		env["SERVER_PORT"] = std::to_string(port);
 		env["HTTP_USER_AGENT"] = "Client ID:" + std::to_string(clientFd);
 
@@ -166,7 +194,7 @@ void Client::logRequest(int statusCode)
 			  << std::setw(2) << std::setfill('0') << localTime->tm_min << ":"
 			  << std::setw(2) << std::setfill('0') << localTime->tm_sec << "] "
 			  << std::setfill(' ')
-			  << BOLD << "Server: " << BLUE << this->ip + ":" + std::to_string(this->port) << RESET << " "
+			  << BOLD << "Server: " << BLUE << this->server_name + ":" + std::to_string(this->port) << RESET << " "
 			  << BOLD << "Method: " << BLUE << std::setw(8) << std::left << this->method << RESET
 			  << BOLD << "Path: " << WHITE << std::setw(30) << this->path << RESET
 			  << BOLD << "Status: " << statusColor << statusCode << RESET
@@ -262,7 +290,6 @@ std::string Client::getMimeType(const std::string &path)
 		if (this->config->mimeTypes.count(ext))
 			return this->config->mimeTypes.at(ext);
 	}
-
 	return "text/html";
 }
 
@@ -286,15 +313,10 @@ std::string Client::getErrorPagePath(int errorCode)
 {
 	std::string error_page_path;
 	error_page_path.clear();
-	for (std::vector<Server>::iterator serverIt = this->config->servers.begin(); serverIt != this->config->servers.end(); ++serverIt)
-	{
-		// if (std::find(serverIt->server_names.begin(), serverIt->server_names.end(), this->ip) == serverIt->server_names.end() || serverIt->listen_port != this->port)
-		if (std::find(serverIt->server_names.begin(), serverIt->server_names.end(), this->ip) == serverIt->server_names.end())
-			continue;
-		std::map<int, std::string>::iterator it = serverIt->error_pages.find(errorCode);
-		if (it != serverIt->error_pages.end())
-			error_page_path = serverIt->root_folder + "/" + it->second;
-	}
+	Server *server = this->getServer();
+	std::map<int, std::string>::iterator it = server->error_pages.find(errorCode);
+	if (it != server->error_pages.end())
+		error_page_path = server->root_folder + "/" + it->second;
 	return error_page_path;
 }
 
@@ -352,105 +374,108 @@ std::string Client::loadFiles(const std::string &directory)
 	return fileListHTML;
 }
 
-void Client::checkConfigs(struct Response *response)
+void Client::checkConfigs()
 {
-	// Iterate over servers
-	for (std::vector<Server>::const_iterator serverIt = config->servers.begin(); serverIt != config->servers.end(); ++serverIt)
+	Server *server = this->getServer();
+
+	if (!server)
 	{
-		// Check if the server name and port match
-		// if (std::find(serverIt->server_names.begin(), serverIt->server_names.end(), this->ip) == serverIt->server_names.end() || serverIt->listen_port != this->port)
-		if (std::find(serverIt->server_names.begin(), serverIt->server_names.end(), this->ip) == serverIt->server_names.end())
-			continue;
+		this->setErrorResponse(404);
+		return;
+	}
 
-		// Iterate over locations for the server
-		for (std::map<std::string, Location>::const_iterator locIt = serverIt->locations.begin(); locIt != serverIt->locations.end(); ++locIt)
+	Location *location = this->getLocation();
+
+	if (location)
+	{
+		if (std::find(location->accepted_methods.begin(), location->accepted_methods.end(), this->method) == location->accepted_methods.end())
 		{
-			const Location &location = locIt->second;
+			this->setErrorResponse(405);
+			return;
+		}
 
-			// Check if the path matches the location
-			if (locIt->first != this->path)
-				continue;
+		if (!location->index.empty())
+		{
+			std::string indexPath = location->root_folder + "/" + location->index;
 
-			// Check if the method is accepted for this location
-			if (std::find(location.accepted_methods.begin(), location.accepted_methods.end(), this->method) == location.accepted_methods.end())
+			if (!fileExists(indexPath))
 			{
-				this->setErrorResponse(405);
+				this->setErrorResponse(404);
 				return;
 			}
 
-			if (!location.index.empty())
+			if (!hasReadPermission(indexPath))
 			{
-				std::string indexPath = location.root_folder + "/" + location.index;
+				this->setErrorResponse(403);
+				return;
+			}
 
-				if (!fileExists(indexPath))
+			if (isCGIRequest(indexPath))
+			{
+				handleCGIRequest(indexPath);
+				return;
+			}
+
+			response.content = this->loadFile(indexPath);
+			response.statusCode = 200;
+			return;
+		}
+
+		if (location->autoindex)
+		{
+			std::string defaultFilePath = location->root_folder + "/" + location->index;
+
+			if (location->index.empty())
+			{
+				std::string fullPath = location->root_folder + this->path;
+				if (!isDirectory(fullPath))
 				{
 					this->setErrorResponse(404);
 					return;
 				}
 
-				if (!hasReadPermission(indexPath))
-				{
-					this->setErrorResponse(403);
-					return;
-				}
-
-				if (isCGIRequest(indexPath))
-				{
-					handleCGIRequest(indexPath);
-					return;
-				}
-
-				response->content = this->loadFile(indexPath);
-				response->statusCode = 200;
+				response.content = this->loadFiles(fullPath);
+				response.statusCode = 200;
 				return;
 			}
 
-			if (location.autoindex)
-			{
-				std::string defaultFilePath = location.root_folder + "/" + location.index;
-
-				if (location.index.empty())
-				{
-					std::string fullPath = location.root_folder + locIt->first;
-					if (!isDirectory(fullPath))
-					{
-						this->setErrorResponse(404);
-						return;
-					}
-
-					response->content = loadFiles(fullPath);
-					response->statusCode = 200;
-					return;
-				}
-
-				response->content = this->loadFile(defaultFilePath);
-				response->statusCode = 200;
-				return;
-			}
-
-			if (location.index.empty())
-			{
-				this->setErrorResponse(404);
-				return;
-			}
-		}
-
-		if (isDirectory(serverIt->root_folder + this->path))
-		{
-			response->content = loadFiles(serverIt->root_folder + this->path);
-			response->statusCode = 200;
+			response.content = this->loadFile(defaultFilePath);
+			response.statusCode = 200;
 			return;
 		}
 
-		if (fileExists(serverIt->root_folder + this->path))
+		if (location->index.empty())
 		{
-			response->content = loadFile(serverIt->root_folder + this->path);
-			response->statusCode = 200;
+			this->setErrorResponse(404);
 			return;
 		}
 	}
+	
+	if (isDirectory(server->root_folder + this->path))
+	{
+		response.content = this->loadFiles(server->root_folder + this->path);
+		response.statusCode = 200;
+		return;
+	}
+
+	if (fileExists(server->root_folder + this->path))
+	{
+		response.content = loadFile(server->root_folder + this->path);
+		response.statusCode = 200;
+		return;
+	}
 
 	this->setErrorResponse(404);
+}
+
+std::string setHttpHeaders(const std::string &contentType, const std::string &content)
+{
+	std::string headers = "HTTP/1.1 200 OK\r\n";
+	headers += "Content-Type: " + contentType + "\r\n";
+	headers += "Content-Length: " + std::to_string(content.size()) + "\r\n";
+	headers += "Connection: close\r\n";
+	headers += "\r\n";
+	return headers;
 }
 
 void Client::generateResponse()
@@ -460,19 +485,14 @@ void Client::generateResponse()
 	this->response.contentType.empty();
 	this->response.statusCode = 200;
 
-	this->checkConfigs(&response);
+	this->checkConfigs();
 
 	logRequest(response.statusCode);
 
-	// Determine MIME type based on path
 	std::string mimeType = getMimeType(this->path);
 
 	this->responseString =
-		"HTTP/1.1 " + std::to_string(response.statusCode) + " " + this->config->statusCodes[response.statusCode] + "\r\n" +
-		"Content-Type: " + mimeType + "\r\n" +
-		"Content-Length: " + std::to_string(response.content.size()) + "\r\n" +
-		"Connection: close\r\n" +
-		"\r\n" +
+		setHttpHeaders(mimeType, response.content) +
 		response.content;
 }
 
@@ -501,7 +521,7 @@ void Client::clear()
 {
 	this->port = 0;
 	this->content_length = 0;
-	this->ip.clear();
+	this->server_name.clear();
 	this->path.clear();
 	this->method.clear();
 	this->body.clear();
@@ -566,8 +586,8 @@ void Client::parse(const std::string &request)
 				if (colonPos == std::string::npos)
 					throw std::runtime_error("Invalid host format");
 
-				this->ip = line.substr(hostPrefixPos + std::string(HOST_PREFIX).length(),
-									   colonPos - (hostPrefixPos + std::string(HOST_PREFIX).length()));
+				this->server_name = line.substr(hostPrefixPos + std::string(HOST_PREFIX).length(),
+												colonPos - (hostPrefixPos + std::string(HOST_PREFIX).length()));
 				this->port = std::atof(line.substr(colonPos + 1).c_str());
 			}
 			else if (colonPos != std::string::npos)
@@ -579,8 +599,8 @@ void Client::parse(const std::string &request)
 
 	for (std::vector<Server>::const_iterator serverIt = config->servers.begin(); serverIt != config->servers.end(); ++serverIt)
 	{
-		// if (std::find(serverIt->server_names.begin(), serverIt->server_names.end(), this->ip) == serverIt->server_names.end() || serverIt->listen_port != this->port)
-		if (std::find(serverIt->server_names.begin(), serverIt->server_names.end(), this->ip) == serverIt->server_names.end())
+		// if (std::find(serverIt->server_names.begin(), serverIt->server_names.end(), this->server_name) == serverIt->server_names.end() || serverIt->listen_port != this->port)
+		if (std::find(serverIt->server_names.begin(), serverIt->server_names.end(), this->server_name) == serverIt->server_names.end())
 			continue;
 
 		for (std::map<std::string, Location>::const_iterator locIt = serverIt->locations.begin(); locIt != serverIt->locations.end(); ++locIt)
@@ -624,6 +644,10 @@ const std::string &Client::getMethod() const { return this->method; }
 
 const bool &Client::getIsChunked() const { return this->isChunked; }
 
+const bool &Client::getIsBinary() const { return this->isBinary; }
+
 const bool &Client::getIsContentLenght() const { return this->isContentLenght; }
 
 const std::string &Client::getUploadDir() const { return this->upload_dir; }
+
+const std::string &Client::getContentType() const { return this->content_type; }
