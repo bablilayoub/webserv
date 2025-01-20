@@ -577,7 +577,7 @@ void Client::parse(const std::string &request)
 					boundaryPos += std::string(BOUNDARY_PREFIX).length();
 					this->boundary = this->content_type.substr(boundaryPos, this->content_type.size() - 1);
 				}
-				else if (this->content_type.find("application/x-www-form-urlencoded") != std::string::npos)
+				else if (this->content_type.find("application/x-www-form-urlencoded") == std::string::npos)
 					this->isBinary = true;
 			}
 			else if (hostPrefixPos != std::string::npos)

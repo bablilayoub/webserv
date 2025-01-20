@@ -227,6 +227,14 @@ void FileUpload::HandleChunkedData(std::string &Body) {
 
 void    FileUpload::ParseBody(std::string Body, std::string Boundary, std::string path) 
 {
+    // if (Body.find(CRLF) != std::string::npos && Body.length() == 2)
+    // {
+    //     std::cerr << "Body is Empty" << std::endl;
+    //     return ;
+    // }
+    // std::cout << Body << std::endl;
+    // std::cout << "----------Body-----------" << std::endl;
+    // return ;
     if (Body.find(Boundary + "--") != std::string::npos) 
         return ;
     if (this->DataFinish)
