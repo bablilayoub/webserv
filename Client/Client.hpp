@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/20 12:19:19 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/20 12:37:27 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -67,7 +67,12 @@ private:
 	bool isCGIRequest(const std::string &path);
 	void setErrorResponse(int statusCode);
 	void setSuccessResponse(int statusCode, const std::string &path);
-	
+	std::string getHttpHeaders();
+
+	bool fileExists(const std::string &path);
+	bool isDirectory(const std::string &path);
+	bool hasReadPermission(const std::string &path);
+
 public:
 	void setup(int fd, Config *config);
 	void parse(const std::string &request);
