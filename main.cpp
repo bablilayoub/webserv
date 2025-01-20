@@ -1,5 +1,4 @@
-#include "./Server/TcpServer.hpp"
-#include "./Client/Config.hpp"
+#include "./Server/WebServ.hpp"
 
 int main(int ac, char **args)
 {
@@ -9,25 +8,16 @@ int main(int ac, char **args)
 		return 1;
 	}
 
-	while (true)
+	try
 	{
-		try
-		{
-			Config config(args[1]);
-			TcpServer tcpserver(&config);
-			tcpserver.initializeServer(PORT);
-			int result = tcpserver.handleIncomingConnections();
-			if (result == 1)
-			{
-				std::cerr << "Restarting server due to critical error..." << std::endl;
-				continue;
-			}
-		}
-		catch (std::exception &e)
-		{
-			std::cerr << e.what() << std::endl;
-		}
-		break;
+		Config config(args[1]);
+		WebServ webserv(&config);
+
+		webserv.initServers();
+		webserv.handleServersIncomingConnections();
 	}
-	return 0;
+	catch (std::exception &e)
+	{
+		std::cout << "Error: " << e.what() << std::endl;
+	}
 }

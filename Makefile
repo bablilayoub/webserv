@@ -8,9 +8,9 @@ FILE_UPLOAD_SRC = FileUpload.cpp
 FILE_UPLOAD_HEADERS = FileUpload.hpp
 
 # Server part
-SERVER_HEADERS = TcpServer.hpp
+SERVER_HEADERS = WebServ.hpp
 UTILS = Utils.cpp
-SERVER_SRC = TcpServer.cpp
+SERVER_SRC = WebServ.cpp
 
 # Client Part
 CLIENT_SRC = Client.cpp Config.cpp
