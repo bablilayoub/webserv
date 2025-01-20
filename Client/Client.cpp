@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/20 16:10:39 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/20 16:18:21 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -500,6 +500,9 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 		throw std::runtime_error("Invalid request line format");
 
 	this->path = line.substr(firstSpace + 1, secondSpace - firstSpace - 1);
+
+	if (this->isCGIRequest(this->path))
+		this->isCGI = true;
 }
 
 void Client::clear()
@@ -616,6 +619,8 @@ const bool &Client::getIsChunked() const { return this->isChunked; }
 const bool &Client::getIsBinary() const { return this->isBinary; }
 
 const bool &Client::getIsContentLenght() const { return this->isContentLenght; }
+
+const bool &Client::getIsCGI() const { return this->isCGI; }
 
 const std::string &Client::getUploadDir() const { return this->upload_dir; }
 

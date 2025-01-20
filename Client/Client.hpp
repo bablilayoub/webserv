@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/20 16:10:51 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/20 16:17:16 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,6 +32,7 @@ private:
 	bool isChunked;
 	bool isContentLenght;
 	bool isBinary;
+	bool isCGI;
 	std::string server_name;
 	std::string path;
 	std::string method;
@@ -84,6 +85,7 @@ public:
 	const bool &getIsChunked() const;
 	const bool &getIsBinary() const;
 	const bool &getIsContentLenght() const;
+	const bool &getIsCGI() const;
 	const std::string &getResponse() const;
 	const std::string &getUploadDir() const;
 	const std::string &getContentType() const;
