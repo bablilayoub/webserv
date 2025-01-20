@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/20 16:16:26 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/20 17:26:02 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,7 +36,7 @@ FileUpload::FileUpload() {
     this->chunkSize = 0;
 
     this->BinaryFileOpen = false;
-    this->IsBinary = false;
+    this->IsBinary = true;
 
 }
 
@@ -230,26 +230,21 @@ void FileUpload::HandleChunkedData(std::string &Body) {
 }
 
 void    FileUpload::HandleBinaryData() {
-    this->FileName = "RBL" + generate_random_string(5);
+    std::string ext = ".jpg";
+    this->FileName = "RBL" + generate_random_string(5) + ext;
     this->BinaryFileOpen = true;
     this->HeaderFetched = true;
 }
 
 void    FileUpload::ParseBody(std::string Body, std::string Boundary, std::string path) 
 {
-    // std::cout << Body << std::endl;
+    std::cout << Body << std::endl;
     // std::cout << Body.length() << std::endl;
     // std::cout << " ------- Body------- " << std::endl;
-    // return ;
-    std::cout << "1" << std::endl;
-    if (Body.empty()) {
-        std::cout << "Body Empty" << std::endl;
-        return ;
-    }
+    return ;
     if (Body.find(Boundary + "--") != std::string::npos && !this->IsBinary)
         return ;
     
-
     if (this->IsBinary && !this->BinaryFileOpen) 
     {
         HandleBinaryData();
