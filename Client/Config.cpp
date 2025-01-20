@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 10:49:18 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/16 10:07:23 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/20 11:14:23 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,32 @@ Config::~Config()
 {
 	if (configFile)
 		configFile.close();
+}
+
+std::string Config::trimTrailingSlash(const std::string &path)
+{
+	if (path.empty())
+		return path;
+	std::string trimmed = path;
+	while (trimmed.back() == '/')
+		trimmed.pop_back();
+	return trimmed;
+}
+
+bool Config::isValidDirectory(const std::string &path)
+{
+	struct stat statbuf;
+
+	if (stat(path.c_str(), &statbuf) != 0)
+		return false;
+
+	if (!S_ISDIR(statbuf.st_mode))
+		return false;
+
+	if (access(path.c_str(), R_OK | W_OK | X_OK) != 0)
+		return false;
+
+	return true;
 }
 
 void Config::trimWhitespace(std::string &line)
@@ -92,8 +118,12 @@ void Config::processClosingBrace()
 	{
 		if (currentServer.root_folder.empty())
 			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Root folder is not specified");
-		if (currentServer.listen_port < 1 || currentServer.listen_port > 65535)
-			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid port , Allowed ports (1 to 65535)");
+		for (size_t i = 0; i < currentServer.ports.size(); i++)
+			if (currentServer.ports[i] < 1 || currentServer.ports[i] > 65535)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid port number");
+		if (currentServer.cgi_timeout < 1)
+			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid CGI Timeout, it must be 1 or bigger");
+
 		servers.push_back(currentServer);
 	}
 }
@@ -106,6 +136,35 @@ int Config::parseInt(const std::string &value)
 	return std::atof(value.c_str());
 }
 
+bool Config::isValidIpv4(const std::string &ip)
+{
+	std::vector<std::string> parts;
+	std::istringstream stream(ip);
+	std::string part;
+	
+	while (std::getline(stream, part, '.'))
+	{
+		if (part.empty())
+			return false;
+		for (size_t i = 0; i < part.size(); i++)
+			if (!std::isdigit(part[i]))
+				return false;
+		parts.push_back(part);
+	}
+	
+	if (parts.size() != 4)
+		return false;
+	
+	for (size_t i = 0; i < parts.size(); i++)
+	{
+		int num = std::atof(parts[i].c_str());
+		if (num < 0 || num > 255)
+			return false;
+	}
+	
+	return true;
+}
+
 void Config::handleKeyValue(const std::string &line)
 {
 	std::string key, value;
@@ -113,8 +172,32 @@ void Config::handleKeyValue(const std::string &line)
 
 	if (blockStack.top() == "server")
 	{
-		if (key == "listen")
-			currentServer.listen_port = this->parseInt(value);
+		if (key == "host")
+		{
+			if (value == "localhost")
+				currentServer.host = "127.0.0.1";
+			else if (!this->isValidIpv4(value))
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid host");
+			else
+				currentServer.host = value;
+		}
+		else if (key == "listen")
+		{
+			currentServer.ports.clear();
+			std::istringstream stream(value);
+			std::string port;
+
+			while (std::getline(stream, port, ' '))
+			{
+				this->trimWhitespace(port);
+				currentServer.ports.push_back(this->parseInt(port));
+			}
+
+			if (currentServer.ports.empty())
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": listen cannot be empty");
+		}
+		else if (key == "cgi_timeout")
+			currentServer.cgi_timeout = this->parseInt(value);
 		else if (key == "server_names")
 		{
 			currentServer.server_names.clear();
@@ -133,7 +216,11 @@ void Config::handleKeyValue(const std::string &line)
 		else if (key == "limit_client_body_size")
 			currentServer.limit_client_body_size = value;
 		else if (key == "root_folder")
-			currentServer.root_folder = value;
+		{
+			currentServer.root_folder = trimTrailingSlash(value);
+			if (!isValidDirectory(currentServer.root_folder))
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid root_folder directory or permissions.");
+		}
 		else if (key == "error_page")
 		{
 			size_t pos = value.find(' ');
@@ -150,11 +237,19 @@ void Config::handleKeyValue(const std::string &line)
 	else if (blockStack.top() == "location")
 	{
 		if (key == "upload_dir")
-			currentLocation.upload_dir = value;
+		{
+			currentLocation.upload_dir = trimTrailingSlash(value);
+			if (!isValidDirectory(currentLocation.upload_dir))
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid upload_dir directory or permissions.");
+		}
 		else if (key == "redirect")
 			currentLocation.redirect = value;
 		else if (key == "root_folder")
-			currentLocation.root_folder = value;
+		{
+			currentLocation.root_folder = trimTrailingSlash(value);
+			if (!isValidDirectory(currentLocation.root_folder))
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid root_folder directory or permissions.");
+		}
 		else if (key == "index")
 			currentLocation.index = value;
 		else if (key == "autoindex")
@@ -188,6 +283,56 @@ void Config::handleKeyValue(const std::string &line)
 	}
 	else
 		throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid syntax");
+}
+
+void Config::initStatusCodes()
+{
+	this->statusCodes[200] = "OK";
+	this->statusCodes[201] = "Created";
+	this->statusCodes[202] = "Accepted";
+	this->statusCodes[301] = "Moved Permanently";
+	this->statusCodes[302] = "Found";
+	this->statusCodes[307] = "Temporary Redirect";
+	this->statusCodes[308] = "Permanent Redirect";
+	this->statusCodes[400] = "Bad Request";
+	this->statusCodes[401] = "Unauthorized";
+	this->statusCodes[403] = "Forbidden";
+	this->statusCodes[404] = "Not Found";
+	this->statusCodes[405] = "Method Not Allowed";
+	this->statusCodes[500] = "Internal Server Error";
+	this->statusCodes[504] = "Gateway Timeout";
+	this->statusCodes[505] = "HTTP Version Not Supported";
+}
+
+void Config::initMimeTypes()
+{
+	this->mimeTypes[".html"] = "text/html";
+	this->mimeTypes[".htm"] = "text/html";
+	this->mimeTypes[".css"] = "text/css";
+	this->mimeTypes[".js"] = "application/javascript";
+	this->mimeTypes[".json"] = "application/json";
+	this->mimeTypes[".png"] = "image/png";
+	this->mimeTypes[".jpg"] = "image/jpeg";
+	this->mimeTypes[".jpeg"] = "image/jpeg";
+	this->mimeTypes[".gif"] = "image/gif";
+	this->mimeTypes[".svg"] = "image/svg+xml";
+	this->mimeTypes[".mp4"] = "video/mp4";
+	this->mimeTypes[".webm"] = "video/webm";
+	this->mimeTypes[".ogg"] = "video/ogg";
+	this->mimeTypes[".mp3"] = "audio/mpeg";
+	this->mimeTypes[".wav"] = "audio/wav";
+	this->mimeTypes[".txt"] = "text/plain";
+	this->mimeTypes[".xml"] = "application/xml";
+	this->mimeTypes[".pdf"] = "application/pdf";
+	this->mimeTypes[".zip"] = "application/zip";
+	this->mimeTypes[".ico"] = "image/x-icon";
+	this->mimeTypes[".ttf"] = "font/ttf";
+	this->mimeTypes[".otf"] = "font/otf";
+	this->mimeTypes[".woff"] = "font/woff";
+	this->mimeTypes[".woff2"] = "font/woff2";
+	this->mimeTypes[".eot"] = "font/eot";
+	this->mimeTypes[".csv"] = "text/csv";
+	this->mimeTypes[".doc"] = "application/msword";
 }
 
 Config::Config(const std::string &filePath)
@@ -225,4 +370,7 @@ Config::Config(const std::string &filePath)
 		throw std::runtime_error("Invalid config file: Unclosed blocks");
 	if (this->servers.size() == 0)
 		throw std::runtime_error("Invalid config file: No server is found");
+
+	this->initStatusCodes();
+	this->initMimeTypes();
 }

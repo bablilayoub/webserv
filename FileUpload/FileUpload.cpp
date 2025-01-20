@@ -6,11 +6,12 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/20 17:26:02 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/20 18:29:07 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "FileUpload.hpp"
+#include "../Client/Client.hpp"
 
 FileUpload::FileUpload() {
 
@@ -27,7 +28,6 @@ FileUpload::FileUpload() {
     this->pos = -42;
     this->FileNameEmpty = false;
 
-    this->IsChunked = false;
     this->ChunkSizeString = "";
     this->FirstChunk = true;
     this->ChunkDone = false;
@@ -36,7 +36,6 @@ FileUpload::FileUpload() {
     this->chunkSize = 0;
 
     this->BinaryFileOpen = false;
-    this->IsBinary = true;
 
 }
 
@@ -99,7 +98,7 @@ void    FileUpload::ParseContentType(std::string &Body) {
     this->HeaderFetched = true;
 }
 
-void    FileUpload::OpenFile(std::string &path) {
+void    FileUpload::OpenFile(std::string path) {
     if (this->HeaderFetched)
     {
         std::cout << "Header Fetched Open FIle : " << FileName << std::endl;
@@ -109,7 +108,7 @@ void    FileUpload::OpenFile(std::string &path) {
         if (!this->FileName.empty()) 
         {
             std::string OpenPath = path + "/" + this->FileName;
-            this->fd = open(OpenPath.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0666);
+            this->fd = open(OpenPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0666);
             if (this->fd < 0) 
             {
                 std::cout << "Failed to open the file : " << OpenPath << std::endl;
@@ -236,16 +235,18 @@ void    FileUpload::HandleBinaryData() {
     this->HeaderFetched = true;
 }
 
-void    FileUpload::ParseBody(std::string Body, std::string Boundary, std::string path) 
+void    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &client)
 {
-    std::cout << Body << std::endl;
+    if (!client.getIsChunked())
+        std::cout << "client.getIsChunked()" << std::endl;
+    // std::cout << Body << std::endl;
     // std::cout << Body.length() << std::endl;
     // std::cout << " ------- Body------- " << std::endl;
-    return ;
-    if (Body.find(Boundary + "--") != std::string::npos && !this->IsBinary)
+    // return ;
+    if (Body.find(Boundary + "--") != std::string::npos && !client.getIsBinary())
         return ;
     
-    if (this->IsBinary && !this->BinaryFileOpen) 
+    if (client.getIsBinary() && !this->BinaryFileOpen) 
     {
         HandleBinaryData();
     }
@@ -266,9 +267,9 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary, std::strin
         }
     }
 
-    this->OpenFile(path);
+    this->OpenFile(client.getUploadDir());
 
-    if (this->IsChunked)
+    if (client.getIsChunked())
         this->HandleChunkedData(Body);
     else
         this->WriteToFile(Body);

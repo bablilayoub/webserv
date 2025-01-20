@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:33:18 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/20 15:52:53 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/20 18:27:02 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,6 +25,7 @@
 
 #define CRLF "\r\n"
 
+class Client;
 class   FileUpload {
     private:
 
@@ -34,9 +35,7 @@ class   FileUpload {
         bool        FirstCRLF;
         size_t      bytesLeft;
         size_t      chunkSize;
-        bool        IsChunked;
 
-        bool        IsBinary;
 
         std::string ContentDisposition;
         std::string FileNameString;
@@ -57,13 +56,13 @@ class   FileUpload {
         std::string generate_random_string(int length);
         void        ParseContentDisposition(std::string &Body);
         void        ParseContentType(std::string &Body);
-        void        OpenFile(std::string &path);
+        void        OpenFile(std::string path);
         void        WriteToFile(std::string &Body);
         void        HandleChunkedData(std::string &Body);
 
     public:
         FileUpload();
         ~FileUpload();
-        void        ParseBody(std::string Body, std::string Boundary, std::string path);
+        void        ParseBody(std::string Body, std::string Boundary, Client &client);
         void        HandleBinaryData();
 };
