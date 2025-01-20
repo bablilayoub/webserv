@@ -348,6 +348,11 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
     fds[i].events = POLLOUT;
   else
   {
+    if (this->clients[client_socket].getContentLength() == 0)
+    {
+      fds[i].events = POLLOUT;
+      return;
+    }
 
     bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
     size_t index = getClientIndex(client_socket);
