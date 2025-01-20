@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/20 16:17:16 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/20 17:22:06 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,18 +29,22 @@ private:
 	int port;
 	int clientFd;
 	int content_length;
+	
+	bool isCGI;
+	bool isBinary;
 	bool isChunked;
 	bool isContentLenght;
-	bool isBinary;
-	bool isCGI;
-	std::string server_name;
-	std::string path;
-	std::string method;
-	std::string body;
-	std::string boundary;
-	std::string content_type;
-	std::map<std::string, std::string> headers;
 
+	std::string path;
+	std::string body;
+	std::string query;
+	std::string method;
+	std::string boundary;
+	std::string server_name;
+	std::string content_type;
+	
+	std::map<std::string, std::string> headers;
+	
 	Config *config;
 	std::string upload_dir;
 

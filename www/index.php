@@ -12,6 +12,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = htmlspecialchars($_POST['email'] ? $_POST['email'] : "");
     $message = "Thank you, $name! Your email address ($email) has been received.";
 }
+
+if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['message'])) {
+    $message = htmlspecialchars($_GET['message']);
+}
+
 ?>
 
 <!DOCTYPE html>

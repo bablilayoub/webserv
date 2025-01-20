@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/20 16:18:21 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/20 17:22:22 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -111,7 +111,8 @@ void Client::handleCGIRequest(const std::string &indexPath)
 		env["REMOTE_ADDR"] = this->server_name;
 		env["SERVER_PORT"] = std::to_string(port);
 		env["HTTP_USER_AGENT"] = "Client ID:" + std::to_string(clientFd);
-
+		env["QUERY_STRING"] = this->query;
+		
 		char **envp = new char *[env.size() + 1];
 		int i = 0;
 		for (std::map<std::string, std::string>::iterator it = env.begin(); it != env.end(); ++it)
@@ -499,7 +500,15 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 	if (secondSpace == std::string::npos)
 		throw std::runtime_error("Invalid request line format");
 
-	this->path = line.substr(firstSpace + 1, secondSpace - firstSpace - 1);
+	std::string fullPath = line.substr(firstSpace + 1, secondSpace - firstSpace - 1);
+
+	size_t queryPos = fullPath.find('?');
+	if (queryPos != std::string::npos)
+	{
+		this->query = fullPath.substr(queryPos + 1);
+		fullPath = fullPath.substr(0, queryPos);
+	}
+	this->path = fullPath;
 
 	if (this->isCGIRequest(this->path))
 		this->isCGI = true;
@@ -565,7 +574,7 @@ void Client::parse(const std::string &request)
 					boundaryPos += std::string(BOUNDARY_PREFIX).length();
 					this->boundary = this->content_type.substr(boundaryPos, this->content_type.size() - 1);
 				}
-				else if (this->content_type.find("application/x-www-form-urlencoded") != std::string::npos)
+				else if (this->content_type.find("application/x-www-form-urlencoded") == std::string::npos)
 					this->isBinary = true;
 			}
 			else if (hostPrefixPos != std::string::npos)
