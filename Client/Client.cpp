@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/20 12:52:04 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/20 14:48:37 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -68,11 +68,11 @@ void Client::handleCGIRequest(const std::string &indexPath)
 {
 	std::string cgiPath;
 	if (indexPath.find(".php") != std::string::npos)
-		cgiPath = "/Users/alaalalm/Desktop/webserv/Cgi/php-cgi";
+		cgiPath = "/Users/abablil/Desktop/webserv/Cgi/php-cgi";
 	else
-		cgiPath = "/Users/alaalalm/Desktop/webserv/Cgi/python-cgi";
-	const std::string outPutFile = "/tmp/cgi_out_" + std::to_string(this->clientFd);
-	const std::string tempDataFile = "/tmp/cgi_input_" + std::to_string(this->clientFd);
+		cgiPath = "/Users/abablil/Desktop/webserv/Cgi/python-cgi";
+	const std::string cgiOutputPath = "/tmp/cgi_out_" + std::to_string(this->clientFd);
+	const std::string cgiInputPath = "/tmp/cgi_input_" + std::to_string(this->clientFd);
 
 	pid_t pid = fork();
 	if (pid < 0)
@@ -84,7 +84,22 @@ void Client::handleCGIRequest(const std::string &indexPath)
 
 	if (pid == 0)
 	{
-		this->body = "name=John+Doe&email=johndoe%40example.com";
+		if (this->method == METHOD_POST)
+		{
+			std::ifstream inputFile(cgiInputPath);
+			if (inputFile)
+			{
+				std::stringstream inputBuffer;
+				inputBuffer << inputFile.rdbuf();
+				this->body = inputBuffer.str();
+			}
+			else
+			{
+				std::cerr << cgiInputPath << std::endl;
+				std::cerr << "Failed to read input file" << std::endl;
+				exit(EXIT_FAILURE);
+			}
+		}
 
 		std::map<std::string, std::string> env;
 		env["GATEWAY_INTERFACE"] = "CGI/1.1";
@@ -106,7 +121,7 @@ void Client::handleCGIRequest(const std::string &indexPath)
 		}
 		envp[i] = NULL;
 
-		int outFd = open(outPutFile.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+		int outFd = open(cgiOutputPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
 		if (outFd < 0)
 		{
 			for (int j = 0; j < i; ++j)
@@ -117,21 +132,19 @@ void Client::handleCGIRequest(const std::string &indexPath)
 		dup2(outFd, STDOUT_FILENO);
 		close(outFd);
 
-		std::ofstream cgiInput(tempDataFile.c_str());
-		if (cgiInput)
-			cgiInput << this->body;
-		cgiInput.close();
+		if (this->method == METHOD_POST)
+		{
+			int inputFd = open(cgiInputPath.c_str(), O_RDONLY);
+			if (inputFd < 0)
+			{
+				std::cerr << "Failed to open temp form data file" << std::endl;
+				exit(EXIT_FAILURE);
+			}
+			dup2(inputFd, STDIN_FILENO);
+			close(inputFd);
+		}
 
 		const char *argv[] = {cgiPath.c_str(), indexPath.c_str(), NULL};
-
-		int inputFd = open(tempDataFile.c_str(), O_RDONLY);
-		if (inputFd < 0)
-		{
-			std::cerr << "Failed to open temp form data file" << std::endl;
-			exit(EXIT_FAILURE);
-		}
-		dup2(inputFd, STDIN_FILENO);
-		close(inputFd);
 
 		if (execve(cgiPath.c_str(), const_cast<char **>(argv), envp) == -1)
 		{
@@ -155,7 +168,7 @@ void Client::handleCGIRequest(const std::string &indexPath)
 
 		if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
 		{
-			std::ifstream cgiOutput(outPutFile.c_str());
+			std::ifstream cgiOutput(cgiOutputPath.c_str());
 			if (cgiOutput)
 			{
 				std::stringstream buffer;
@@ -174,7 +187,7 @@ void Client::handleCGIRequest(const std::string &indexPath)
 		else
 			this->setErrorResponse(500);
 
-		unlink(outPutFile.c_str());
+		unlink(cgiOutputPath.c_str());
 	}
 }
 
