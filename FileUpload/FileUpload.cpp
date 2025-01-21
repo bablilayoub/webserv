@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/21 15:51:27 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/21 18:56:53 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -203,6 +203,8 @@ void FileUpload::HandleChunkedData(std::string &Body) {
         std::istringstream iss(ChunkSizeString);
         chunkSize = 0;
         iss >> std::hex >> chunkSize;
+        std::cout << "ChunkSizeString : " << ChunkSizeString << std::endl;
+        std::cout << "chunkSize : " << chunkSize << std::endl;
 
         if (pos + 2 + chunkSize > Body.length()) 
         {
@@ -280,8 +282,9 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &cl
 
     this->OpenFile(client.getUploadDir());
 
-    if (client.getIsChunked())
+    if (client.getIsChunked()) {
         this->HandleChunkedData(Body);
+    }
     else
         this->WriteToFile(Body);
 }

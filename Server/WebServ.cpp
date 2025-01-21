@@ -324,8 +324,8 @@ void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_r
   else if (this->clients[client_socket].getIsBinary())
   {
     BodyMap[client_socket].ParseBody(chunk, "", this->clients[client_socket]);
-    chunk.clear();
     fileReachedEnd(chunk, client_socket, rcl, wcl, cgiInput);
+    chunk.clear();
   }
 }
 
