@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:33:18 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/20 18:27:02 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/21 13:19:12 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,6 +36,7 @@ class   FileUpload {
         size_t      bytesLeft;
         size_t      chunkSize;
 
+        bool        DataFinish;
 
         std::string ContentDisposition;
         std::string FileNameString;
@@ -64,5 +65,5 @@ class   FileUpload {
         FileUpload();
         ~FileUpload();
         void        ParseBody(std::string Body, std::string Boundary, Client &client);
-        void        HandleBinaryData();
+        void        HandleBinaryData(std::string mimeType);
 };
