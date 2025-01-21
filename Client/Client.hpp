@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/21 17:30:10 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/21 18:47:42 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,6 +58,8 @@ private:
 
 	Server *getServer();
 	Location *getLocation();
+	
+	Location *location;
 
 	std::string loadFile(const std::string &filePath);
 	std::string loadFiles(const std::string &directory);
@@ -79,6 +81,8 @@ private:
 	std::string urlDecode(const std::string &str);
 
 public:
+	Server *server;
+	
 	void setup(int fd, Config *config);
 	void parse(const std::string &request);
 	void generateResponse();

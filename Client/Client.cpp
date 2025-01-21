@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/21 17:44:07 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/21 18:56:51 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,6 +43,8 @@ void Client::clear()
 	this->response.contentType.clear();
 	this->response.statusCode = 0;
 	this->query.clear();
+	this->server = NULL;
+	this->location = NULL;
 }
 
 void Client::logRequest(int statusCode)
@@ -87,15 +89,14 @@ bool Client::isCGIRequest(const std::string &path)
 
 void Client::handleCGIRequest(const std::string &indexPath)
 {
-	Location *location = this->getLocation();
-	if (!location)
+	if (!this->location)
 		return this->setErrorResponse(500);
 
 	std::string cgiPath;
 	if (indexPath.find(".php") != std::string::npos)
-		cgiPath = location->php_cgi_path;
+		cgiPath = this->location->php_cgi_path;
 	else
-		cgiPath = location->python_cgi_path;
+		cgiPath = this->location->python_cgi_path;
 
 	const std::string cgiOutputPath = "/tmp/cgi_out_" + std::to_string(this->clientFd);
 	const std::string cgiInputPath = "/tmp/cgi_input_" + std::to_string(this->clientFd);
@@ -119,7 +120,7 @@ void Client::handleCGIRequest(const std::string &indexPath)
 				exit(EXIT_FAILURE);
 		}
 
-		if (this->body.size() > 8 * 1024 * 1024)
+		if (this->server->limit_client_body_size && this->body.size() > this->server->limit_client_body_size)
 			exit(CONTENT_TO_LARGE);
 
 		std::map<std::string, std::string> env;
@@ -243,21 +244,17 @@ void Client::setSuccessResponse(int statusCode, const std::string &path)
 
 void Client::checkConfigs()
 {
-	Server *server = this->getServer();
-
-	if (!server)
+	if (!this->server)
 		return this->setErrorResponse(404);
 
-	Location *location = this->getLocation();
-
-	if (location)
+	if (this->location)
 	{
-		if (std::find(location->accepted_methods.begin(), location->accepted_methods.end(), this->method) == location->accepted_methods.end())
+		if (std::find(this->location->accepted_methods.begin(), this->location->accepted_methods.end(), this->method) == this->location->accepted_methods.end())
 			return this->setErrorResponse(405);
 
-		if (!location->index.empty())
+		if (!this->location->index.empty())
 		{
-			std::string indexPath = location->root_folder + "/" + location->index;
+			std::string indexPath = this->location->root_folder + "/" + this->location->index;
 
 			if (!fileExists(indexPath))
 				return this->setErrorResponse(404);
@@ -271,13 +268,13 @@ void Client::checkConfigs()
 			return this->setSuccessResponse(200, indexPath);
 		}
 
-		if (location->autoindex)
+		if (this->location->autoindex)
 		{
-			std::string defaultFilePath = location->root_folder + "/" + location->index;
+			std::string defaultFilePath = this->location->root_folder + "/" + this->location->index;
 
-			if (location->index.empty())
+			if (this->location->index.empty())
 			{
-				std::string fullPath = location->root_folder + this->path;
+				std::string fullPath = this->location->root_folder + this->path;
 				if (!isDirectory(fullPath))
 					return this->setErrorResponse(404);
 
@@ -287,18 +284,18 @@ void Client::checkConfigs()
 			return this->setSuccessResponse(200, defaultFilePath);
 		}
 
-		if (location->index.empty())
+		if (this->location->index.empty())
 			return this->setErrorResponse(404);
 	}
 
-	if (isDirectory(server->root_folder + this->path))
-		return this->setSuccessResponse(200, server->root_folder + this->path);
+	if (isDirectory(this->server->root_folder + this->path))
+		return this->setSuccessResponse(200, this->server->root_folder + this->path);
 
-	if (fileExists(server->root_folder + this->path))
+	if (fileExists(this->server->root_folder + this->path))
 	{
-		// if (isCGIRequest(server->root_folder + this->path))
-		// 	return handleCGIRequest(server->root_folder + this->path);
-		return this->setSuccessResponse(200, server->root_folder + this->path);
+		// if (isCGIRequest(this->server->root_folder + this->path))
+		// 	return handleCGIRequest(this->server->root_folder + this->path);
+		return this->setSuccessResponse(200, this->server->root_folder + this->path);
 	}
 
 	this->setErrorResponse(404);
@@ -317,9 +314,7 @@ std::string Client::getHttpHeaders()
 
 void Client::generateResponse()
 {
-	Server *server = this->getServer();
-
-	if (server && server->limit_client_body_size && this->content_length > server->limit_client_body_size)
+	if (this->server && this->server->limit_client_body_size && this->content_length > this->server->limit_client_body_size)
 	{
 		response.statusCode = 413;
 		response.contentType = "text/html";
@@ -348,16 +343,14 @@ void Client::generateResponse()
 	this->response.contentType.empty();
 	this->response.statusCode = 200;
 
-	Location *location = this->getLocation();
-
-	if (location && !location->redirect.empty())
+	if (this->location && !this->location->redirect.empty())
 	{
 		response.statusCode = location->redirect_status_code;
 
 		logRequest(response.statusCode);
 
 		this->responseString = "HTTP/1.1 " + std::to_string(response.statusCode) + " " + this->config->statusCodes[response.statusCode] + "\r\n";
-		this->responseString += "Location: " + location->redirect + "\r\n";
+		this->responseString += "Location: " + this->location->redirect + "\r\n";
 		this->responseString += "Connection: close\r\n";
 		this->responseString += "\r\n";
 		return;
@@ -390,11 +383,10 @@ Server *Client::getServer()
 
 Location *Client::getLocation()
 {
-	Server *server = this->getServer();
-	if (!server)
+	if (!this->server)
 		return NULL;
 
-	for (std::map<std::string, Location>::iterator locIt = server->locations.begin(); locIt != server->locations.end(); ++locIt)
+	for (std::map<std::string, Location>::iterator locIt = this->server->locations.begin(); locIt != this->server->locations.end(); ++locIt)
 		if (locIt->first == this->path)
 			return &locIt->second;
 	return NULL;
@@ -497,12 +489,13 @@ std::string Client::getErrorPagePath(int errorCode)
 {
 	std::string error_page_path;
 	error_page_path.clear();
-	Server *server = this->getServer();
-	if (!server)
+
+	if (!this->server)
 		return error_page_path;
-	std::map<int, std::string>::iterator it = server->error_pages.find(errorCode);
-	if (it != server->error_pages.end())
-		error_page_path = server->root_folder + "/" + it->second;
+
+	std::map<int, std::string>::iterator it = this->server->error_pages.find(errorCode);
+	if (it != this->server->error_pages.end())
+		error_page_path = this->server->root_folder + "/" + it->second;
 	return error_page_path;
 }
 
@@ -537,7 +530,7 @@ std::string Client::loadFiles(const std::string &directory)
 			continue;
 
 		std::string entryPath = directory + "/" + entry->d_name;
-		std::string currentDirectory = directory.substr(this->getServer()->root_folder.size(), directory.size());
+		std::string currentDirectory = directory.substr(this->server->root_folder.size(), directory.size());
 
 		if (stat(entryPath.c_str(), &entryStat) != 0)
 			continue;
@@ -721,16 +714,17 @@ void Client::parse(const std::string &request)
 		}
 	}
 
-	Location *location = this->getLocation();
+	this->server = this->getServer();
+	this->location = this->getLocation();
 
-	if (location)
+	if (this->location)
 	{
-		this->upload_dir = location->upload_dir;
-		if (this->isCGIRequest(location->index))
+		this->upload_dir = this->location->upload_dir;
+		if (this->isCGIRequest(this->location->index))
 			this->isCGI = true;
 	}
-	else if (this->isCGIRequest(this->path))
-		this->isCGI = true;
+	// else if (this->isCGIRequest(this->path))
+	// 	this->isCGI = true;
 }
 
 /*

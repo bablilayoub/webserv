@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 10:49:18 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/21 15:37:53 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/21 18:40:19 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -233,6 +233,11 @@ void Config::handleKeyValue(const std::string &line)
 			while (std::getline(stream, server_name, ' '))
 			{
 				this->trimWhitespace(server_name);
+
+				for (size_t i = 0; i < server_name.size(); i++)
+					if (!std::isalnum(server_name[i]) && server_name[i] != '.' && server_name[i] != '-')
+						throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid server_name '" + server_name + "'");
+
 				currentServer.server_names.push_back(server_name);
 			}
 
