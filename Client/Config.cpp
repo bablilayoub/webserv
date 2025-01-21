@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 10:49:18 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/20 11:14:23 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/21 15:37:53 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,6 +36,29 @@ bool Config::isValidDirectory(const std::string &path)
 		return false;
 
 	if (!S_ISDIR(statbuf.st_mode))
+		return false;
+
+	if (access(path.c_str(), R_OK | W_OK | X_OK) != 0)
+		return false;
+
+	return true;
+}
+
+bool Config::isCGI(const std::string &path, const std::string &cgi)
+{
+	if (path.substr(path.find_last_of(".") + 1) == cgi)
+		return true;
+	return false;
+}
+
+bool Config::isValidFile(const std::string &path)
+{
+	struct stat statbuf;
+
+	if (stat(path.c_str(), &statbuf) != 0)
+		return false;
+
+	if (!S_ISREG(statbuf.st_mode))
 		return false;
 
 	if (access(path.c_str(), R_OK | W_OK | X_OK) != 0)
@@ -110,19 +133,24 @@ void Config::processClosingBrace()
 			currentLocation.root_folder = currentServer.root_folder;
 		if (std::find(currentLocation.accepted_methods.begin(), currentLocation.accepted_methods.end(), METHOD_POST) != currentLocation.accepted_methods.end())
 			if (currentLocation.upload_dir.empty())
-				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": An upload directory is required for the POST method.");
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": upload_dir is required for the POST method.");
+
+		if (!currentLocation.index.empty() && this->isCGI(currentLocation.index, "php") && currentLocation.php_cgi_path.empty())
+			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": This location requires php_cgi_path.");
+
+		if (!currentLocation.index.empty() && this->isCGI(currentLocation.index, "py") && currentLocation.python_cgi_path.empty())
+			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": This location requires python_cgi_path.");
+
 		currentServer.locations[locationPath] = currentLocation;
 		locationPath.clear();
 	}
 	else if (closingBlock == "server")
 	{
 		if (currentServer.root_folder.empty())
-			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Root folder is not specified");
+			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": root_folder is not specified");
 		for (size_t i = 0; i < currentServer.ports.size(); i++)
 			if (currentServer.ports[i] < 1 || currentServer.ports[i] > 65535)
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid port number");
-		if (currentServer.cgi_timeout < 1)
-			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid CGI Timeout, it must be 1 or bigger");
 
 		servers.push_back(currentServer);
 	}
@@ -141,7 +169,7 @@ bool Config::isValidIpv4(const std::string &ip)
 	std::vector<std::string> parts;
 	std::istringstream stream(ip);
 	std::string part;
-	
+
 	while (std::getline(stream, part, '.'))
 	{
 		if (part.empty())
@@ -151,17 +179,17 @@ bool Config::isValidIpv4(const std::string &ip)
 				return false;
 		parts.push_back(part);
 	}
-	
+
 	if (parts.size() != 4)
 		return false;
-	
+
 	for (size_t i = 0; i < parts.size(); i++)
 	{
 		int num = std::atof(parts[i].c_str());
 		if (num < 0 || num > 255)
 			return false;
 	}
-	
+
 	return true;
 }
 
@@ -196,8 +224,6 @@ void Config::handleKeyValue(const std::string &line)
 			if (currentServer.ports.empty())
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": listen cannot be empty");
 		}
-		else if (key == "cgi_timeout")
-			currentServer.cgi_timeout = this->parseInt(value);
 		else if (key == "server_names")
 		{
 			currentServer.server_names.clear();
@@ -214,7 +240,7 @@ void Config::handleKeyValue(const std::string &line)
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": server_names cannot be empty");
 		}
 		else if (key == "limit_client_body_size")
-			currentServer.limit_client_body_size = value;
+			currentServer.limit_client_body_size = this->parseInt(value);
 		else if (key == "root_folder")
 		{
 			currentServer.root_folder = trimTrailingSlash(value);
@@ -243,7 +269,14 @@ void Config::handleKeyValue(const std::string &line)
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid upload_dir directory or permissions.");
 		}
 		else if (key == "redirect")
-			currentLocation.redirect = value;
+		{
+			size_t pos = value.find(' ');
+			if (pos == std::string::npos)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid redirect value");
+
+			currentLocation.redirect_status_code = this->parseInt(value.substr(0, pos));
+			currentLocation.redirect = value.substr(pos + 1);
+		}
 		else if (key == "root_folder")
 		{
 			currentLocation.root_folder = trimTrailingSlash(value);
@@ -260,6 +293,18 @@ void Config::handleKeyValue(const std::string &line)
 				currentLocation.autoindex = false;
 			else
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": autoindex must be on/off");
+		}
+		else if (key == "php_cgi_path")
+		{
+			currentLocation.php_cgi_path = trimTrailingSlash(value);
+			if (!isValidFile(currentLocation.php_cgi_path))
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid php_cgi_path executable or permissions.");
+		}
+		else if (key == "python_cgi_path")
+		{
+			currentLocation.python_cgi_path = trimTrailingSlash(value);
+			if (!isValidFile(currentLocation.python_cgi_path))
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid python_cgi_path executable or permissions.");
 		}
 		else if (key == "accepted_methods")
 		{
@@ -290,8 +335,12 @@ void Config::initStatusCodes()
 	this->statusCodes[200] = "OK";
 	this->statusCodes[201] = "Created";
 	this->statusCodes[202] = "Accepted";
+	this->statusCodes[204] = "No Content";
+	this->statusCodes[300] = "Multiple Choices";
 	this->statusCodes[301] = "Moved Permanently";
 	this->statusCodes[302] = "Found";
+	this->statusCodes[303] = "See Other";
+	this->statusCodes[304] = "Not Modified";
 	this->statusCodes[307] = "Temporary Redirect";
 	this->statusCodes[308] = "Permanent Redirect";
 	this->statusCodes[400] = "Bad Request";
@@ -299,7 +348,9 @@ void Config::initStatusCodes()
 	this->statusCodes[403] = "Forbidden";
 	this->statusCodes[404] = "Not Found";
 	this->statusCodes[405] = "Method Not Allowed";
+	this->statusCodes[413] = "Content Too Large";
 	this->statusCodes[500] = "Internal Server Error";
+	this->statusCodes[501] = "Not Implemented";
 	this->statusCodes[504] = "Gateway Timeout";
 	this->statusCodes[505] = "HTTP Version Not Supported";
 }

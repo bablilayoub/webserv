@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/20 17:22:06 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/21 17:30:10 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,8 +28,8 @@ class Client
 private:
 	int port;
 	int clientFd;
-	int content_length;
-	
+	size_t content_length;
+
 	bool isCGI;
 	bool isBinary;
 	bool isChunked;
@@ -42,9 +42,9 @@ private:
 	std::string boundary;
 	std::string server_name;
 	std::string content_type;
-	
+
 	std::map<std::string, std::string> headers;
-	
+
 	Config *config;
 	std::string upload_dir;
 
@@ -58,7 +58,7 @@ private:
 
 	Server *getServer();
 	Location *getLocation();
-	
+
 	std::string loadFile(const std::string &filePath);
 	std::string loadFiles(const std::string &directory);
 	std::string loadErrorPage(const std::string &filePath, int statusCode);
@@ -76,6 +76,7 @@ private:
 	bool fileExists(const std::string &path);
 	bool isDirectory(const std::string &path);
 	bool hasReadPermission(const std::string &path);
+	std::string urlDecode(const std::string &str);
 
 public:
 	void setup(int fd, Config *config);
@@ -85,7 +86,7 @@ public:
 	const std::string &getBoundary() const;
 	const std::string &getMethod() const;
 	const std::map<std::string, std::string> &getHeaders() const;
-	const int &getContentLength() const;
+	const size_t &getContentLength() const;
 	const bool &getIsChunked() const;
 	const bool &getIsBinary() const;
 	const bool &getIsContentLenght() const;

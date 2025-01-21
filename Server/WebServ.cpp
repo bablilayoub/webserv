@@ -342,7 +342,7 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
     fds[i].events = POLLOUT;
   else
   {
-    if (this->clients[client_socket].getContentLength() == 0)
+    if (this->clients[client_socket].getContentLength() == 0 || this->clients[client_socket].getContentLength() > 1000000)
     {
       fds[i].events = POLLOUT;
       return;
