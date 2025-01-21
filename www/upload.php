@@ -77,7 +77,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <body>
 	<h1>Upload a File</h1>
-	<form action="upload.php" method="POST" enctype="multipart/form-data">
+	<form action="upload" method="POST" enctype="multipart/form-data">
 		<input type="file" name="file" required>
 		<br>
 		<button type="submit">Upload</button>
