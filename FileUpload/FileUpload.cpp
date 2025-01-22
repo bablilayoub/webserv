@@ -207,6 +207,8 @@ void    FileUpload::HandleBinaryData(std::string mimeType) {
 
 void    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &client)
 {
+    // std::cout << Body;
+    // return ;
     if ((Body.length() == 2 && Body == CRLF)) {
         return ;
     }
@@ -240,8 +242,6 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &cl
                 this->ParseContentType(Body);
         }
     }
-    // std::cout << Body << std::endl;
-    // return ;    
     this->OpenFile(client.getUploadDir());
 
     if (client.getIsChunked()) {
