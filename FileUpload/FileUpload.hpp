@@ -28,8 +28,11 @@
 class Client;
 class   FileUpload {
     private:
-        bool        ChunkDone;  
+        std::map<std::string, std::string>  MimeTypeMap;
+
+        std::string ChunkSizeString;
         std::string chunkData;
+        bool        ChunkDone;  
         bool        FirstChunk;
         bool        FirstCRLF;
         size_t      bytesLeft;
@@ -43,14 +46,14 @@ class   FileUpload {
         std::string NameString;
         std::string substr;
         size_t      pos;
-        std::string ChunkSizeString;
 
         std::string Name;
         std::string FileName;
         std::string MimeType;
+        int         fd;
         int         HeaderFetched;
         bool        BinaryFileOpen;
-        int         fd;
+        bool        openFile;
         bool        FileNameEmpty;
 
         std::string generate_random_string(int length);
@@ -59,6 +62,7 @@ class   FileUpload {
         void        OpenFile(std::string path);
         void        WriteToFile(std::string &Body);
         void        HandleChunkedData(std::string &Body);
+        void        ResetData();
 
     public:
         FileUpload();

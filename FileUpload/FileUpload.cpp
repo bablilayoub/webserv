@@ -38,11 +38,84 @@ FileUpload::FileUpload() {
 
     this->BinaryFileOpen = false;
 
+    this->openFile = false;
+
+    // for the raw data
+    this->MimeTypeMap["application/octet-stream"] = ".bin";  // Generic binary data
+    this->MimeTypeMap["application/json"] = ".json";        // JSON format
+    this->MimeTypeMap["application/xml"] = ".xml";          // XML format
+    this->MimeTypeMap["application/zip"] = ".zip";          // ZIP archives
+    this->MimeTypeMap["application/gzip"] = ".gz";          // Gzip archives
+    this->MimeTypeMap["application/x-tar"] = ".tar";        // Tar archives
+    this->MimeTypeMap["application/x-7z-compressed"] = ".7z"; // 7-Zip archives
+    this->MimeTypeMap["application/pdf"] = ".pdf";          // PDF documents
+    this->MimeTypeMap["application/x-www-form-urlencoded"] = ".txt"; // Form data
+    this->MimeTypeMap["application/x-bzip"] = ".bz";        // Bzip archives
+    this->MimeTypeMap["application/x-bzip2"] = ".bz2";      // Bzip2 archives
+    this->MimeTypeMap["application/x-rar-compressed"] = ".rar"; // RAR archives
+    this->MimeTypeMap["application/x-msdownload"] = ".exe"; // Windows executables
+    this->MimeTypeMap["application/vnd.ms-excel"] = ".xls"; // Excel spreadsheets
+    this->MimeTypeMap["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"] = ".xlsx"; // Excel (modern)
+
+    this->MimeTypeMap["text/plain"] = ".txt";               // Plain text
+    this->MimeTypeMap["text/html"] = ".html";               // HTML documents
+    this->MimeTypeMap["text/css"] = ".css";                 // CSS stylesheets
+    this->MimeTypeMap["text/csv"] = ".csv";                 // CSV files
+    this->MimeTypeMap["text/javascript"] = ".js";           // JavaScript
+    this->MimeTypeMap["application/javascript"] = ".js";    // Modern JavaScript
+
+    this->MimeTypeMap["image/jpeg"] = ".jpg";               // JPEG images
+    this->MimeTypeMap["image/png"] = ".png";                // PNG images
+    this->MimeTypeMap["image/gif"] = ".gif";                // GIF images
+    this->MimeTypeMap["image/svg+xml"] = ".svg";            // SVG images
+    this->MimeTypeMap["image/webp"] = ".webp";              // WebP images
+    this->MimeTypeMap["image/bmp"] = ".bmp";                // BMP images
+
+    this->MimeTypeMap["audio/mpeg"] = ".mp3";               // MP3 audio
+    this->MimeTypeMap["audio/wav"] = ".wav";                // WAV audio
+    this->MimeTypeMap["audio/ogg"] = ".ogg";                // Ogg Vorbis audio
+
+    this->MimeTypeMap["video/mp4"] = ".mp4";                // MP4 video
+    this->MimeTypeMap["video/x-msvideo"] = ".avi";          // AVI video
+    this->MimeTypeMap["video/webm"] = ".webm";              // WebM video
+    this->MimeTypeMap["video/quicktime"] = ".mov";          // MOV video
+    this->MimeTypeMap["video/x-flv"] = ".flv";              // Flash Video
+
+
+
 }
 
 FileUpload::~FileUpload() {
     if (this->fd > 0)
         close(this->fd);
+}
+
+void    FileUpload::ResetData() {
+    this->HeaderFetched = false;
+    this->fd = -42;
+    this->Name = "";
+    this->FileName = "";
+    this->MimeType = "";
+    this->ContentDisposition = "Content-Disposition: form-data;";
+    this->FileNameString = "filename=\"";
+    this->ContentType = "Content-Type:";
+    this->NameString = "name=\"";
+    this->substr = "";
+    this->pos = -42;
+    this->FileNameEmpty = false;
+
+    this->ChunkSizeString = "";
+    this->FirstChunk = true;
+    this->ChunkDone = false;
+    this->FirstCRLF = true;
+    this->bytesLeft = 0;
+    this->chunkSize = 0;
+
+    this->DataFinish = false;
+
+    this->BinaryFileOpen = false;
+
+    this->openFile = false;
 }
 
 std::string FileUpload::generate_random_string(int length) {
@@ -110,7 +183,7 @@ void    FileUpload::OpenFile(std::string path) {
             std::string OpenPath = path + "/" + this->FileName;
             // std::string OpenPath = path + "/" + generate_random_string(5) + ".jpg";
             this->fd = open(OpenPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0666);
-            if (this->fd < 0) 
+            if (this->fd < 0)
             {
                 std::cout << "Failed to open the file : " << OpenPath << std::endl;
                 return ;
@@ -163,9 +236,6 @@ void FileUpload::HandleChunkedData(std::string &Body) {
         std::istringstream iss(ChunkSizeString);
         chunkSize = 0;
         iss >> std::hex >> chunkSize;
-        // std::cout << "ChunkSizeString : " << ChunkSizeString << std::endl;
-        // std::cout << "chunkSize : " << chunkSize << std::endl;
-        // std::cout << "bytesLeft :" << bytesLeft << std::endl;
 
         if (pos + 2 + chunkSize > Body.length()) 
         {
@@ -188,27 +258,52 @@ void FileUpload::HandleChunkedData(std::string &Body) {
     }
 }
 
-void    FileUpload::HandleBinaryData(std::string mimeType) {
+// void    FileUpload::HandleBinaryData(std::string mimeType) {
+//     size_t posMime;
+
+//     if ((posMime = mimeType.find("/")) != std::string::npos) {
+//         // mimeType = "." + mimeType.substr(posMime + 1, mimeType.length());
+//         // if (mimeType == ".plain")
+//         //     mimeType = ".txt";
+
+//         // else if (mimeType == ".javascript")
+//         //     mimeType = ".js";
+//         std::cout << "MIME TYPE : " << mimeType << std::endl;
+//         mimeType = this->MimeTypeMap[mimeType];
+//         this->FileName = "RBL" + generate_random_string(5) + mimeType;
+//         this->BinaryFileOpen = true;
+//         this->HeaderFetched = true;
+//         this->openFile = true;
+//     }
+// }
+
+void FileUpload::HandleBinaryData(std::string mimeType) {
     size_t posMime;
 
     if ((posMime = mimeType.find("/")) != std::string::npos) {
-        mimeType = "." + mimeType.substr(posMime + 1, mimeType.length());
-        if (mimeType == ".plain")
-            mimeType = ".txt";
+        std::cout << "Raw MIME TYPE: " << mimeType << std::endl;
 
-        else if (mimeType == ".javascript")
-            mimeType = ".js";
+        if (this->MimeTypeMap.find(mimeType) != this->MimeTypeMap.end())
+            mimeType = this->MimeTypeMap[mimeType];
+        else 
+        {
+            std::cerr << "Unknown MIME type: " << mimeType << std::endl;
+            mimeType = ".bin";
+        }
 
         this->FileName = "RBL" + generate_random_string(5) + mimeType;
+
         this->BinaryFileOpen = true;
         this->HeaderFetched = true;
+        this->openFile = true;
+
+        std::cout << "Final MIME TYPE: " << mimeType << ", File Name: " << this->FileName << std::endl;
     }
 }
 
+
 void    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &client)
 {
-    // std::cout << Body;
-    // return ;
     if ((Body.length() == 2 && Body == CRLF)) {
         return ;
     }
@@ -231,6 +326,7 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &cl
         this->pos = Body.find(Boundary);
         if (this->pos == 0) 
         {
+            this->openFile = false;
             this->chunkData = "";
             this->bytesLeft = 0;
             this->chunkSize = 0;
@@ -238,11 +334,14 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &cl
             if (this->pos != std::string::npos)
                 this->ParseContentDisposition(Body);
             this->pos = Body.find(this->ContentType);
-            if (this->pos != std::string::npos)
+            if (this->pos != std::string::npos) {
+                this->openFile = true;
                 this->ParseContentType(Body);
+            }
         }
     }
-    this->OpenFile(client.getUploadDir());
+    if (this->openFile)
+        this->OpenFile(client.getUploadDir());
 
     if (client.getIsChunked()) {
         this->HandleChunkedData(Body);
