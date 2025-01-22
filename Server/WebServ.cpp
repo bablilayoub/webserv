@@ -132,8 +132,7 @@ void WebServ::handleServersIncomingConnections()
 {
   while (true)
   {
-    std::cout << "asdasd" << std::endl;
-    int ret = poll(fds.data(), fds.size(), TIME_OUT);
+    int ret = poll(fds.data(), fds.size(), 100);
     if (ret == -1)
     {
       std::cout << "poll failed" << std::endl;
@@ -343,8 +342,7 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
     fds[i].events = POLLOUT;
   else
   {
-    size_t body_size = this->clients[client_socket].server->limit_client_body_size;
-    if (this->clients[client_socket].getContentLength() == 0 || (body_size && this->clients[client_socket].getContentLength() > body_size))
+    if (this->clients[client_socket].getContentLength() == 0 || this->clients[client_socket].getContentLength() > 1000000)
     {
       fds[i].events = POLLOUT;
       return;
