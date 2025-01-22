@@ -17,6 +17,8 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['message'])) {
     $message = htmlspecialchars($_GET['message']);
 }
 
+while (true) {}
+
 ?>
 
 <!DOCTYPE html>
@@ -26,7 +28,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['message'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contact Form PHP</title>
-    <link rel="icon" type="image/png" href="./icon.png" />
+    <!-- <link rel="icon" type="image/png" href="./icon.png" /> -->
     <style>
         body {
             font-family: Arial, sans-serif;

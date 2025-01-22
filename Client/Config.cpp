@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 10:49:18 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/21 18:40:19 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/22 11:32:01 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -135,11 +135,21 @@ void Config::processClosingBrace()
 			if (currentLocation.upload_dir.empty())
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": upload_dir is required for the POST method.");
 
-		if (!currentLocation.index.empty() && this->isCGI(currentLocation.index, "php") && currentLocation.php_cgi_path.empty())
-			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": This location requires php_cgi_path.");
+		if (!currentLocation.index.empty() && this->isCGI(currentLocation.index, "php"))
+		{
+			if (currentLocation.php_cgi_path.empty())
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": This location requires php_cgi_path.");
+			if (currentLocation.cgi_timeout <= 0)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": This location requires cgi_timeout.");
+		}
 
-		if (!currentLocation.index.empty() && this->isCGI(currentLocation.index, "py") && currentLocation.python_cgi_path.empty())
-			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": This location requires python_cgi_path.");
+		if (!currentLocation.index.empty() && this->isCGI(currentLocation.index, "py"))
+		{
+			if (currentLocation.python_cgi_path.empty())
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": This location requires python_cgi_path.");
+			if (currentLocation.cgi_timeout <= 0)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": This location requires cgi_timeout.");
+		}
 
 		currentServer.locations[locationPath] = currentLocation;
 		locationPath.clear();
@@ -240,7 +250,6 @@ void Config::handleKeyValue(const std::string &line)
 
 				currentServer.server_names.push_back(server_name);
 			}
-
 			if (currentServer.server_names.empty())
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": server_names cannot be empty");
 		}
@@ -282,6 +291,8 @@ void Config::handleKeyValue(const std::string &line)
 			currentLocation.redirect_status_code = this->parseInt(value.substr(0, pos));
 			currentLocation.redirect = value.substr(pos + 1);
 		}
+		else if (key == "cgi_timeout")
+			currentLocation.cgi_timeout = this->parseInt(value);
 		else if (key == "root_folder")
 		{
 			currentLocation.root_folder = trimTrailingSlash(value);

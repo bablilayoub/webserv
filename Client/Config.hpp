@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:07:41 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/21 18:37:48 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/22 11:26:06 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,7 +25,7 @@ struct Location
     std::string root_folder;
     std::string index;
 
-    int cgi_timeout;
+    size_t      cgi_timeout;
     std::string php_cgi_path;
     std::string python_cgi_path;
     
@@ -34,7 +34,6 @@ struct Location
 
 struct Server
 {
-    // int cgi_timeout;
     std::string host;
     std::string root_folder;
     std::vector<int> ports;

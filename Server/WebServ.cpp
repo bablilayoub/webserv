@@ -132,6 +132,7 @@ void WebServ::handleServersIncomingConnections()
 {
   while (true)
   {
+    std::cout << "asdasd" << std::endl;
     int ret = poll(fds.data(), fds.size(), TIME_OUT);
     if (ret == -1)
     {

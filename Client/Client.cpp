@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/21 18:56:51 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/22 12:38:35 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -107,6 +107,9 @@ void Client::handleCGIRequest(const std::string &indexPath)
 
 	if (pid == 0)
 	{
+		if (this->location)
+			alarm(this->location->cgi_timeout);
+
 		if (this->method == METHOD_POST)
 		{
 			std::ifstream inputFile(cgiInputPath);
@@ -192,7 +195,9 @@ void Client::handleCGIRequest(const std::string &indexPath)
 		if (waitpid(pid, &status, 0) == -1)
 			return this->setErrorResponse(500);
 
-		if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+		if (WIFSIGNALED(status) && WTERMSIG(status) == SIGALRM)
+			this->setErrorResponse(504);
+		else if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
 		{
 			std::ifstream cgiOutput(cgiOutputPath.c_str());
 			if (cgiOutput)
@@ -558,8 +563,10 @@ std::string Client::loadFiles(const std::string &directory)
 
 bool Client::fileExists(const std::string &path)
 {
-	struct stat buffer;
-	return (stat(path.c_str(), &buffer) == 0);
+	struct stat statbuf;
+	if (stat(path.c_str(), &statbuf) != 0)
+		return false;
+	return S_ISREG(statbuf.st_mode);
 }
 
 bool Client::isDirectory(const std::string &path)
@@ -632,12 +639,12 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 		return;
 	}
 
-	std::string path = parts[1];
+	std::string path = urlDecode(parts[1]);
 	size_t queryPos = path.find('?');
 	if (queryPos != std::string::npos)
 	{
 		this->path = path.substr(0, queryPos);
-		this->query = urlDecode(path.substr(queryPos + 1));
+		this->query = path.substr(queryPos + 1);
 	}
 	else
 		this->path = path;
