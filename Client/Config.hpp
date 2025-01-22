@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:07:41 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/20 11:14:09 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/22 11:26:06 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,20 +17,27 @@
 struct Location
 {
     bool autoindex;
+    
     std::string redirect;
+    int redirect_status_code;
+
     std::string upload_dir;
     std::string root_folder;
     std::string index;
+
+    size_t      cgi_timeout;
+    std::string php_cgi_path;
+    std::string python_cgi_path;
+    
     std::vector<std::string> accepted_methods;
 };
 
 struct Server
 {
-    int cgi_timeout;
     std::string host;
     std::string root_folder;
     std::vector<int> ports;
-    std::string limit_client_body_size;
+    size_t limit_client_body_size;
     std::vector<std::string> server_names;
     std::map<int, std::string> error_pages;
     std::map<std::string, Location> locations;
@@ -50,6 +57,7 @@ private:
     int parseInt(const std::string &value);
 
     bool isValidDirectory(const std::string &path);
+    bool isValidFile(const std::string &path);
     
     std::string trimTrailingSlash(const std::string &path);
 
@@ -62,7 +70,8 @@ private:
     void initStatusCodes();
     void initMimeTypes();
     bool isValidIpv4(const std::string &ip);
-
+    bool isCGI(const std::string &path, const std::string &cgi);
+    
 public:
     std::vector<Server> servers;
     std::map<std::string, std::string> mimeTypes;

@@ -1,10 +1,40 @@
+<?php
+
+$targetDir = "/Users/abablil/Desktop/webserv/upload/";
+
+if (!file_exists($targetDir)) {
+	mkdir($targetDir, 0777, true);
+}
+
+$messageType = "";
+$message = "";
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+	if (isset($_FILES["file"]) && $_FILES["file"]["error"] == 0) {
+		$fileName = basename(path: $_FILES["file"]["name"]);
+		$targetFilePath = $targetDir . $fileName;
+
+		if (move_uploaded_file($_FILES["file"]["tmp_name"], $targetFilePath)) {
+			$messageType = "success";
+			$message = "File uploaded successfully: $fileName";
+		} else {
+			$messageType = "error";
+			$message = "Error uploading the file.";
+		}
+	} else {
+		$messageType = "error";
+		$message = "No file uploaded or an error occurred: " . $_FILES["file"]["error"];
+	}
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>File Upload - Static</title>
+	<title>File Upload - PHP</title>
 	<!-- <link rel="icon" type="image/png" href="./icon.png" /> -->
 	<script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -31,6 +61,13 @@
 			<button type="submit"
 				class="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition">Upload</button>
 		</form>
+
+		<?php if (!empty($message)): ?>
+			<div
+				class="mt-4 p-4 text-sm rounded-lg <?php echo $messageType === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'; ?>">
+				<?php echo htmlspecialchars($message); ?>
+			</div>
+		<?php endif; ?>
 	</div>
 
 	<script>
@@ -57,7 +94,7 @@
 			dropZone.classList.remove('bg-blue-100');
 			const file = e.dataTransfer.files[0];
 			if (file) {
-				fileInput.files = e.dataTransfer.files;
+				fileInput.files = e.dataTransfer.files; // Set the file input value
 				fileNameDisplay.textContent = file.name.trim().length > 40 ? file.name.trim().substring(0, 40) + '...' : file.name.trim();
 			}
 		});

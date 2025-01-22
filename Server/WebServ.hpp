@@ -16,7 +16,7 @@
 #include <signal.h>
 #include <arpa/inet.h>
 
-#define BUFFER_SIZE 80001
+#define BUFFER_SIZE 16000
 #define TIME_OUT 5000
 
 #define GET "GET"

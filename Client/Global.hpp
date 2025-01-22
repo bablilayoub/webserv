@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/14 18:46:49 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/19 14:50:33 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/22 11:50:05 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,3 +46,5 @@
 #define BLUE "\033[34m"
 #define CYAN "\033[36m"
 #define WHITE "\033[37m"
+
+#define CONTENT_TO_LARGE 21
