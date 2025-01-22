@@ -8,16 +8,19 @@ int main(int ac, char **args)
 		return 1;
 	}
 
-	try
+	while (true)
 	{
-		Config config(args[1]);
-		WebServ webserv(&config);
+		try
+		{
+			Config config(args[1]);
+			WebServ webserv(&config);
 
-		webserv.initServers();
-		webserv.handleServersIncomingConnections();
-	}
-	catch (std::exception &e)
-	{
-		std::cout << "Error: " << e.what() << std::endl;
+			webserv.initServers();
+			webserv.handleServersIncomingConnections();
+		}
+		catch (std::exception &e)
+		{
+			std::cout << "Error: " << e.what() << std::endl;
+		}
 	}
 }
