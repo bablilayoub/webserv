@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/22 13:32:03 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/22 14:42:28 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -131,9 +131,9 @@ void    FileUpload::WriteToFile(std::string &Body) {
 void FileUpload::HandleChunkedData(std::string &Body) {
     while (true) 
     {
-        if (Body.length() == 2 && Body == "\r\n") {
-            break;
-        }
+        // if (Body.length() == 2 && Body == "\r\n") {
+        //     break;
+        // }
         if (bytesLeft > 0 && Body.length() >= bytesLeft) 
         {
             chunkData = Body.substr(0, bytesLeft);
@@ -163,8 +163,8 @@ void FileUpload::HandleChunkedData(std::string &Body) {
         std::istringstream iss(ChunkSizeString);
         chunkSize = 0;
         iss >> std::hex >> chunkSize;
-        std::cout << "ChunkSizeString : " << ChunkSizeString << std::endl;
-        std::cout << "chunkSize : " << chunkSize << std::endl;
+        // std::cout << "ChunkSizeString : " << ChunkSizeString << std::endl;
+        // std::cout << "chunkSize : " << chunkSize << std::endl;
         // std::cout << "bytesLeft :" << bytesLeft << std::endl;
 
         if (pos + 2 + chunkSize > Body.length()) 
