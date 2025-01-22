@@ -8,48 +8,55 @@ WebServ::WebServ(Config *config) : config(config) {}
 
 int WebServ::init(std::string host, const int port)
 {
-  int listener = socket(AF_INET, SOCK_STREAM, 0);
-  if (listener == INVALID_SOCKET)
+  int listener = -1;
+  while (true)
   {
-    std::cout << "Socket creation failed" << std::endl;
-    // continue;
-  }
+    listener = socket(AF_INET, SOCK_STREAM, 0);
+    if (listener == INVALID_SOCKET)
+    {
+      std::cout << "Socket creation failed" << std::endl;
+      continue;
+    }
 
-  int optval = 1;
-  if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == SOCKET_ERROR)
-  {
-    close(listener);
-    std::cout << "setsockopt failed" << std::endl;
-    // continue;
-  }
+    int optval = 1;
+    if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == SOCKET_ERROR)
+    {
+      close(listener);
+      std::cout << "setsockopt failed" << std::endl;
+      continue;
+    }
 
-  if (setsockopt(listener, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval)) == SOCKET_ERROR)
-  {
-    close(listener);
-    std::cout << "setsockopt failed" << std::endl;
-    // continue;
-  }
+    if (setsockopt(listener, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval)) == SOCKET_ERROR)
+    {
+      close(listener);
+      std::cout << "setsockopt failed" << std::endl;
+      continue;
+    }
 
-  this->socketConfig(host, port);
-  this->setNonBlockingMode(listener);
+    this->socketConfig(host, port);
+    if (this->setNonBlockingMode(listener) == -1)
+    {
+      close(listener);
+      std::cout << "Failed to set non-blocking mode" << std::endl;
+      continue;
+    }
 
-  if (bind(listener, (sockaddr *)&this->hint, sizeof(this->hint)) == SOCKET_ERROR)
-  {
-    close(listener);
-    std::cout << "bind failed" << std::endl;
-    // continue;
-  }
+    if (bind(listener, (sockaddr *)&this->hint, sizeof(this->hint)) == SOCKET_ERROR)
+    {
+      close(listener);
+      std::cout << "bind failed" << std::endl;
+      continue;
+    }
 
-  if (listen(listener, SOMAXCONN) == SOCKET_ERROR)
-  {
-    close(listener);
-    std::cout << "Listening to server failed" << std::endl;
-    // continue;
+    if (listen(listener, SOMAXCONN) == SOCKET_ERROR)
+    {
+      close(listener);
+      std::cout << "Listening to server failed" << std::endl;
+      continue;
+    }
+    std::cout << "Server is listening on port " << port << std::endl;
+    return listener;
   }
-  // break;
-  // }
-  std::cout << "Server is listening on port " << port << std::endl;
-  return listener;
 }
 
 void WebServ::socketConfig(std::string host, const int port)
@@ -61,13 +68,14 @@ void WebServ::socketConfig(std::string host, const int port)
     std::cerr << "Invalid address: " << host << std::endl; // to remove
 };
 
-void WebServ::setNonBlockingMode(int socket)
+int WebServ::setNonBlockingMode(int socket)
 {
   if (fcntl(socket, F_SETFL, O_NONBLOCK) < 0)
   {
     close(socket);
-    throw std::runtime_error("Failed to set non-blocking mode");
+    return -1;
   }
+  return 0;
 }
 
 void WebServ::initServers()
@@ -135,8 +143,8 @@ void WebServ::handleServersIncomingConnections()
     int ret = poll(fds.data(), fds.size(), 100);
     if (ret == -1)
     {
-      std::cout << "poll failed" << std::endl;
-      return;
+      closeFds();
+      throw std::runtime_error("Poll failed");
     }
     if (ret == 0)
       continue;
@@ -177,7 +185,6 @@ void WebServ::handleServersIncomingConnections()
 
 void WebServ::closeFds()
 {
-
   for (size_t i = 0; i < fds.size(); ++i)
     close(fds[i].fd);
 }

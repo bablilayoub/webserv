@@ -68,7 +68,7 @@ public:
   // WebServ();
   WebServ(Config *config);
   int init(std::string host, const int port);
-  void setNonBlockingMode(int socket);
+  int setNonBlockingMode(int socket);
   void socketConfig(std::string host, const int port);
   void closeFds();
   void AddSocket(int socket, bool isListener, int event);
