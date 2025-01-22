@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:33:18 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/21 13:19:12 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/22 12:12:00 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,7 +28,6 @@
 class Client;
 class   FileUpload {
     private:
-
         bool        ChunkDone;  
         std::string chunkData;
         bool        FirstChunk;

@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/21 18:56:53 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/22 13:32:03 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,6 @@
 #include "../Client/Client.hpp"
 
 FileUpload::FileUpload() {
-
     this->HeaderFetched = false;
     this->fd = -42;
     this->Name = "";
@@ -132,6 +131,9 @@ void    FileUpload::WriteToFile(std::string &Body) {
 void FileUpload::HandleChunkedData(std::string &Body) {
     while (true) 
     {
+        if (Body.length() == 2 && Body == "\r\n") {
+            break;
+        }
         if (bytesLeft > 0 && Body.length() >= bytesLeft) 
         {
             chunkData = Body.substr(0, bytesLeft);
@@ -163,6 +165,7 @@ void FileUpload::HandleChunkedData(std::string &Body) {
         iss >> std::hex >> chunkSize;
         std::cout << "ChunkSizeString : " << ChunkSizeString << std::endl;
         std::cout << "chunkSize : " << chunkSize << std::endl;
+        // std::cout << "bytesLeft :" << bytesLeft << std::endl;
 
         if (pos + 2 + chunkSize > Body.length()) 
         {
@@ -237,7 +240,8 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &cl
                 this->ParseContentType(Body);
         }
     }
-
+    // std::cout << Body << std::endl;
+    // return ;    
     this->OpenFile(client.getUploadDir());
 
     if (client.getIsChunked()) {
