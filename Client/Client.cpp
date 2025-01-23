@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/23 16:22:46 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/23 19:02:32 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,6 +50,7 @@ void Client::clear()
 	this->cgi_state.pid = -1;
 	this->cgi_state.running = false;
 	this->generated = false;
+	this->return_anyway = false;
 }
 
 void Client::logRequest(int statusCode)
@@ -148,7 +149,10 @@ void Client::handleCGIRequest(const std::string &indexPath)
 		env["SERVER_SOFTWARE"] = "Webserv/1.0";
 		env["SERVER_NAME"] = this->server_name;
 		env["REQUEST_URI"] = this->path;
-
+		env["PATH_INFO"] = this->path;
+		env["PATH_TRANSLATED"] = indexPath;
+		env["REMOTE_USER"] = "Webserv";
+		
 		char **envp = new char *[env.size() + 1];
 		int i = 0;
 		for (std::map<std::string, std::string>::iterator it = env.begin(); it != env.end(); ++it)
@@ -226,13 +230,25 @@ bool Client::checkCGICompletion()
 		if (cgiOutput)
 		{
 			std::stringstream buffer;
+			std::string line;
+
 			buffer << cgiOutput.rdbuf();
+
+			while (std::getline(buffer, line))
+			{
+				size_t rpos = line.find('\r');
+				if (rpos != std::string::npos)
+					line = line.substr(0, rpos);
+				if (line.find("Content-Type: ") != std::string::npos)
+					this->response.contentType = line.substr(line.find("Content-Type: ") + 14);
+			}
 
 			size_t double_crlf = buffer.str().find("\r\n\r\n");
 			if (double_crlf != std::string::npos)
 				this->response.content = buffer.str().substr(double_crlf + 4);
 			else
 				this->response.content = buffer.str();
+
 			this->response.statusCode = 200;
 			cgiOutput.close();
 		}
@@ -256,10 +272,19 @@ bool Client::checkCGICompletion()
 
 void Client::setFinalResponse()
 {
-	if (this->response.statusCode >= 200 && this->response.statusCode < 300)
-		this->response.contentType = getMimeType(this->path);
-	else
-		this->response.contentType = "text/html";
+	if (this->location && !this->location->redirect.empty())
+	{
+		this->logRequest(response.statusCode);
+		return;
+	}
+
+	if (this->response.contentType.empty())
+	{
+		if (this->response.statusCode >= 200 && this->response.statusCode < 300)
+			this->response.contentType = getMimeType(this->path);
+		else
+			this->response.contentType = "text/html";
+	}
 
 	this->responseString = getHttpHeaders() + this->response.content;
 
@@ -358,7 +383,7 @@ std::string Client::getHttpHeaders()
 
 void Client::generateResponse()
 {
-	if (this->generated)
+	if (this->generated || this->return_anyway)
 		return;
 	this->generated = true;
 
@@ -652,6 +677,7 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 	{
 		this->response.statusCode = 400;
 		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
+		this->return_anyway = true;
 		return;
 	}
 
@@ -660,6 +686,7 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 	{
 		this->response.statusCode = 501;
 		this->response.content = this->loadErrorPage(this->getErrorPagePath(501), 501);
+		this->return_anyway = true;
 		return;
 	}
 
@@ -672,11 +699,15 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 	}
 	else
 		this->path = path;
+	if (this->path != "/" && this->path.back() == '/')
+		while (this->path.size() > 1 && this->path.back() == '/')
+			this->path.pop_back();
 
 	if (parts[2] != "HTTP/1.1")
 	{
 		this->response.statusCode = 505;
 		this->response.content = this->loadErrorPage(this->getErrorPagePath(505), 505);
+		this->return_anyway = true;
 		return;
 	}
 }
@@ -731,8 +762,12 @@ void Client::parse(const std::string &request)
 			{
 				size_t colonPos = line.find(':', hostPrefixPos + std::string(HOST_PREFIX).length());
 				if (colonPos == std::string::npos)
-					throw std::runtime_error("Invalid host format");
-
+				{
+					this->response.statusCode = 400;
+					this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
+					this->return_anyway = true;
+					return;
+				}
 				this->server_name = line.substr(hostPrefixPos + std::string(HOST_PREFIX).length(),
 												colonPos - (hostPrefixPos + std::string(HOST_PREFIX).length()));
 				this->port = std::atof(line.substr(colonPos + 1).c_str());

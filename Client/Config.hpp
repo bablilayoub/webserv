@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:07:41 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/22 11:26:06 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/23 18:42:41 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,6 +28,8 @@ struct Location
     size_t      cgi_timeout;
     std::string php_cgi_path;
     std::string python_cgi_path;
+
+    std::vector<std::string> cgi_extensions;
     
     std::vector<std::string> accepted_methods;
 };

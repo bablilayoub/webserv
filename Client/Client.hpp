@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/23 16:22:44 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/23 17:45:49 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,6 +41,7 @@ private:
 	bool isChunked;
 	bool isContentLenght;
 	bool generated;
+	bool return_anyway;
 
 	std::string path;
 	std::string body;

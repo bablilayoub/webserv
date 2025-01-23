@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 10:49:18 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/23 16:35:25 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/23 18:49:43 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -112,6 +112,11 @@ void Config::processLocationBlock(const std::string &line)
 		throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid location syntax");
 
 	locationPath = line.substr(pos + 1, line.size() - pos - 2);
+	this->trimWhitespace(locationPath);
+
+	if (locationPath != "/")
+		locationPath = trimTrailingSlash(locationPath);
+
 	currentLocation = Location();
 	currentLocation.autoindex = false;
 }
@@ -128,7 +133,6 @@ void Config::processClosingBrace()
 	{
 		if (locationPath.empty())
 			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Location path is not specified");
-		this->trimWhitespace(locationPath);
 		if (currentLocation.root_folder.empty())
 			currentLocation.root_folder = currentServer.root_folder;
 		if (std::find(currentLocation.accepted_methods.begin(), currentLocation.accepted_methods.end(), METHOD_POST) != currentLocation.accepted_methods.end())
@@ -286,9 +290,11 @@ void Config::handleKeyValue(const std::string &line)
 		{
 			size_t pos = value.find(' ');
 			if (pos == std::string::npos)
-				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid redirect value");
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid redirect value, must be in the format 'status_code url'");
 
 			currentLocation.redirect_status_code = this->parseInt(value.substr(0, pos));
+			if (currentLocation.redirect_status_code < 300 || currentLocation.redirect_status_code > 308)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid redirect status code, must be between 300 and 308");
 			currentLocation.redirect = value.substr(pos + 1);
 		}
 		else if (key == "cgi_timeout")
@@ -338,6 +344,25 @@ void Config::handleKeyValue(const std::string &line)
 
 			if (currentLocation.accepted_methods.empty())
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": accepted_methods cannot be empty");
+		}
+		else if (key == "cgi_extensions")
+		{
+			currentLocation.cgi_extensions.clear();
+			std::istringstream stream(value);
+			std::string extension;
+
+			std::string validExtensions[] = {"py", "php"};
+
+			while (std::getline(stream, extension, ','))
+			{
+				this->trimWhitespace(extension);
+				if (std::find(std::begin(validExtensions), std::end(validExtensions), extension) == std::end(validExtensions))
+					throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid CGI extension (py, php only)");
+				currentLocation.cgi_extensions.push_back(extension);
+			}
+
+			if (currentLocation.cgi_extensions.empty())
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": cgi_extensions cannot be empty");
 		}
 		else
 			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Unknown location key: " + key);
