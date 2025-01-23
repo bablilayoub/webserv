@@ -9,7 +9,7 @@ if (!file_exists($targetDir)) {
 $messageType = "";
 $message = "";
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") { // Change to POST since DELETE is not commonly used in forms
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
 	// Sanitize the filename input
 	$filename = basename($_POST["filename"]);
 	$filePath = $targetDir . $filename;

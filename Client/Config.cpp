@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 10:49:18 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/22 11:32:01 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/23 16:35:25 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -81,13 +81,13 @@ void Config::parseKeyValue(const std::string &line, std::string &key, std::strin
 {
 	size_t pos = line.find(' ');
 	if (pos == std::string::npos)
-		throw std::runtime_error("Invalid key-value pair: Missing space between key and value");
+		throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Missing space between key and value");
 
 	key = line.substr(0, pos);
 	value = line.substr(pos + 1);
 
 	if (value.back() != ';')
-		throw std::runtime_error("Invalid key-value pair: Missing semicolon at the end");
+		throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Missing semicolon at the end");
 
 	value.pop_back();
 	this->trimWhitespace(value);

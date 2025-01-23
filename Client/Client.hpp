@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/21 18:47:42 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/23 16:22:44 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,9 +18,15 @@
 struct Response
 {
 	int statusCode;
-	std::string statusMessage;
 	std::string content;
 	std::string contentType;
+};
+
+struct CGIState {
+    pid_t pid;
+    std::string outputPath;
+    std::string inputPath;
+    bool running;
 };
 
 class Client
@@ -34,6 +40,7 @@ private:
 	bool isBinary;
 	bool isChunked;
 	bool isContentLenght;
+	bool generated;
 
 	std::string path;
 	std::string body;
@@ -50,6 +57,7 @@ private:
 
 	std::string responseString;
 	Response response;
+	CGIState cgi_state;
 
 	void clear();
 
@@ -79,10 +87,10 @@ private:
 	bool isDirectory(const std::string &path);
 	bool hasReadPermission(const std::string &path);
 	std::string urlDecode(const std::string &str);
-
+	void setFinalResponse();
 public:
 	Server *server;
-	
+
 	void setup(int fd, Config *config);
 	void parse(const std::string &request);
 	void generateResponse();
@@ -95,7 +103,8 @@ public:
 	const bool &getIsBinary() const;
 	const bool &getIsContentLenght() const;
 	const bool &getIsCGI() const;
-	const std::string &getResponse() const;
+	const std::string &getResponse();
 	const std::string &getUploadDir() const;
 	const std::string &getContentType() const;
+	bool checkCGICompletion();
 };

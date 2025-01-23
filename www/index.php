@@ -17,7 +17,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['message'])) {
     $message = htmlspecialchars($_GET['message']);
 }
 
-while (true) {}
+// while (true) {}
 
 ?>
 

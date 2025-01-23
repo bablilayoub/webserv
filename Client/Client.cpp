@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/22 12:38:35 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/23 16:22:46 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,6 +45,11 @@ void Client::clear()
 	this->query.clear();
 	this->server = NULL;
 	this->location = NULL;
+	this->cgi_state.inputPath.empty();
+	this->cgi_state.outputPath.empty();
+	this->cgi_state.pid = -1;
+	this->cgi_state.running = false;
+	this->generated = false;
 }
 
 void Client::logRequest(int statusCode)
@@ -98,8 +103,9 @@ void Client::handleCGIRequest(const std::string &indexPath)
 	else
 		cgiPath = this->location->python_cgi_path;
 
-	const std::string cgiOutputPath = "/tmp/cgi_out_" + std::to_string(this->clientFd);
-	const std::string cgiInputPath = "/tmp/cgi_input_" + std::to_string(this->clientFd);
+	this->cgi_state.outputPath = "/tmp/cgi_out_" + std::to_string(this->clientFd);
+	this->cgi_state.inputPath = "/tmp/cgi_input_" + std::to_string(this->clientFd);
+	this->cgi_state.running = true;
 
 	pid_t pid = fork();
 	if (pid < 0)
@@ -112,12 +118,13 @@ void Client::handleCGIRequest(const std::string &indexPath)
 
 		if (this->method == METHOD_POST)
 		{
-			std::ifstream inputFile(cgiInputPath);
+			std::ifstream inputFile(this->cgi_state.inputPath);
 			if (inputFile)
 			{
 				std::stringstream inputBuffer;
 				inputBuffer << inputFile.rdbuf();
 				this->body = inputBuffer.str();
+				inputFile.close();
 			}
 			else
 				exit(EXIT_FAILURE);
@@ -151,7 +158,7 @@ void Client::handleCGIRequest(const std::string &indexPath)
 		}
 		envp[i] = NULL;
 
-		int outFd = open(cgiOutputPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+		int outFd = open(this->cgi_state.outputPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
 		if (outFd < 0)
 		{
 			for (int j = 0; j < i; ++j)
@@ -164,7 +171,7 @@ void Client::handleCGIRequest(const std::string &indexPath)
 
 		if (this->method == METHOD_POST)
 		{
-			int inputFd = open(cgiInputPath.c_str(), O_RDONLY);
+			int inputFd = open(this->cgi_state.inputPath.c_str(), O_RDONLY);
 			if (inputFd < 0)
 			{
 				for (int j = 0; j < i; ++j)
@@ -189,62 +196,92 @@ void Client::handleCGIRequest(const std::string &indexPath)
 			free(envp[j]);
 		delete[] envp;
 	}
-	else
+	this->cgi_state.pid = pid;
+}
+
+bool Client::checkCGICompletion()
+{
+	if (!this->cgi_state.running)
+		return true;
+
+	int status;
+	pid_t result = waitpid(this->cgi_state.pid, &status, WNOHANG);
+
+	if (result == 0)
+		return false;
+
+	this->cgi_state.running = false;
+
+	if (result == -1)
 	{
-		int status;
-		if (waitpid(pid, &status, 0) == -1)
-			return this->setErrorResponse(500);
+		this->setErrorResponse(500);
+		return true;
+	}
 
-		if (WIFSIGNALED(status) && WTERMSIG(status) == SIGALRM)
-			this->setErrorResponse(504);
-		else if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+	if (WIFSIGNALED(status) && WTERMSIG(status) == SIGALRM)
+		this->setErrorResponse(504);
+	else if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+	{
+		std::ifstream cgiOutput(this->cgi_state.outputPath.c_str());
+		if (cgiOutput)
 		{
-			std::ifstream cgiOutput(cgiOutputPath.c_str());
-			if (cgiOutput)
-			{
-				std::stringstream buffer;
-				buffer << cgiOutput.rdbuf();
+			std::stringstream buffer;
+			buffer << cgiOutput.rdbuf();
 
-				size_t double_crlf = buffer.str().find("\r\n\r\n");
-				if (double_crlf != std::string::npos)
-					response.content = buffer.str().substr(double_crlf + 4);
-				else
-					response.content = buffer.str();
-				response.statusCode = 200;
-			}
+			size_t double_crlf = buffer.str().find("\r\n\r\n");
+			if (double_crlf != std::string::npos)
+				this->response.content = buffer.str().substr(double_crlf + 4);
 			else
-				this->setErrorResponse(500);
+				this->response.content = buffer.str();
+			this->response.statusCode = 200;
+			cgiOutput.close();
 		}
-		else if (WIFEXITED(status) && WEXITSTATUS(status) == CONTENT_TO_LARGE)
-			this->setErrorResponse(413);
 		else
 			this->setErrorResponse(500);
-
-		unlink(cgiOutputPath.c_str());
-		unlink(cgiInputPath.c_str());
 	}
+	else if (WIFEXITED(status) && WEXITSTATUS(status) == CONTENT_TO_LARGE)
+		this->setErrorResponse(413);
+	else
+		this->setErrorResponse(500);
+
+	unlink(this->cgi_state.outputPath.c_str());
+	unlink(this->cgi_state.inputPath.c_str());
+
+	return true;
 }
 
 /*
 ** Response
 */
 
+void Client::setFinalResponse()
+{
+	if (this->response.statusCode >= 200 && this->response.statusCode < 300)
+		this->response.contentType = getMimeType(this->path);
+	else
+		this->response.contentType = "text/html";
+
+	this->responseString = getHttpHeaders() + this->response.content;
+
+	this->logRequest(response.statusCode);
+}
+
 void Client::setErrorResponse(int statusCode)
 {
-	response.content = loadErrorPage(getErrorPagePath(statusCode), statusCode);
-	response.statusCode = statusCode;
+	this->response.content = loadErrorPage(getErrorPagePath(statusCode), statusCode);
+	this->response.statusCode = statusCode;
 }
 
 void Client::setSuccessResponse(int statusCode, const std::string &path)
 {
 	if (this->isDirectory(path))
 	{
-		response.content = this->loadFiles(path);
-		response.statusCode = statusCode;
+		this->response.content = this->loadFiles(path);
+		this->response.statusCode = statusCode;
 		return;
 	}
-	response.content = this->loadFile(path);
-	response.statusCode = statusCode;
+	this->response.content = this->loadFile(path);
+	this->response.statusCode = statusCode;
 }
 
 void Client::checkConfigs()
@@ -261,14 +298,14 @@ void Client::checkConfigs()
 		{
 			std::string indexPath = this->location->root_folder + "/" + this->location->index;
 
-			if (!fileExists(indexPath))
+			if (!this->fileExists(indexPath))
 				return this->setErrorResponse(404);
 
-			if (!hasReadPermission(indexPath))
+			if (!this->hasReadPermission(indexPath))
 				return this->setErrorResponse(403);
 
-			if (isCGIRequest(indexPath))
-				return handleCGIRequest(indexPath);
+			if (this->isCGIRequest(indexPath))
+				return this->handleCGIRequest(indexPath);
 
 			return this->setSuccessResponse(200, indexPath);
 		}
@@ -280,7 +317,7 @@ void Client::checkConfigs()
 			if (this->location->index.empty())
 			{
 				std::string fullPath = this->location->root_folder + this->path;
-				if (!isDirectory(fullPath))
+				if (!this->isDirectory(fullPath))
 					return this->setErrorResponse(404);
 
 				return this->setSuccessResponse(200, fullPath);
@@ -293,10 +330,10 @@ void Client::checkConfigs()
 			return this->setErrorResponse(404);
 	}
 
-	if (isDirectory(this->server->root_folder + this->path))
+	if (this->isDirectory(this->server->root_folder + this->path))
 		return this->setSuccessResponse(200, this->server->root_folder + this->path);
 
-	if (fileExists(this->server->root_folder + this->path))
+	if (this->fileExists(this->server->root_folder + this->path))
 	{
 		// if (isCGIRequest(this->server->root_folder + this->path))
 		// 	return handleCGIRequest(this->server->root_folder + this->path);
@@ -309,7 +346,9 @@ void Client::checkConfigs()
 std::string Client::getHttpHeaders()
 {
 	int statusCode = this->response.statusCode;
-	std::string headers = "HTTP/1.1 " + std::to_string(statusCode) + " " + this->config->statusCodes[statusCode] + "\r\n";
+	std::string headers;
+	headers.clear();
+	headers += "HTTP/1.1 " + std::to_string(statusCode) + " " + this->config->statusCodes[statusCode] + "\r\n";
 	headers += "Content-Type: " + this->response.contentType + "\r\n";
 	headers += "Content-Length: " + std::to_string(this->response.content.size()) + "\r\n";
 	headers += "Connection: close\r\n";
@@ -319,40 +358,32 @@ std::string Client::getHttpHeaders()
 
 void Client::generateResponse()
 {
+	if (this->generated)
+		return;
+	this->generated = true;
+
 	if (this->server && this->server->limit_client_body_size && this->content_length > this->server->limit_client_body_size)
 	{
-		response.statusCode = 413;
-		response.contentType = "text/html";
-		response.content = this->loadErrorPage(this->getErrorPagePath(413), 413);
-
-		logRequest(response.statusCode);
-
-		this->responseString = this->getHttpHeaders() + response.content;
+		this->response.statusCode = 413;
+		this->response.content = this->loadErrorPage(this->getErrorPagePath(413), 413);
 		return;
 	}
 
 	if ((!this->isChunked && !this->isContentLenght && this->method == METHOD_POST) || (!this->content_length && this->method == METHOD_POST))
 	{
-		response.statusCode = 400;
-		response.contentType = "text/html";
-		response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
-
-		logRequest(response.statusCode);
-
-		this->responseString = this->getHttpHeaders() + response.content;
+		this->response.statusCode = 400;
+		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
 		return;
 	}
 
 	this->response.content.empty();
-	this->response.statusMessage.empty();
 	this->response.contentType.empty();
 	this->response.statusCode = 200;
 
 	if (this->location && !this->location->redirect.empty())
 	{
-		response.statusCode = location->redirect_status_code;
-
-		logRequest(response.statusCode);
+		this->response.statusCode = location->redirect_status_code;
+		this->response.contentType = "text/html";
 
 		this->responseString = "HTTP/1.1 " + std::to_string(response.statusCode) + " " + this->config->statusCodes[response.statusCode] + "\r\n";
 		this->responseString += "Location: " + this->location->redirect + "\r\n";
@@ -362,15 +393,6 @@ void Client::generateResponse()
 	}
 
 	this->checkConfigs();
-
-	logRequest(response.statusCode);
-
-	if (this->response.statusCode == 200)
-		this->response.contentType = getMimeType(this->path);
-	else
-		this->response.contentType = "text/html";
-
-	this->responseString = getHttpHeaders() + response.content;
 }
 
 /*
@@ -615,6 +637,10 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 	std::string line;
 	std::getline(requestStream, line);
 
+	size_t rpos = line.find('\r');
+	if (rpos != std::string::npos)
+		line = line.substr(0, rpos);
+
 	std::vector<std::string> parts;
 	std::istringstream stream(line);
 
@@ -625,7 +651,6 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 	if (parts.size() != 3)
 	{
 		this->response.statusCode = 400;
-		this->response.contentType = "text/html";
 		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
 		return;
 	}
@@ -634,7 +659,6 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 	if (this->method != METHOD_GET && this->method != METHOD_POST && this->method != METHOD_DELETE)
 	{
 		this->response.statusCode = 501;
-		this->response.contentType = "text/html";
 		this->response.content = this->loadErrorPage(this->getErrorPagePath(501), 501);
 		return;
 	}
@@ -652,7 +676,6 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 	if (parts[2] != "HTTP/1.1")
 	{
 		this->response.statusCode = 505;
-		this->response.contentType = "text/html";
 		this->response.content = this->loadErrorPage(this->getErrorPagePath(505), 505);
 		return;
 	}
@@ -738,7 +761,11 @@ void Client::parse(const std::string &request)
 ** Getters
 */
 
-const std::string &Client::getResponse() const { return this->responseString; }
+const std::string &Client::getResponse()
+{
+	this->setFinalResponse();
+	return this->responseString;
+}
 
 const std::string &Client::getBody() const { return this->body; }
 
