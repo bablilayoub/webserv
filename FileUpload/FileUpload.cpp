@@ -27,6 +27,7 @@ FileUpload::FileUpload() {
     this->pos = -42;
     this->FileNameEmpty = false;
 
+    // For the FormData Chunked
     this->ChunkSizeString = "";
     this->FirstChunk = true;
     this->ChunkDone = false;
@@ -36,9 +37,16 @@ FileUpload::FileUpload() {
 
     this->DataFinish = false;
 
+    // For the Open or not The binary file
     this->BinaryFileOpen = false;
 
     this->openFile = false;
+
+    // For Binary Chunked Data
+    this->BinaryChunkSizeString = "";
+    this->BinaryBytesLeft = 0;
+    this->BinaryChunkData = "";
+    this->BinarychunkSize = 0;
 
     // for the raw data
     this->MimeTypeMap["application/octet-stream"] = ".bin";  // Generic binary data
@@ -204,9 +212,9 @@ void    FileUpload::WriteToFile(std::string &Body) {
 void FileUpload::HandleChunkedData(std::string &Body) {
     while (true) 
     {
-        // if (Body.length() == 2 && Body == "\r\n") {
-        //     break;
-        // }
+        if (Body.length() == 2 && Body == CRLF) {
+            break;
+        }
         if (bytesLeft > 0 && Body.length() >= bytesLeft) 
         {
             chunkData = Body.substr(0, bytesLeft);
@@ -281,15 +289,11 @@ void FileUpload::HandleBinaryData(std::string mimeType) {
     size_t posMime;
 
     if ((posMime = mimeType.find("/")) != std::string::npos) {
-        std::cout << "Raw MIME TYPE: " << mimeType << std::endl;
 
         if (this->MimeTypeMap.find(mimeType) != this->MimeTypeMap.end())
             mimeType = this->MimeTypeMap[mimeType];
         else 
-        {
-            std::cerr << "Unknown MIME type: " << mimeType << std::endl;
             mimeType = ".bin";
-        }
 
         this->FileName = "RBL" + generate_random_string(5) + mimeType;
 
@@ -297,14 +301,73 @@ void FileUpload::HandleBinaryData(std::string mimeType) {
         this->HeaderFetched = true;
         this->openFile = true;
 
-        std::cout << "Final MIME TYPE: " << mimeType << ", File Name: " << this->FileName << std::endl;
     }
 }
 
+void    FileUpload::HandleBinaryChunkedData(std::string &Body) {
+    while (true) 
+    {
+        if (Body.length() == 2 && Body == CRLF) {
+            break;
+        }
+        if (BinaryBytesLeft > 0 && Body.length() >= BinaryBytesLeft) 
+        {
+            BinaryChunkData = Body.substr(0, BinaryBytesLeft);
+
+            if (!BinaryChunkData.empty())
+                this->WriteToFile(BinaryChunkData);
+
+            Body = Body.substr(BinaryBytesLeft);
+            BinaryBytesLeft = 0;
+        } 
+        else if (BinaryBytesLeft > 0) 
+        {
+            BinaryChunkData = Body;
+
+            if (!BinaryChunkData.empty())
+                this->WriteToFile(BinaryChunkData);
+
+            BinaryBytesLeft -= BinaryChunkData.length();
+            Body.clear();
+        }
+        this->pos = Body.find(CRLF);
+        if (this->pos != std::string::npos) {
+            this->BinaryChunkSizeString = Body.substr(0, pos);
+            std::istringstream iss(BinaryChunkSizeString);
+            this->BinarychunkSize = 0;
+            iss >> std::hex >> BinarychunkSize;
+
+            if (pos + 2 + BinarychunkSize > Body.length()) 
+            {
+                BinaryBytesLeft = BinarychunkSize - (Body.length() - pos - 2);
+                BinaryChunkData = Body.substr(pos + 2);
+                Body.clear();
+            } 
+            else 
+            {
+                BinaryChunkData = Body.substr(pos + 2, BinarychunkSize);
+                Body = Body.substr(pos + 2 + BinarychunkSize);
+                BinaryBytesLeft = 0;
+            }
+
+            if (!BinaryChunkData.empty()) 
+            {
+                this->WriteToFile(BinaryChunkData);
+            }
+
+        }
+        else {
+            break;
+        }
+        if (Body.empty()) {
+            break;
+        }
+    }
+}
 
 void    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &client)
 {
-    if ((Body.length() == 2 && Body == CRLF)) {
+    if ((Body.length() == 2 && Body == CRLF) || (Body.length() == 1 && Body == "\n") || (Body.length() == 1 && Body == "\r")) {
         return ;
     }
     if (Body.find(Boundary + "--") != std::string::npos && !client.getIsBinary()) {
@@ -316,9 +379,9 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &cl
     }
     if (client.getIsBinary() && !this->BinaryFileOpen) 
     {
-        this->chunkData = "";
-        this->bytesLeft = 0;
-        this->chunkSize = 0;
+        this->BinaryChunkData = "";
+        this->BinaryBytesLeft = 0;
+        this->BinarychunkSize = 0;
         HandleBinaryData(client.getContentType());
     }
     else
@@ -340,11 +403,18 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &cl
             }
         }
     }
+
     if (this->openFile)
         this->OpenFile(client.getUploadDir());
 
-    if (client.getIsChunked()) {
+    // if (client.getIsChunked()) {
+    //     this->HandleChunkedData(Body);
+    // }
+    if (client.getIsChunked() && !client.getIsBinary()) {
         this->HandleChunkedData(Body);
+    }
+    else if (client.getIsChunked() && client.getIsBinary()) {
+        this->HandleBinaryChunkedData(Body);
     }
     else
         this->WriteToFile(Body);

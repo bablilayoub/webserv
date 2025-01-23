@@ -38,6 +38,11 @@ class   FileUpload {
         size_t      bytesLeft;
         size_t      chunkSize;
 
+        std::string BinaryChunkData;      
+        size_t      BinarychunkSize;
+        size_t      BinaryBytesLeft;
+        std::string BinaryChunkSizeString;
+
         bool        DataFinish;
 
         std::string ContentDisposition;
@@ -69,4 +74,5 @@ class   FileUpload {
         ~FileUpload();
         void        ParseBody(std::string Body, std::string Boundary, Client &client);
         void        HandleBinaryData(std::string mimeType);
+        void        HandleBinaryChunkedData(std::string &Body);
 };

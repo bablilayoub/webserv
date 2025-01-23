@@ -259,8 +259,9 @@ void WebServ::fileReachedEnd(std::string &chunk, int client_socket, size_t &rcl,
 {
   if (rcl >= wcl)
   {
-    if (!this->clients[client_socket].getIsCGI())
+    if (!this->clients[client_socket].getIsCGI()) {
       BodyMap[client_socket].ParseBody(chunk, this->clientDataMap[client_socket].boundary, this->clients[client_socket]);
+    }
     cgiInput.close();
     size_t index = getClientIndex(client_socket);
     fds[index].events = POLLOUT;
