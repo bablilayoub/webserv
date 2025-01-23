@@ -39,3 +39,23 @@ void    FileUpload::HandleChunkedData(std::string &Body) {
         }
     }
 }
+
+// Handle Binary Data save
+void    FileUpload::HandleBinaryData(std::string mimeType) {
+    size_t posMime;
+
+    if ((posMime = mimeType.find("/")) != std::string::npos) {
+        // mimeType = "." + mimeType.substr(posMime + 1, mimeType.length());
+        // if (mimeType == ".plain")
+        //     mimeType = ".txt";
+
+        // else if (mimeType == ".javascript")
+        //     mimeType = ".js";
+        std::cout << "MIME TYPE : " << mimeType << std::endl;
+        mimeType = this->MimeTypeMap[mimeType];
+        this->FileName = "RBL" + generate_random_string(5) + mimeType;
+        this->BinaryFileOpen = true;
+        this->HeaderFetched = true;
+        this->openFile = true;
+    }
+}
