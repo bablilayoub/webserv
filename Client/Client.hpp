@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/23 17:45:49 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/24 10:33:34 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,6 +50,7 @@ private:
 	std::string boundary;
 	std::string server_name;
 	std::string content_type;
+	std::string path_info;
 
 	std::map<std::string, std::string> headers;
 

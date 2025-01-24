@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:07:41 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/23 18:42:41 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/24 12:32:25 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,7 +59,6 @@ private:
     int parseInt(const std::string &value);
 
     bool isValidDirectory(const std::string &path);
-    bool isValidFile(const std::string &path);
     
     std::string trimTrailingSlash(const std::string &path);
 
@@ -73,6 +72,7 @@ private:
     void initMimeTypes();
     bool isValidIpv4(const std::string &ip);
     bool isCGI(const std::string &path, const std::string &cgi);
+    bool isValidCGI(const std::string &path);
     
 public:
     std::vector<Server> servers;

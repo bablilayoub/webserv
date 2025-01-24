@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 10:49:18 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/23 18:49:43 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/24 12:32:20 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,7 +51,7 @@ bool Config::isCGI(const std::string &path, const std::string &cgi)
 	return false;
 }
 
-bool Config::isValidFile(const std::string &path)
+bool Config::isValidCGI(const std::string &path)
 {
 	struct stat statbuf;
 
@@ -61,7 +61,7 @@ bool Config::isValidFile(const std::string &path)
 	if (!S_ISREG(statbuf.st_mode))
 		return false;
 
-	if (access(path.c_str(), R_OK | W_OK | X_OK) != 0)
+	if (access(path.c_str(), R_OK | X_OK) != 0)
 		return false;
 
 	return true;
@@ -319,13 +319,13 @@ void Config::handleKeyValue(const std::string &line)
 		else if (key == "php_cgi_path")
 		{
 			currentLocation.php_cgi_path = trimTrailingSlash(value);
-			if (!isValidFile(currentLocation.php_cgi_path))
+			if (!this->isValidCGI(currentLocation.php_cgi_path))
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid php_cgi_path executable or permissions.");
 		}
 		else if (key == "python_cgi_path")
 		{
 			currentLocation.python_cgi_path = trimTrailingSlash(value);
-			if (!isValidFile(currentLocation.python_cgi_path))
+			if (!this->isValidCGI(currentLocation.python_cgi_path))
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid python_cgi_path executable or permissions.");
 		}
 		else if (key == "accepted_methods")

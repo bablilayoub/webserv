@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/23 19:02:32 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/24 12:50:01 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -152,7 +152,7 @@ void Client::handleCGIRequest(const std::string &indexPath)
 		env["PATH_INFO"] = this->path;
 		env["PATH_TRANSLATED"] = indexPath;
 		env["REMOTE_USER"] = "Webserv";
-		
+
 		char **envp = new char *[env.size() + 1];
 		int i = 0;
 		for (std::map<std::string, std::string>::iterator it = env.begin(); it != env.end(); ++it)
@@ -324,7 +324,17 @@ void Client::checkConfigs()
 			std::string indexPath = this->location->root_folder + "/" + this->location->index;
 
 			if (!this->fileExists(indexPath))
+			{
+				if (this->location->autoindex)
+				{
+					std::string fullPath = this->location->root_folder + this->path;
+					if (!this->isDirectory(fullPath))
+						return this->setErrorResponse(404);
+
+					return this->setSuccessResponse(200, fullPath);
+				}
 				return this->setErrorResponse(404);
+			}
 
 			if (!this->hasReadPermission(indexPath))
 				return this->setErrorResponse(403);
@@ -352,7 +362,17 @@ void Client::checkConfigs()
 		}
 
 		if (this->location->index.empty())
-			return this->setErrorResponse(404);
+		{
+			std::string defaultFilePath = this->location->root_folder + this->path + "/index.html";
+
+			if (!this->fileExists(defaultFilePath))
+				return this->setErrorResponse(404);
+
+			if (!this->hasReadPermission(defaultFilePath))
+				return this->setErrorResponse(403);
+
+			return this->setSuccessResponse(200, defaultFilePath);
+		}
 	}
 
 	if (this->isDirectory(this->server->root_folder + this->path))
