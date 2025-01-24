@@ -232,6 +232,8 @@ void WebServ::getHeaderData(int client_socket, bool *flag, std::string &boundary
       this->clientDataMap[client_socket].header_length = header.length();
       break;
     }
+    else
+      break;
   }
   this->clients[client_socket].parse(header);
   this->clientDataMap[client_socket].wcl = this->clients[client_socket].getContentLength() + this->clientDataMap[client_socket].header_length;
@@ -330,6 +332,11 @@ void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_r
     BodyMap[client_socket].ParseBody(chunk, "", this->clients[client_socket]);
     chunk.clear();
     fileReachedEnd(chunk, client_socket, rcl, wcl, cgiInput);
+  }
+  else
+  {
+    size_t index = getClientIndex(client_socket);
+    fds[index].events = POLLOUT;
   }
 }
 

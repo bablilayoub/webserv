@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/24 18:36:11 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/24 20:18:32 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -371,10 +371,9 @@ void Client::checkConfigs()
 				if (!this->hasReadPermission(indexPath))
 					return this->setErrorResponse(403);
 
-
 				if (this->isCGI)
 					return this->handleCGIRequest(indexPath);
-					
+
 				return this->setSuccessResponse(200, indexPath);
 			}
 
@@ -408,7 +407,6 @@ void Client::checkConfigs()
 			}
 		}
 
-		
 		if (this->fileExists(this->location->root_folder + this->sub_path))
 		{
 			if (!this->hasReadPermission(this->location->root_folder + this->sub_path))
@@ -802,7 +800,11 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 
 	std::string part;
 	while (std::getline(stream, part, ' '))
+	{
+		if (part.find_first_not_of(' ') == std::string::npos)
+			continue;
 		parts.push_back(part);
+	}
 
 	if (parts.size() != 3)
 	{
@@ -845,6 +847,8 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 
 void Client::parse(const std::string &request)
 {
+	std::cout << "Parsing request" << std::endl;
+
 	size_t pos = 0;
 	size_t endPos = request.find("\r\n\r\n", pos);
 
@@ -857,6 +861,10 @@ void Client::parse(const std::string &request)
 		std::istringstream headerStream(headers);
 
 		this->handleFirstLine(headerStream);
+		if (this->return_anyway)
+			return;
+
+		std::cout << "First checkpoint passed" << std::endl;
 
 		while (std::getline(headerStream, line))
 		{
@@ -910,7 +918,7 @@ void Client::parse(const std::string &request)
 		}
 	}
 
-	if (this->server_name.empty())
+	if (this->server_name.empty() || !this->port || this->path.empty() || this->method.empty())
 	{
 		this->response.statusCode = 400;
 		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
@@ -927,6 +935,8 @@ void Client::parse(const std::string &request)
 		if (this->isCGIRequest())
 			this->isCGI = true;
 	}
+
+	std::cout << "All headers parsed" << std::endl;
 }
 
 /*
