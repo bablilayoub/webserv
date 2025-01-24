@@ -6,7 +6,7 @@
 /*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:33:18 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/20 18:27:02 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/01/22 12:12:00 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,14 +28,22 @@
 class Client;
 class   FileUpload {
     private:
+        std::map<std::string, std::string>  MimeTypeMap;
 
-        bool        ChunkDone;  
+        std::string ChunkSizeString;
         std::string chunkData;
+        bool        ChunkDone;  
         bool        FirstChunk;
         bool        FirstCRLF;
         size_t      bytesLeft;
         size_t      chunkSize;
 
+        std::string BinaryChunkData;      
+        size_t      BinarychunkSize;
+        size_t      BinaryBytesLeft;
+        std::string BinaryChunkSizeString;
+
+        bool        DataFinish;
 
         std::string ContentDisposition;
         std::string FileNameString;
@@ -43,14 +51,14 @@ class   FileUpload {
         std::string NameString;
         std::string substr;
         size_t      pos;
-        std::string ChunkSizeString;
 
         std::string Name;
         std::string FileName;
         std::string MimeType;
+        int         fd;
         int         HeaderFetched;
         bool        BinaryFileOpen;
-        int         fd;
+        bool        openFile;
         bool        FileNameEmpty;
 
         std::string generate_random_string(int length);
@@ -59,10 +67,12 @@ class   FileUpload {
         void        OpenFile(std::string path);
         void        WriteToFile(std::string &Body);
         void        HandleChunkedData(std::string &Body);
+        void        ResetData();
 
     public:
         FileUpload();
         ~FileUpload();
         void        ParseBody(std::string Body, std::string Boundary, Client &client);
-        void        HandleBinaryData();
+        void        HandleBinaryData(std::string mimeType);
+        void        HandleBinaryChunkedData(std::string &Body);
 };

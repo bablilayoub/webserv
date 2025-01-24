@@ -3,18 +3,105 @@
 /*                                                        :::      ::::::::   */
 /*   FileUpload.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/20 18:58:01 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/22 14:42:28 by aitaouss         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "FileUpload.hpp"
 #include "../Client/Client.hpp"
 
-FileUpload::FileUpload() {
+FileUpload::FileUpload() 
+{
+    this->HeaderFetched = false;
+    this->fd = -42;
+    this->Name = "";
+    this->FileName = "";
+    this->MimeType = "";
+    this->ContentDisposition = "Content-Disposition: form-data;";
+    this->FileNameString = "filename=\"";
+    this->ContentType = "Content-Type:";
+    this->NameString = "name=\"";
+    this->substr = "";
+    this->pos = -42;
+    this->FileNameEmpty = false;
 
+    // For the FormData Chunked
+    this->ChunkSizeString = "";
+    this->FirstChunk = true;
+    this->ChunkDone = false;
+    this->FirstCRLF = true;
+    this->bytesLeft = 0;
+    this->chunkSize = 0;
+
+    this->DataFinish = false;
+
+    // For the Open or not The binary file
+    this->BinaryFileOpen = false;
+
+    this->openFile = false;
+
+    // For Binary Chunked Data
+    this->BinaryChunkSizeString = "";
+    this->BinaryBytesLeft = 0;
+    this->BinaryChunkData = "";
+    this->BinarychunkSize = 0;
+
+    // for the raw data
+    this->MimeTypeMap["application/octet-stream"] = ".bin";  // Generic binary data
+    this->MimeTypeMap["application/json"] = ".json";        // JSON format
+    this->MimeTypeMap["application/xml"] = ".xml";          // XML format
+    this->MimeTypeMap["application/zip"] = ".zip";          // ZIP archives
+    this->MimeTypeMap["application/gzip"] = ".gz";          // Gzip archives
+    this->MimeTypeMap["application/x-tar"] = ".tar";        // Tar archives
+    this->MimeTypeMap["application/x-7z-compressed"] = ".7z"; // 7-Zip archives
+    this->MimeTypeMap["application/pdf"] = ".pdf";          // PDF documents
+    this->MimeTypeMap["application/x-www-form-urlencoded"] = ".txt"; // Form data
+    this->MimeTypeMap["application/x-bzip"] = ".bz";        // Bzip archives
+    this->MimeTypeMap["application/x-bzip2"] = ".bz2";      // Bzip2 archives
+    this->MimeTypeMap["application/x-rar-compressed"] = ".rar"; // RAR archives
+    this->MimeTypeMap["application/x-msdownload"] = ".exe"; // Windows executables
+    this->MimeTypeMap["application/vnd.ms-excel"] = ".xls"; // Excel spreadsheets
+    this->MimeTypeMap["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"] = ".xlsx"; // Excel (modern)
+
+    this->MimeTypeMap["text/plain"] = ".txt";               // Plain text
+    this->MimeTypeMap["text/html"] = ".html";               // HTML documents
+    this->MimeTypeMap["text/css"] = ".css";                 // CSS stylesheets
+    this->MimeTypeMap["text/csv"] = ".csv";                 // CSV files
+    this->MimeTypeMap["text/javascript"] = ".js";           // JavaScript
+    this->MimeTypeMap["application/javascript"] = ".js";    // Modern JavaScript
+
+    this->MimeTypeMap["image/jpeg"] = ".jpg";               // JPEG images
+    this->MimeTypeMap["image/png"] = ".png";                // PNG images
+    this->MimeTypeMap["image/gif"] = ".gif";                // GIF images
+    this->MimeTypeMap["image/svg+xml"] = ".svg";            // SVG images
+    this->MimeTypeMap["image/webp"] = ".webp";              // WebP images
+    this->MimeTypeMap["image/bmp"] = ".bmp";                // BMP images
+
+    this->MimeTypeMap["audio/mpeg"] = ".mp3";               // MP3 audio
+    this->MimeTypeMap["audio/wav"] = ".wav";                // WAV audio
+    this->MimeTypeMap["audio/ogg"] = ".ogg";                // Ogg Vorbis audio
+
+    this->MimeTypeMap["video/mp4"] = ".mp4";                // MP4 video
+    this->MimeTypeMap["video/x-msvideo"] = ".avi";          // AVI video
+    this->MimeTypeMap["video/webm"] = ".webm";              // WebM video
+    this->MimeTypeMap["video/quicktime"] = ".mov";          // MOV video
+    this->MimeTypeMap["video/x-flv"] = ".flv";              // Flash Video
+
+
+
+}
+
+FileUpload::~FileUpload() 
+{
+    if (this->fd > 0)
+        close(this->fd);
+}
+
+void    FileUpload::ResetData() 
+{
     this->HeaderFetched = false;
     this->fd = -42;
     this->Name = "";
@@ -35,17 +122,15 @@ FileUpload::FileUpload() {
     this->bytesLeft = 0;
     this->chunkSize = 0;
 
+    this->DataFinish = false;
+
     this->BinaryFileOpen = false;
 
+    this->openFile = false;
 }
 
-FileUpload::~FileUpload() {
-    if (this->fd > 0) {
-        close(this->fd);
-    }
-}
-
-std::string FileUpload::generate_random_string(int length) {
+std::string FileUpload::generate_random_string(int length) 
+{
     std::string str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     std::string newstr;
 
@@ -53,13 +138,14 @@ std::string FileUpload::generate_random_string(int length) {
     unsigned int seed = static_cast<unsigned int>(std::time(0) + (++seed_counter));
     std::srand(seed);
 
-    for (int i = 0; i < length; i++) {
+    for (int i = 0; i < length; i++)
         newstr += str[rand() % str.size()];
-    }
+
     return newstr;
 }
 
-void    FileUpload::ParseContentDisposition(std::string &Body) {
+void    FileUpload::ParseContentDisposition(std::string &Body) 
+{
     Body = Body.substr(this->pos + this->ContentDisposition.length() + 1, Body.length());
     this->pos = Body.find(this->NameString);
     Body = Body.substr(this->pos + this->NameString.length(), Body.length());
@@ -87,7 +173,8 @@ void    FileUpload::ParseContentDisposition(std::string &Body) {
     this->HeaderFetched = true;
 }
 
-void    FileUpload::ParseContentType(std::string &Body) {
+void    FileUpload::ParseContentType(std::string &Body) 
+{
     Body = Body.substr(this->pos + this->ContentType.length() + 1, Body.length());
     this->pos = Body.find("/");
     Body = Body.substr(this->pos + 1, Body.length());
@@ -98,7 +185,8 @@ void    FileUpload::ParseContentType(std::string &Body) {
     this->HeaderFetched = true;
 }
 
-void    FileUpload::OpenFile(std::string path) {
+void    FileUpload::OpenFile(std::string path) 
+{
     if (this->HeaderFetched)
     {
         std::cout << "Header Fetched Open FIle : " << FileName << std::endl;
@@ -109,7 +197,7 @@ void    FileUpload::OpenFile(std::string path) {
         {
             std::string OpenPath = path + "/" + this->FileName;
             this->fd = open(OpenPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0666);
-            if (this->fd < 0) 
+            if (this->fd < 0)
             {
                 std::cout << "Failed to open the file : " << OpenPath << std::endl;
                 return ;
@@ -121,138 +209,170 @@ void    FileUpload::OpenFile(std::string path) {
 void    FileUpload::WriteToFile(std::string &Body) {
     if (this->fd > 0) 
     {
-        if (Body.empty())
+        if (Body.empty() || (Body.length() == 2 && Body == "\r\n"))
             return ;
         write(this->fd, Body.c_str(), Body.size());
     }
 }
 
-// Not Use For now
-void eraseBody(std::string &Body, const std::string &StringtoErase) {
-    if (StringtoErase.empty()) {
-        return;
-    }
-    size_t pos;
-    if ((pos = Body.find(StringtoErase)) != std::string::npos)
-        Body.erase(pos, StringtoErase.length());
-}
-
-// void    FileUpload::HandleChunkedData(std::string &Body) {
-//     while (true) 
-//     {
-//         if (bytesLeft > 0 && Body.length() >= bytesLeft) {
-//             chunkData = Body.substr(0, bytesLeft);
-//             if (!chunkData.empty()) {
-//                 this->WriteToFile(chunkData);
-//             }
-//             Body = Body.substr(chunkData.length(), Body.length());
-//             bytesLeft = 0;
-//         }
-//         else {
-//             if (bytesLeft > 0) {
-//                 chunkData = Body;
-//                 if (!chunkData.empty()) {
-//                     this->WriteToFile(chunkData);
-//                 }
-//                 bytesLeft = bytesLeft - chunkData.length();
-//                 Body = "";
-//             }
-//         }
-//         pos = Body.find(CRLF);
-//         ChunkSizeString = Body.substr(0, pos);
-//         std::istringstream iss(ChunkSizeString);
-//         chunkSize = 0;
-//         iss >> std::hex >> chunkSize;
-//         chunkData = Body.substr(pos + 2, chunkSize);
-//         if (chunkData.length() < chunkSize) 
-//         {
-//             bytesLeft = chunkSize - chunkData.length();
-//         }
-//         Body = Body.substr(pos + 2 + chunkData.length(), Body.length());
-        
-//         if (!chunkData.empty()) {
-//             this->WriteToFile(chunkData);
-//         }
-//         if (Body.length() == 0) {
-//             break;
-//         }
-//     }
-// }
-
 void FileUpload::HandleChunkedData(std::string &Body) {
-    while (true) {
-        if (bytesLeft > 0 && Body.length() >= bytesLeft) {
+    while (true) 
+    {
+        if (Body.length() == 2 && Body == CRLF)
+            break;
+
+        if (bytesLeft > 0 && Body.length() >= bytesLeft) 
+        {
             chunkData = Body.substr(0, bytesLeft);
-            if (!chunkData.empty()) {
+
+            if (!chunkData.empty())
                 this->WriteToFile(chunkData);
-            }
+
             Body = Body.substr(bytesLeft);
             bytesLeft = 0;
-        } else if (bytesLeft > 0) {
+        } 
+        else if (bytesLeft > 0) 
+        {
             chunkData = Body;
-            if (!chunkData.empty()) {
+
+            if (!chunkData.empty())
                 this->WriteToFile(chunkData);
-            }
+
             bytesLeft -= chunkData.length();
             Body.clear();
         }
 
         pos = Body.find(CRLF);
-        if (pos == std::string::npos) {
+        if (pos == std::string::npos)
             break;
-        }
 
         ChunkSizeString = Body.substr(0, pos);
         std::istringstream iss(ChunkSizeString);
         chunkSize = 0;
         iss >> std::hex >> chunkSize;
 
-        if (pos + 2 + chunkSize > Body.length()) {
+        if (pos + 2 + chunkSize > Body.length()) 
+        {
             bytesLeft = chunkSize - (Body.length() - pos - 2);
             chunkData = Body.substr(pos + 2);
             Body.clear();
         } 
-        else {
+        else 
+        {
             chunkData = Body.substr(pos + 2, chunkSize);
             Body = Body.substr(pos + 2 + chunkSize);
             bytesLeft = 0;
         }
 
-        if (!chunkData.empty()) {
+        if (!chunkData.empty())
             this->WriteToFile(chunkData);
-        }
 
-        if (Body.empty()) {
+        if (Body.empty())
             break;
-        }
     }
 }
 
-void    FileUpload::HandleBinaryData() {
-    std::string ext = ".jpg";
-    this->FileName = "RBL" + generate_random_string(5) + ext;
-    this->BinaryFileOpen = true;
-    this->HeaderFetched = true;
+void FileUpload::HandleBinaryData(std::string mimeType) {
+    size_t posMime;
+
+    if ((posMime = mimeType.find("/")) != std::string::npos) {
+
+        if (this->MimeTypeMap.find(mimeType) != this->MimeTypeMap.end())
+            mimeType = this->MimeTypeMap[mimeType];
+        else 
+            mimeType = ".bin";
+
+        this->FileName = "RBL" + generate_random_string(5) + mimeType;
+
+        this->BinaryFileOpen = true;
+        this->HeaderFetched = true;
+        this->openFile = true;
+
+    }
+}
+
+void    FileUpload::HandleBinaryChunkedData(std::string &Body) {
+    while (true) 
+    {
+        if (Body.length() == 2 && Body == CRLF)
+            break;
+        if (BinaryBytesLeft > 0 && Body.length() >= BinaryBytesLeft) 
+        {
+            BinaryChunkData = Body.substr(0, BinaryBytesLeft);
+
+            if (!BinaryChunkData.empty())
+                this->WriteToFile(BinaryChunkData);
+
+            Body = Body.substr(BinaryBytesLeft);
+            BinaryBytesLeft = 0;
+        } 
+        else if (BinaryBytesLeft > 0) 
+        {
+            BinaryChunkData = Body;
+
+            if (!BinaryChunkData.empty())
+                this->WriteToFile(BinaryChunkData);
+
+            BinaryBytesLeft -= BinaryChunkData.length();
+            Body.clear();
+        }
+        this->pos = Body.find(CRLF);
+        if (this->pos != std::string::npos) 
+        {
+            this->BinaryChunkSizeString = Body.substr(0, pos);
+            std::istringstream iss(BinaryChunkSizeString);
+            this->BinarychunkSize = 0;
+            iss >> std::hex >> BinarychunkSize;
+
+            if (pos + 2 + BinarychunkSize > Body.length()) 
+            {
+                BinaryBytesLeft = BinarychunkSize - (Body.length() - pos - 2);
+                BinaryChunkData = Body.substr(pos + 2);
+                Body.clear();
+            } 
+            else 
+            {
+                BinaryChunkData = Body.substr(pos + 2, BinarychunkSize);
+                Body = Body.substr(pos + 2 + BinarychunkSize);
+                BinaryBytesLeft = 0;
+            }
+
+            if (!BinaryChunkData.empty()) 
+                this->WriteToFile(BinaryChunkData);
+
+        }
+        else
+            break;
+
+        if (Body.empty())
+            break;
+    }
 }
 
 void    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &client)
 {
-    // std::cout << Body << std::endl;
-    // std::cout << Body.length() << std::endl;
-    // std::cout << " ------- Body------- " << std::endl;
-    // return ;
-    if (Body.find(Boundary + "--") != std::string::npos && !client.getIsBinary())
+    if ((Body.length() == 2 && Body == CRLF) || (Body.length() == 1 && Body == "\n") || (Body.length() == 1 && Body == "\r"))
         return ;
-    
+    if (Body.find(Boundary + "--") != std::string::npos && !client.getIsBinary()) 
+    {
+        this->DataFinish = true;
+        return ;
+    }
+    if (this->DataFinish || Body.empty())
+        return ;
     if (client.getIsBinary() && !this->BinaryFileOpen) 
     {
-        HandleBinaryData();
+        this->BinaryChunkData = "";
+        this->BinaryBytesLeft = 0;
+        this->BinarychunkSize = 0;
+        HandleBinaryData(client.getContentType());
     }
     else
     {
         this->pos = Body.find(Boundary);
         if (this->pos == 0) 
         {
+            this->openFile = false;
             this->chunkData = "";
             this->bytesLeft = 0;
             this->chunkSize = 0;
@@ -260,15 +380,21 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &cl
             if (this->pos != std::string::npos)
                 this->ParseContentDisposition(Body);
             this->pos = Body.find(this->ContentType);
-            if (this->pos != std::string::npos)
+            if (this->pos != std::string::npos) 
+            {
+                this->openFile = true;
                 this->ParseContentType(Body);
+            }
         }
     }
 
-    this->OpenFile(client.getUploadDir());
+    if (this->openFile)
+        this->OpenFile(client.getUploadDir());
 
-    if (client.getIsChunked())
+    if (client.getIsChunked() && !client.getIsBinary())
         this->HandleChunkedData(Body);
+    else if (client.getIsChunked() && client.getIsBinary())
+        this->HandleBinaryChunkedData(Body);
     else
         this->WriteToFile(Body);
 }
