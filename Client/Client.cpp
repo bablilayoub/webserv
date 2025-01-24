@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/24 12:50:01 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/24 18:36:11 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -86,10 +86,37 @@ void Client::logRequest(int statusCode)
 ** CGI
 */
 
-bool Client::isCGIRequest(const std::string &path)
+bool Client::isCGIRequest()
 {
-	if (path.substr(path.find_last_of(".") + 1) == "py" || path.substr(path.find_last_of(".") + 1) == "php")
+	if (!this->location)
+		return false;
+
+	if (this->location->php_cgi_path.empty() && this->path.find(".php") != std::string::npos)
+		return false;
+
+	if (this->location->python_cgi_path.empty() && this->path.find(".py") != std::string::npos)
+		return false;
+
+	std::string extension = this->path.substr(this->path.find_last_of('.') + 1);
+
+	if (std::find(this->location->cgi_extensions.begin(), this->location->cgi_extensions.end(), extension) != this->location->cgi_extensions.end())
 		return true;
+
+	if (this->isDirectory(this->location->root_folder + this->sub_path))
+	{
+		if (!this->location->index.empty())
+		{
+			std::string extension = this->location->index.substr(this->location->index.find_last_of('.') + 1);
+			if (std::find(this->location->cgi_extensions.begin(), this->location->cgi_extensions.end(), extension) != this->location->cgi_extensions.end())
+			{
+				if (this->location->index.find(".php") != std::string::npos && !this->location->php_cgi_path.empty())
+					return true;
+				if (this->location->index.find(".py") != std::string::npos && !this->location->python_cgi_path.empty())
+					return true;
+			}
+		}
+	}
+
 	return false;
 }
 
@@ -319,71 +346,86 @@ void Client::checkConfigs()
 		if (std::find(this->location->accepted_methods.begin(), this->location->accepted_methods.end(), this->method) == this->location->accepted_methods.end())
 			return this->setErrorResponse(405);
 
-		if (!this->location->index.empty())
+		if (this->isDirectory(this->location->root_folder + this->sub_path))
 		{
-			std::string indexPath = this->location->root_folder + "/" + this->location->index;
-
-			if (!this->fileExists(indexPath))
+			if (!this->location->index.empty())
 			{
-				if (this->location->autoindex)
+				std::string indexPath;
+				if (this->sub_path.back() == '/')
+					indexPath = this->location->root_folder + this->sub_path + this->location->index;
+				else
+					indexPath = this->location->root_folder + this->sub_path + "/" + this->location->index;
+				if (!this->fileExists(indexPath))
 				{
-					std::string fullPath = this->location->root_folder + this->path;
+					if (this->location->autoindex)
+					{
+						std::string fullPath = this->location->root_folder + this->sub_path;
+						if (!this->isDirectory(fullPath))
+							return this->setErrorResponse(404);
+
+						return this->setSuccessResponse(200, fullPath);
+					}
+					return this->setErrorResponse(404);
+				}
+
+				if (!this->hasReadPermission(indexPath))
+					return this->setErrorResponse(403);
+
+
+				if (this->isCGI)
+					return this->handleCGIRequest(indexPath);
+					
+				return this->setSuccessResponse(200, indexPath);
+			}
+
+			if (this->location->autoindex)
+			{
+				std::string defaultFilePath = this->location->root_folder + "/" + this->location->index;
+
+				if (this->location->index.empty())
+				{
+					std::string fullPath = this->location->root_folder + this->sub_path;
 					if (!this->isDirectory(fullPath))
 						return this->setErrorResponse(404);
 
 					return this->setSuccessResponse(200, fullPath);
 				}
-				return this->setErrorResponse(404);
+
+				return this->setSuccessResponse(200, defaultFilePath);
 			}
-
-			if (!this->hasReadPermission(indexPath))
-				return this->setErrorResponse(403);
-
-			if (this->isCGIRequest(indexPath))
-				return this->handleCGIRequest(indexPath);
-
-			return this->setSuccessResponse(200, indexPath);
-		}
-
-		if (this->location->autoindex)
-		{
-			std::string defaultFilePath = this->location->root_folder + "/" + this->location->index;
 
 			if (this->location->index.empty())
 			{
-				std::string fullPath = this->location->root_folder + this->path;
-				if (!this->isDirectory(fullPath))
+				std::string defaultFilePath = this->location->root_folder + this->sub_path + "/index.html";
+
+				if (!this->fileExists(defaultFilePath))
 					return this->setErrorResponse(404);
 
-				return this->setSuccessResponse(200, fullPath);
-			}
+				if (!this->hasReadPermission(defaultFilePath))
+					return this->setErrorResponse(403);
 
-			return this->setSuccessResponse(200, defaultFilePath);
+				return this->setSuccessResponse(200, defaultFilePath);
+			}
 		}
 
-		if (this->location->index.empty())
+		
+		if (this->fileExists(this->location->root_folder + this->sub_path))
 		{
-			std::string defaultFilePath = this->location->root_folder + this->path + "/index.html";
-
-			if (!this->fileExists(defaultFilePath))
-				return this->setErrorResponse(404);
-
-			if (!this->hasReadPermission(defaultFilePath))
+			if (!this->hasReadPermission(this->location->root_folder + this->sub_path))
 				return this->setErrorResponse(403);
 
-			return this->setSuccessResponse(200, defaultFilePath);
+			if (this->isCGI)
+				return this->handleCGIRequest(this->location->root_folder + this->sub_path);
+
+			return this->setSuccessResponse(200, this->location->root_folder + this->sub_path);
 		}
 	}
 
-	if (this->isDirectory(this->server->root_folder + this->path))
-		return this->setSuccessResponse(200, this->server->root_folder + this->path);
+	if (this->isDirectory(this->server->root_folder + this->sub_path))
+		return this->setSuccessResponse(200, this->server->root_folder + this->sub_path);
 
-	if (this->fileExists(this->server->root_folder + this->path))
-	{
-		// if (isCGIRequest(this->server->root_folder + this->path))
-		// 	return handleCGIRequest(this->server->root_folder + this->path);
-		return this->setSuccessResponse(200, this->server->root_folder + this->path);
-	}
+	if (this->fileExists(this->server->root_folder + this->sub_path))
+		return this->setSuccessResponse(200, this->server->root_folder + this->sub_path);
 
 	this->setErrorResponse(404);
 }
@@ -459,9 +501,73 @@ Location *Client::getLocation()
 		return NULL;
 
 	for (std::map<std::string, Location>::iterator locIt = this->server->locations.begin(); locIt != this->server->locations.end(); ++locIt)
+	{
 		if (locIt->first == this->path)
+		{
+			this->sub_path = this->path.substr(locIt->first.size());
+			if (this->sub_path.empty())
+				this->sub_path = "/";
+			else if (this->sub_path[0] != '/')
+				this->sub_path = "/" + this->sub_path;
 			return &locIt->second;
-	return NULL;
+		}
+	}
+
+	std::vector<std::string> pathParts;
+	std::string path = this->path;
+	size_t pos = 0;
+	while ((pos = path.find('/')) != std::string::npos)
+	{
+		pathParts.push_back(path.substr(0, pos));
+		path.erase(0, pos + 1);
+	}
+	pathParts.push_back(path);
+
+	size_t longestMatch = 0;
+	size_t currentMatch = 0;
+
+	Location *longestMatchLocation = NULL;
+	std::string longestMatchPath;
+
+	for (std::map<std::string, Location>::iterator locIt = this->server->locations.begin(); locIt != this->server->locations.end(); ++locIt)
+	{
+		std::vector<std::string> locationParts;
+		std::string locationPath = locIt->first;
+		pos = 0;
+		while ((pos = locationPath.find('/')) != std::string::npos)
+		{
+			locationParts.push_back(locationPath.substr(0, pos));
+			locationPath.erase(0, pos + 1);
+		}
+		locationParts.push_back(locationPath);
+
+		currentMatch = 0;
+		for (size_t i = 0; i < pathParts.size() && i < locationParts.size(); ++i)
+		{
+			if (pathParts[i] == locationParts[i])
+				++currentMatch;
+			else
+				break;
+		}
+
+		if (currentMatch > longestMatch)
+		{
+			longestMatch = currentMatch;
+			longestMatchLocation = &locIt->second;
+			longestMatchPath = locIt->first;
+		}
+	}
+
+	if (longestMatchLocation)
+	{
+		this->sub_path = this->path.substr(longestMatchPath.size());
+		if (this->sub_path.empty())
+			this->sub_path = "/";
+		else if (this->sub_path[0] != '/')
+			this->sub_path = "/" + this->sub_path;
+	}
+
+	return longestMatchLocation;
 }
 
 /*
@@ -602,7 +708,12 @@ std::string Client::loadFiles(const std::string &directory)
 			continue;
 
 		std::string entryPath = directory + "/" + entry->d_name;
-		std::string currentDirectory = directory.substr(this->server->root_folder.size(), directory.size());
+		std::string currentDirectory;
+
+		if (this->location)
+			currentDirectory = directory.substr(this->location->root_folder.size(), directory.size());
+		else
+			currentDirectory = directory.substr(this->server->root_folder.size(), directory.size());
 
 		if (stat(entryPath.c_str(), &entryStat) != 0)
 			continue;
@@ -799,17 +910,23 @@ void Client::parse(const std::string &request)
 		}
 	}
 
+	if (this->server_name.empty())
+	{
+		this->response.statusCode = 400;
+		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
+		this->return_anyway = true;
+		return;
+	}
+
 	this->server = this->getServer();
 	this->location = this->getLocation();
 
 	if (this->location)
 	{
 		this->upload_dir = this->location->upload_dir;
-		if (this->isCGIRequest(this->location->index))
+		if (this->isCGIRequest())
 			this->isCGI = true;
 	}
-	// else if (this->isCGIRequest(this->path))
-	// 	this->isCGI = true;
 }
 
 /*
