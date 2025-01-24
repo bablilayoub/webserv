@@ -155,7 +155,6 @@ void WebServ::handleServersIncomingConnections()
     {
       if (fds[i].revents & POLLIN)
       {
-        // std::cerr << "POLLIN" << std::endl;
         if (std::find(listeners.begin(), listeners.end(), fds[i].fd) != listeners.end())
           acceptConnectionsFromListner(fds[i].fd);
         else
@@ -163,9 +162,14 @@ void WebServ::handleServersIncomingConnections()
       }
       if (fds[i].revents & POLLOUT)
       {
-        // std::cerr << "POLLOUT" << std::endl;
         int client_socket = fds[i].fd;
+
         this->clients[client_socket].generateResponse();
+
+        if (clients[client_socket].getIsCGI())
+          if (!clients[client_socket].checkCGICompletion())
+            continue;
+
         std::string response = this->clients[client_socket].getResponse();
         ssize_t &client_sentBytes = this->clientDataMap[client_socket].sent_bytes;
         ssize_t bytes_sent = send(client_socket, response.c_str() + client_sentBytes,
@@ -308,6 +312,7 @@ void WebServ::parseFormData(int client_socket, std::string &boundary, std::strin
 
 void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_received, std::string &boundary)
 {
+  
   size_t &wcl = this->clientDataMap[client_socket].wcl;
   size_t &rcl = this->clientDataMap[client_socket].rcl;
   std::string &chunk = this->clientDataMap[client_socket].chunk;

@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 10:49:18 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/22 11:32:01 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/24 12:32:20 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,7 +51,7 @@ bool Config::isCGI(const std::string &path, const std::string &cgi)
 	return false;
 }
 
-bool Config::isValidFile(const std::string &path)
+bool Config::isValidCGI(const std::string &path)
 {
 	struct stat statbuf;
 
@@ -61,7 +61,7 @@ bool Config::isValidFile(const std::string &path)
 	if (!S_ISREG(statbuf.st_mode))
 		return false;
 
-	if (access(path.c_str(), R_OK | W_OK | X_OK) != 0)
+	if (access(path.c_str(), R_OK | X_OK) != 0)
 		return false;
 
 	return true;
@@ -81,13 +81,13 @@ void Config::parseKeyValue(const std::string &line, std::string &key, std::strin
 {
 	size_t pos = line.find(' ');
 	if (pos == std::string::npos)
-		throw std::runtime_error("Invalid key-value pair: Missing space between key and value");
+		throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Missing space between key and value");
 
 	key = line.substr(0, pos);
 	value = line.substr(pos + 1);
 
 	if (value.back() != ';')
-		throw std::runtime_error("Invalid key-value pair: Missing semicolon at the end");
+		throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Missing semicolon at the end");
 
 	value.pop_back();
 	this->trimWhitespace(value);
@@ -112,6 +112,11 @@ void Config::processLocationBlock(const std::string &line)
 		throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid location syntax");
 
 	locationPath = line.substr(pos + 1, line.size() - pos - 2);
+	this->trimWhitespace(locationPath);
+
+	if (locationPath != "/")
+		locationPath = trimTrailingSlash(locationPath);
+
 	currentLocation = Location();
 	currentLocation.autoindex = false;
 }
@@ -128,7 +133,6 @@ void Config::processClosingBrace()
 	{
 		if (locationPath.empty())
 			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Location path is not specified");
-		this->trimWhitespace(locationPath);
 		if (currentLocation.root_folder.empty())
 			currentLocation.root_folder = currentServer.root_folder;
 		if (std::find(currentLocation.accepted_methods.begin(), currentLocation.accepted_methods.end(), METHOD_POST) != currentLocation.accepted_methods.end())
@@ -286,9 +290,11 @@ void Config::handleKeyValue(const std::string &line)
 		{
 			size_t pos = value.find(' ');
 			if (pos == std::string::npos)
-				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid redirect value");
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid redirect value, must be in the format 'status_code url'");
 
 			currentLocation.redirect_status_code = this->parseInt(value.substr(0, pos));
+			if (currentLocation.redirect_status_code < 300 || currentLocation.redirect_status_code > 308)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid redirect status code, must be between 300 and 308");
 			currentLocation.redirect = value.substr(pos + 1);
 		}
 		else if (key == "cgi_timeout")
@@ -313,13 +319,13 @@ void Config::handleKeyValue(const std::string &line)
 		else if (key == "php_cgi_path")
 		{
 			currentLocation.php_cgi_path = trimTrailingSlash(value);
-			if (!isValidFile(currentLocation.php_cgi_path))
+			if (!this->isValidCGI(currentLocation.php_cgi_path))
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid php_cgi_path executable or permissions.");
 		}
 		else if (key == "python_cgi_path")
 		{
 			currentLocation.python_cgi_path = trimTrailingSlash(value);
-			if (!isValidFile(currentLocation.python_cgi_path))
+			if (!this->isValidCGI(currentLocation.python_cgi_path))
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid python_cgi_path executable or permissions.");
 		}
 		else if (key == "accepted_methods")
@@ -338,6 +344,25 @@ void Config::handleKeyValue(const std::string &line)
 
 			if (currentLocation.accepted_methods.empty())
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": accepted_methods cannot be empty");
+		}
+		else if (key == "cgi_extensions")
+		{
+			currentLocation.cgi_extensions.clear();
+			std::istringstream stream(value);
+			std::string extension;
+
+			std::string validExtensions[] = {"py", "php"};
+
+			while (std::getline(stream, extension, ','))
+			{
+				this->trimWhitespace(extension);
+				if (std::find(std::begin(validExtensions), std::end(validExtensions), extension) == std::end(validExtensions))
+					throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid CGI extension (py, php only)");
+				currentLocation.cgi_extensions.push_back(extension);
+			}
+
+			if (currentLocation.cgi_extensions.empty())
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": cgi_extensions cannot be empty");
 		}
 		else
 			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Unknown location key: " + key);
