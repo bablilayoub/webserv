@@ -140,7 +140,7 @@ void WebServ::handleServersIncomingConnections()
 {
   while (true)
   {
-    int ret = poll(fds.data(), fds.size(), 100);
+    int ret = poll(fds.data(), fds.size(), TIME_OUT);
     if (ret == -1)
     {
       closeFds();
@@ -153,7 +153,6 @@ void WebServ::handleServersIncomingConnections()
     {
       if (fds[i].revents & POLLIN)
       {
-        // std::cerr << "POLLIN" << std::endl;
         if (std::find(listeners.begin(), listeners.end(), fds[i].fd) != listeners.end())
           acceptConnectionsFromListner(fds[i].fd);
         else
@@ -161,9 +160,14 @@ void WebServ::handleServersIncomingConnections()
       }
       if (fds[i].revents & POLLOUT)
       {
-        // std::cerr << "POLLOUT" << std::endl;
         int client_socket = fds[i].fd;
+
         this->clients[client_socket].generateResponse();
+
+        if (clients[client_socket].getIsCGI())
+          if (!clients[client_socket].checkCGICompletion())
+            continue;
+
         std::string response = this->clients[client_socket].getResponse();
         ssize_t &client_sentBytes = this->clientDataMap[client_socket].sent_bytes;
         ssize_t bytes_sent = send(client_socket, response.c_str() + client_sentBytes,
