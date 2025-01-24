@@ -149,8 +149,6 @@ void WebServ::handleServersIncomingConnections()
     if (ret == 0)
       continue;
 
-    
-
     for (size_t i = 0; i < fds.size(); i++)
     {
       if (fds[i].revents & POLLIN)
@@ -259,18 +257,11 @@ int WebServ::getClientIndex(int client_socket)
   return -1;
 }
 
-void WebServ::fileReachedEnd(std::string &chunk, int client_socket, size_t &rcl, size_t &wcl, std::ofstream &cgiInput)
+void WebServ::fileReachedEnd(int client_socket, std::ofstream &cgiInput)
 {
-  if (rcl >= wcl)
-  {
-    if (!this->clients[client_socket].getIsCGI()) {
-      BodyMap[client_socket].ParseBody(chunk, this->clientDataMap[client_socket].boundary, this->clients[client_socket]);
-    }
-    cgiInput.close();
-    size_t index = getClientIndex(client_socket);
-    fds[index].events = POLLOUT;
-    chunk.clear();
-  }
+  cgiInput.close();
+  size_t index = getClientIndex(client_socket);
+  fds[index].events = POLLOUT;
 }
 
 void WebServ::parseFormData(int client_socket, std::string &boundary, std::string &chunk, size_t &rcl, size_t &wcl, std::ofstream &cgiInput)
@@ -295,7 +286,11 @@ void WebServ::parseFormData(int client_socket, std::string &boundary, std::strin
     {
       BodyMap[client_socket].ParseBody(boundaryString + chunk.substr(0, pos2), boundary, this->clients[client_socket]);
       chunk = chunk.substr(pos2);
-      fileReachedEnd(chunk, client_socket, rcl, wcl, cgiInput);
+      if (rcl >= wcl)
+      {
+        BodyMap[client_socket].ParseBody(chunk, this->clientDataMap[client_socket].boundary, this->clients[client_socket]);
+        fileReachedEnd(client_socket, cgiInput);
+      }
       return;
     }
     else
@@ -303,7 +298,8 @@ void WebServ::parseFormData(int client_socket, std::string &boundary, std::strin
   }
   BodyMap[client_socket].ParseBody((flag ? boundaryString : "") + chunk, boundary, this->clients[client_socket]);
   chunk.clear();
-  fileReachedEnd(chunk, client_socket, rcl, wcl, cgiInput);
+  if (rcl >= wcl)
+    fileReachedEnd(client_socket, cgiInput);
 }
 
 ////////////////////////////////////////
@@ -312,7 +308,6 @@ void WebServ::parseFormData(int client_socket, std::string &boundary, std::strin
 
 void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_received, std::string &boundary)
 {
-  
   size_t &wcl = this->clientDataMap[client_socket].wcl;
   size_t &rcl = this->clientDataMap[client_socket].rcl;
   std::string &chunk = this->clientDataMap[client_socket].chunk;
@@ -332,7 +327,8 @@ void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_r
   {
     cgiInput << chunk;
     chunk.clear();
-    fileReachedEnd(chunk, client_socket, rcl, wcl, cgiInput);
+    if (rcl >= wcl)
+      fileReachedEnd(client_socket, cgiInput);
   }
   else if (this->clients[client_socket].getContentType().find("multipart/form-data;") != std::string::npos)
     parseFormData(client_socket, boundary, chunk, rcl, wcl, cgiInput);
@@ -340,7 +336,8 @@ void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_r
   {
     BodyMap[client_socket].ParseBody(chunk, "", this->clients[client_socket]);
     chunk.clear();
-    fileReachedEnd(chunk, client_socket, rcl, wcl, cgiInput);
+    if (rcl >= wcl)
+      fileReachedEnd(client_socket, cgiInput);
   }
 }
 
