@@ -309,6 +309,7 @@ void WebServ::parseFormData(int client_socket, std::string &boundary, std::strin
 
 void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_received, std::string &boundary)
 {
+  
   size_t &wcl = this->clientDataMap[client_socket].wcl;
   size_t &rcl = this->clientDataMap[client_socket].rcl;
   std::string &chunk = this->clientDataMap[client_socket].chunk;
@@ -353,7 +354,7 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
     fds[i].events = POLLOUT;
   else
   {
-    if (this->clients[client_socket].getContentLength() == 0 || this->clients[client_socket].getContentLength() > 1000000)
+    if (this->clients[client_socket].getContentLength() == 0 || this->clients[client_socket].getContentLength() > 100000000000)
     {
       fds[i].events = POLLOUT;
       return;
