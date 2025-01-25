@@ -5,4 +5,4 @@
 testing.cpp
 webserv
 siege_test.sh
-upload
+./upload
