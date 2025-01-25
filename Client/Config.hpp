@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:07:41 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/24 12:32:25 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/25 17:36:33 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,6 +39,7 @@ struct Server
     std::string host;
     std::string root_folder;
     std::vector<int> ports;
+    std::string limit_client_body_size_str;
     size_t limit_client_body_size;
     std::vector<std::string> server_names;
     std::map<int, std::string> error_pages;

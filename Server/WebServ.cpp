@@ -357,16 +357,21 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
   if (!this->clientDataMap[client_socket].headerDataSet)
     getHeaderData(client_socket, &this->clientDataMap[client_socket].headerDataSet, boundary);
 
+  if (this->clients[client_socket].return_anyway)
+  {
+    fds[i].events = POLLOUT;
+    return;
+  }
   if (this->clients[client_socket].getMethod() != POST)
     fds[i].events = POLLOUT;
   else
   {
-    if (this->clients[client_socket].getContentLength() == 0 || this->clients[client_socket].getContentLength() > 100000000000)
-    {
-      std::cerr << "Content-Length is invalid" << std::endl;
-      fds[i].events = POLLOUT;
-      return;
-    }
+    // if (this->clients[client_socket].getContentLength() == 0 || this->clients[client_socket].getContentLength() > this->clients[client_socket].server->limit_client_body_size)
+    // {
+    //   std::cerr << "Content-Length is invalid" << std::endl;
+    //   fds[i].events = POLLOUT;
+    //   return;
+    // }
     bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0);
     size_t index = getClientIndex(client_socket);
     if (bytes_received == 0)

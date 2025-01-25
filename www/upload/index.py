@@ -1,40 +1,33 @@
-<?php
+#!/usr/bin/env python3
+import cgi
+import cgitb
 
-// Initialize variables
-$name = "";
-$email = "";
-$message = "";
+# Enable CGI error handling
+cgitb.enable()
 
-// Check if the form is submitted
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    if (isset($_POST["name"]) && isset($_POST["email"])) {
-        $name = htmlspecialchars($_POST['name']);
-        $email = htmlspecialchars($_POST['email']);
+# Initialize variables
+name = ""
+email = ""
+message = ""
 
-        $message = "Thank you, $name! Your email address ($email) has been received.";
-    } else {
-        $message = "Please fill in all the fields.";
-    }
-}
+# Get form data
+form = cgi.FieldStorage()
+if form.getvalue("name") and form.getvalue("email"):
+    name = form.getvalue("name")
+    email = form.getvalue("email")
+    message = f"Thank you, {name}! Your email address ({email}) has been received."
 
-if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['message'])) {
-    $message = htmlspecialchars($_GET['message']);
-}
-
-// while (true) {}
-
-?>
-
+# HTML content for the contact form
+print(f"""
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contact Form PHP</title>
-    <!-- <link rel="icon" type="image/png" href="./icon.png" /> -->
+    <title>Contact Form Python</title>
+    <link rel="icon" type="image/png" href="./icon.png" />
     <style>
-        body {
+        body {{
             font-family: Arial, sans-serif;
             background-color: #f4f7fc;
             margin: 0;
@@ -43,31 +36,26 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['message'])) {
             justify-content: center;
             align-items: center;
             height: 100vh;
-        }
-
-        .container {
+        }}
+        .container {{
             background-color: white;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             width: 100%;
             max-width: 400px;
-        }
-
-        h1 {
+        }}
+        h1 {{
             font-size: 24px;
             text-align: center;
             color: #333;
-        }
-
-        label {
+        }}
+        label {{
             font-size: 16px;
             margin-bottom: 8px;
             color: #555;
-        }
-
-        input[type="text"],
-        input[type="email"] {
+        }}
+        input[type="text"], input[type="email"] {{
             width: 100%;
             padding: 12px;
             margin: 8px 0;
@@ -75,9 +63,8 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['message'])) {
             border-radius: 4px;
             box-sizing: border-box;
             font-size: 14px;
-        }
-
-        input[type="submit"] {
+        }}
+        input[type="submit"] {{
             width: 100%;
             padding: 12px;
             background-color: #007bff;
@@ -86,40 +73,33 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['message'])) {
             border-radius: 4px;
             cursor: pointer;
             font-size: 16px;
-        }
-
-        input[type="submit"]:hover {
+        }}
+        input[type="submit"]:hover {{
             background-color: #0056b3;
-        }
-
-        p {
+        }}
+        p {{
             font-size: 16px;
             color: #28a745;
             text-align: center;
             margin-top: 15px;
-        }
+        }}
     </style>
 </head>
-
 <body>
 
     <div class="container">
-        <h1>Contact Form PHP</h1>
-        <form method="POST" action="">
+        <h1>Contact Form Python</h1>
+        <form method="post" action="">
             <label for="name">Name:</label><br>
-            <input type="text" id="name" name="name" required><br><br>
+            <input type="text" id="name" name="name" value="{name}" required><br><br>
             <label for="email">Email:</label><br>
-            <input type="email" id="email" name="email" required><br><br>
+            <input type="email" id="email" name="email" value="{email}" required><br><br>
             <input type="submit" value="Submit">
         </form>
 
-        <?php
-        if (!empty($message)) {
-            echo "<p>$message</p>";
-        }
-        ?>
+        {f"<p>{message}</p>" if message else ""}
     </div>
 
 </body>
-
 </html>
+""")

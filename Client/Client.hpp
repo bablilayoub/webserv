@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/25 11:37:21 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/25 19:50:41 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,7 +41,6 @@ private:
 	bool isChunked;
 	bool isContentLenght;
 	bool generated;
-	bool return_anyway;
 
 	std::string path;
 	std::string sub_path;
@@ -94,6 +93,7 @@ private:
 	void setFinalResponse();
 public:
 	Server *server;
+	bool return_anyway;
 
 	void setup(int fd, Config *config);
 	void parse(const std::string &request);
