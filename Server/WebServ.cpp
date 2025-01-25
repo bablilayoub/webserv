@@ -227,10 +227,12 @@ void WebServ::getHeaderData(int client_socket, bool *flag, std::string &boundary
   std::string request;
   std::string header;
   ssize_t bytes_received;
+  int tries = 0;
 
   *flag = true;
-  while ((bytes_received = recv(client_socket, buffer, BUFFER_SIZE, MSG_PEEK)) > 0)
+  while ((bytes_received = recv(client_socket, buffer, BUFFER_SIZE, MSG_PEEK)) > 0 && tries <= 3)
   {
+    tries++;
     request.append(buffer, bytes_received);
     size_t pos = request.find("\r\n\r\n");
     if (pos != std::string::npos)
@@ -338,6 +340,11 @@ void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_r
     chunk.clear();
     if (rcl >= wcl)
       fileReachedEnd(client_socket, cgiInput);
+  }
+  else
+  {
+    size_t index = getClientIndex(client_socket);
+    fds[index].events = POLLOUT;
   }
 }
 

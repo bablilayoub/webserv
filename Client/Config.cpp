@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 10:49:18 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/24 12:32:20 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/24 19:57:02 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -145,6 +145,8 @@ void Config::processClosingBrace()
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": This location requires php_cgi_path.");
 			if (currentLocation.cgi_timeout <= 0)
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": This location requires cgi_timeout.");
+			if (std::find(currentLocation.cgi_extensions.begin(), currentLocation.cgi_extensions.end(), "php") == currentLocation.cgi_extensions.end())
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": index requires php extension in cgi_extensions.");
 		}
 
 		if (!currentLocation.index.empty() && this->isCGI(currentLocation.index, "py"))
@@ -153,6 +155,8 @@ void Config::processClosingBrace()
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": This location requires python_cgi_path.");
 			if (currentLocation.cgi_timeout <= 0)
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": This location requires cgi_timeout.");
+			if (std::find(currentLocation.cgi_extensions.begin(), currentLocation.cgi_extensions.end(), "py") == currentLocation.cgi_extensions.end())
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": index requires py extension in cgi_extensions.");
 		}
 
 		currentServer.locations[locationPath] = currentLocation;

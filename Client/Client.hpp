@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/24 10:33:34 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/25 11:37:21 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,6 +44,7 @@ private:
 	bool return_anyway;
 
 	std::string path;
+	std::string sub_path;
 	std::string body;
 	std::string query;
 	std::string method;
@@ -53,6 +54,7 @@ private:
 	std::string path_info;
 
 	std::map<std::string, std::string> headers;
+	std::map<std::string, std::string> cgi_response_headers;
 
 	Config *config;
 	std::string upload_dir;
@@ -80,7 +82,7 @@ private:
 	void logRequest(int statusCode);
 
 	void handleCGIRequest(const std::string &path);
-	bool isCGIRequest(const std::string &path);
+	bool isCGIRequest();
 	void setErrorResponse(int statusCode);
 	void setSuccessResponse(int statusCode, const std::string &path);
 	std::string getHttpHeaders();
