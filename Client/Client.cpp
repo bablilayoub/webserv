@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/24 20:18:32 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/25 11:46:57 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,6 +51,7 @@ void Client::clear()
 	this->cgi_state.running = false;
 	this->generated = false;
 	this->return_anyway = false;
+	this->cgi_response_headers.clear();
 }
 
 void Client::logRequest(int statusCode)
@@ -77,7 +78,7 @@ void Client::logRequest(int statusCode)
 			  << std::setfill(' ')
 			  << BOLD << "Server: " << BLUE << this->server_name + ":" + std::to_string(this->port) << RESET << " "
 			  << BOLD << "Method: " << BLUE << std::setw(8) << std::left << this->method << RESET
-			  << BOLD << "Path: " << WHITE << std::setw(30) << this->path << RESET
+			  << BOLD << "Path: " << WHITE << std::setw(45) << this->path << RESET
 			  << BOLD << "Status: " << statusColor << statusCode << RESET
 			  << std::endl;
 }
@@ -91,13 +92,13 @@ bool Client::isCGIRequest()
 	if (!this->location)
 		return false;
 
-	if (this->location->php_cgi_path.empty() && this->path.find(".php") != std::string::npos)
+	if (this->location->php_cgi_path.empty() && this->sub_path.find(".php") != std::string::npos)
 		return false;
 
-	if (this->location->python_cgi_path.empty() && this->path.find(".py") != std::string::npos)
+	if (this->location->python_cgi_path.empty() && this->sub_path.find(".py") != std::string::npos)
 		return false;
 
-	std::string extension = this->path.substr(this->path.find_last_of('.') + 1);
+	std::string extension = this->sub_path.substr(this->sub_path.find_last_of('.') + 1);
 
 	if (std::find(this->location->cgi_extensions.begin(), this->location->cgi_extensions.end(), extension) != this->location->cgi_extensions.end())
 		return true;
@@ -130,6 +131,9 @@ void Client::handleCGIRequest(const std::string &indexPath)
 		cgiPath = this->location->php_cgi_path;
 	else
 		cgiPath = this->location->python_cgi_path;
+
+	if (cgiPath.empty())
+		return this->setErrorResponse(500);
 
 	this->cgi_state.outputPath = "/tmp/cgi_out_" + std::to_string(this->clientFd);
 	this->cgi_state.inputPath = "/tmp/cgi_input_" + std::to_string(this->clientFd);
@@ -169,16 +173,26 @@ void Client::handleCGIRequest(const std::string &indexPath)
 		env["CONTENT_LENGTH"] = std::to_string(this->body.size());
 		env["REDIRECT_STATUS"] = "200";
 		env["REMOTE_ADDR"] = this->server_name;
+		env["REMOTE_HOST"] = this->server_name;
 		env["SERVER_PORT"] = std::to_string(port);
+		env["REMOTE_IDENT"] = "Webserv";
 		env["HTTP_USER_AGENT"] = "Client ID:" + std::to_string(clientFd);
 		env["QUERY_STRING"] = this->query;
 		env["SERVER_PROTOCOL"] = "HTTP/1.1";
 		env["SERVER_SOFTWARE"] = "Webserv/1.0";
 		env["SERVER_NAME"] = this->server_name;
 		env["REQUEST_URI"] = this->path;
-		env["PATH_INFO"] = this->path;
-		env["PATH_TRANSLATED"] = indexPath;
+		env["PATH_INFO"] = this->path_info;
+		env["PATH_TRANSLATED"] = this->location->root_folder + this->path_info;
 		env["REMOTE_USER"] = "Webserv";
+
+		for (std::map<std::string, std::string>::iterator it = this->headers.begin(); it != this->headers.end(); ++it)
+		{
+			std::string key = "HTTP_" + it->first;
+			for (size_t i = 0; i < key.size(); ++i)
+				key[i] = std::toupper(key[i]);
+			env[key] = it->second;
+		}
 
 		char **envp = new char *[env.size() + 1];
 		int i = 0;
@@ -263,11 +277,16 @@ bool Client::checkCGICompletion()
 
 			while (std::getline(buffer, line))
 			{
+				if (line.empty() || line.find(":") == std::string::npos)
+					break;
 				size_t rpos = line.find('\r');
 				if (rpos != std::string::npos)
 					line = line.substr(0, rpos);
-				if (line.find("Content-Type: ") != std::string::npos)
-					this->response.contentType = line.substr(line.find("Content-Type: ") + 14);
+
+				std::string key = line.substr(0, line.find(":"));
+				std::string value = line.substr(line.find(":") + 2);
+
+				this->cgi_response_headers[key] = value;
 			}
 
 			size_t double_crlf = buffer.str().find("\r\n\r\n");
@@ -303,6 +322,14 @@ void Client::setFinalResponse()
 	{
 		this->logRequest(response.statusCode);
 		return;
+	}
+
+	if (this->isCGI)
+	{
+		if (this->cgi_response_headers.count("Content-Type"))
+			this->response.contentType = this->cgi_response_headers["Content-Type"];
+		else
+			this->response.contentType = "text/html";
 	}
 
 	if (this->response.contentType.empty())
@@ -436,6 +463,12 @@ std::string Client::getHttpHeaders()
 	headers += "HTTP/1.1 " + std::to_string(statusCode) + " " + this->config->statusCodes[statusCode] + "\r\n";
 	headers += "Content-Type: " + this->response.contentType + "\r\n";
 	headers += "Content-Length: " + std::to_string(this->response.content.size()) + "\r\n";
+	for (std::map<std::string, std::string>::iterator it = this->cgi_response_headers.begin(); it != this->cgi_response_headers.end(); ++it)
+	{
+		if (it->first == "Content-Type" || it->first == "Content-Length")
+			continue;
+		headers += it->first + ": " + it->second + "\r\n";
+	}
 	headers += "Connection: close\r\n";
 	headers += "\r\n";
 	return headers;
@@ -507,6 +540,17 @@ Location *Client::getLocation()
 				this->sub_path = "/";
 			else if (this->sub_path[0] != '/')
 				this->sub_path = "/" + this->sub_path;
+
+			for (std::vector<std::string>::iterator it = locIt->second.cgi_extensions.begin(); it != locIt->second.cgi_extensions.end(); ++it)
+			{
+				size_t pos = this->sub_path.find(*it);
+				if (pos != std::string::npos)
+				{
+					this->path_info = this->sub_path.substr(pos + it->size());
+					this->sub_path = this->sub_path.substr(0, pos + it->size());
+					break;
+				}
+			}
 			return &locIt->second;
 		}
 	}
@@ -563,6 +607,17 @@ Location *Client::getLocation()
 			this->sub_path = "/";
 		else if (this->sub_path[0] != '/')
 			this->sub_path = "/" + this->sub_path;
+
+		for (std::vector<std::string>::iterator it = longestMatchLocation->cgi_extensions.begin(); it != longestMatchLocation->cgi_extensions.end(); ++it)
+		{
+			size_t pos = this->sub_path.find(*it);
+			if (pos != std::string::npos)
+			{
+				this->path_info = this->sub_path.substr(pos + it->size());
+				this->sub_path = this->sub_path.substr(0, pos + it->size());
+				break;
+			}
+		}
 	}
 
 	return longestMatchLocation;
@@ -847,8 +902,6 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 
 void Client::parse(const std::string &request)
 {
-	std::cout << "Parsing request" << std::endl;
-
 	size_t pos = 0;
 	size_t endPos = request.find("\r\n\r\n", pos);
 
@@ -863,8 +916,6 @@ void Client::parse(const std::string &request)
 		this->handleFirstLine(headerStream);
 		if (this->return_anyway)
 			return;
-
-		std::cout << "First checkpoint passed" << std::endl;
 
 		while (std::getline(headerStream, line))
 		{
@@ -935,8 +986,6 @@ void Client::parse(const std::string &request)
 		if (this->isCGIRequest())
 			this->isCGI = true;
 	}
-
-	std::cout << "All headers parsed" << std::endl;
 }
 
 /*

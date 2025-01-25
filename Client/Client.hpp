@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/24 17:59:47 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/25 11:37:21 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -54,6 +54,7 @@ private:
 	std::string path_info;
 
 	std::map<std::string, std::string> headers;
+	std::map<std::string, std::string> cgi_response_headers;
 
 	Config *config;
 	std::string upload_dir;
