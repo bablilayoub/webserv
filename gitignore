@@ -1,0 +1,8 @@
+.vscode
+**/*.o
+**/.DS_Store
+**/.vscode
+testing.cpp
+webserv
+siege_test.sh
+./upload
