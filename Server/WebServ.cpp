@@ -8,48 +8,55 @@ WebServ::WebServ(Config *config) : config(config) {}
 
 int WebServ::init(std::string host, const int port)
 {
-  int listener = socket(AF_INET, SOCK_STREAM, 0);
-  if (listener == INVALID_SOCKET)
+  int listener = -1;
+  while (true)
   {
-    std::cout << "Socket creation failed" << std::endl;
-    // continue;
-  }
+    listener = socket(AF_INET, SOCK_STREAM, 0);
+    if (listener == INVALID_SOCKET)
+    {
+      std::cout << "Socket creation failed" << std::endl;
+      continue;
+    }
 
-  int optval = 1;
-  if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == SOCKET_ERROR)
-  {
-    close(listener);
-    std::cout << "setsockopt failed" << std::endl;
-    // continue;
-  }
+    int optval = 1;
+    if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == SOCKET_ERROR)
+    {
+      close(listener);
+      std::cout << "setsockopt failed" << std::endl;
+      continue;
+    }
 
-  if (setsockopt(listener, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval)) == SOCKET_ERROR)
-  {
-    close(listener);
-    std::cout << "setsockopt failed" << std::endl;
-    // continue;
-  }
+    if (setsockopt(listener, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval)) == SOCKET_ERROR)
+    {
+      close(listener);
+      std::cout << "setsockopt failed" << std::endl;
+      continue;
+    }
 
-  this->socketConfig(host, port);
-  this->setNonBlockingMode(listener);
+    this->socketConfig(host, port);
+    if (this->setNonBlockingMode(listener) == -1)
+    {
+      close(listener);
+      std::cout << "Failed to set non-blocking mode" << std::endl;
+      continue;
+    }
 
-  if (bind(listener, (sockaddr *)&this->hint, sizeof(this->hint)) == SOCKET_ERROR)
-  {
-    close(listener);
-    std::cout << "bind failed" << std::endl;
-    // continue;
-  }
+    if (bind(listener, (sockaddr *)&this->hint, sizeof(this->hint)) == SOCKET_ERROR)
+    {
+      close(listener);
+      std::cout << "bind failed" << std::endl;
+      continue;
+    }
 
-  if (listen(listener, SOMAXCONN) == SOCKET_ERROR)
-  {
-    close(listener);
-    std::cout << "Listening to server failed" << std::endl;
-    // continue;
+    if (listen(listener, SOMAXCONN) == SOCKET_ERROR)
+    {
+      close(listener);
+      std::cout << "Listening to server failed" << std::endl;
+      continue;
+    }
+    std::cout << "Server is listening on port " << port << std::endl;
+    return listener;
   }
-  // break;
-  // }
-  std::cout << "Server is listening on port " << port << std::endl;
-  return listener;
 }
 
 void WebServ::socketConfig(std::string host, const int port)
@@ -61,13 +68,14 @@ void WebServ::socketConfig(std::string host, const int port)
     std::cerr << "Invalid address: " << host << std::endl; // to remove
 };
 
-void WebServ::setNonBlockingMode(int socket)
+int WebServ::setNonBlockingMode(int socket)
 {
   if (fcntl(socket, F_SETFL, O_NONBLOCK) < 0)
   {
     close(socket);
-    throw std::runtime_error("Failed to set non-blocking mode");
+    return -1;
   }
+  return 0;
 }
 
 void WebServ::initServers()
@@ -135,8 +143,8 @@ void WebServ::handleServersIncomingConnections()
     int ret = poll(fds.data(), fds.size(), TIME_OUT);
     if (ret == -1)
     {
-      std::cout << "poll failed" << std::endl;
-      return;
+      closeFds();
+      throw std::runtime_error("Poll failed");
     }
     if (ret == 0)
       continue;
@@ -181,7 +189,6 @@ void WebServ::handleServersIncomingConnections()
 
 void WebServ::closeFds()
 {
-
   for (size_t i = 0; i < fds.size(); ++i)
     close(fds[i].fd);
 }
@@ -216,14 +223,16 @@ std::string getBoundary(std::string &header)
 
 void WebServ::getHeaderData(int client_socket, bool *flag, std::string &boundary)
 {
-  char buffer[BUFFER_SIZE];
+  char buffer[BUFFER_SIZE + 1];
   std::string request;
   std::string header;
   ssize_t bytes_received;
+  int tries = 0;
 
   *flag = true;
-  while ((bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, MSG_PEEK)) > 0)
+  while ((bytes_received = recv(client_socket, buffer, BUFFER_SIZE, MSG_PEEK)) > 0 && tries <= 3)
   {
+    tries++;
     request.append(buffer, bytes_received);
     size_t pos = request.find("\r\n\r\n");
     if (pos != std::string::npos)
@@ -232,8 +241,6 @@ void WebServ::getHeaderData(int client_socket, bool *flag, std::string &boundary
       this->clientDataMap[client_socket].header_length = header.length();
       break;
     }
-    else
-      break;
   }
   this->clients[client_socket].parse(header);
   this->clientDataMap[client_socket].wcl = this->clients[client_socket].getContentLength() + this->clientDataMap[client_socket].header_length;
@@ -252,17 +259,11 @@ int WebServ::getClientIndex(int client_socket)
   return -1;
 }
 
-void WebServ::fileReachedEnd(std::string &chunk, int client_socket, size_t &rcl, size_t &wcl, std::ofstream &cgiInput)
+void WebServ::fileReachedEnd(int client_socket, std::ofstream &cgiInput)
 {
-  if (rcl >= wcl)
-  {
-    if (!this->clients[client_socket].getIsCGI())
-      BodyMap[client_socket].ParseBody(chunk, this->clientDataMap[client_socket].boundary, this->clients[client_socket]);
-    cgiInput.close();
-    size_t index = getClientIndex(client_socket);
-    fds[index].events = POLLOUT;
-    chunk.clear();
-  }
+  cgiInput.close();
+  size_t index = getClientIndex(client_socket);
+  fds[index].events = POLLOUT;
 }
 
 void WebServ::parseFormData(int client_socket, std::string &boundary, std::string &chunk, size_t &rcl, size_t &wcl, std::ofstream &cgiInput)
@@ -287,7 +288,11 @@ void WebServ::parseFormData(int client_socket, std::string &boundary, std::strin
     {
       BodyMap[client_socket].ParseBody(boundaryString + chunk.substr(0, pos2), boundary, this->clients[client_socket]);
       chunk = chunk.substr(pos2);
-      fileReachedEnd(chunk, client_socket, rcl, wcl, cgiInput);
+      if (rcl >= wcl)
+      {
+        BodyMap[client_socket].ParseBody(chunk, this->clientDataMap[client_socket].boundary, this->clients[client_socket]);
+        fileReachedEnd(client_socket, cgiInput);
+      }
       return;
     }
     else
@@ -295,7 +300,8 @@ void WebServ::parseFormData(int client_socket, std::string &boundary, std::strin
   }
   BodyMap[client_socket].ParseBody((flag ? boundaryString : "") + chunk, boundary, this->clients[client_socket]);
   chunk.clear();
-  fileReachedEnd(chunk, client_socket, rcl, wcl, cgiInput);
+  if (rcl >= wcl)
+    fileReachedEnd(client_socket, cgiInput);
 }
 
 ////////////////////////////////////////
@@ -304,11 +310,11 @@ void WebServ::parseFormData(int client_socket, std::string &boundary, std::strin
 
 void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_received, std::string &boundary)
 {
+
   size_t &wcl = this->clientDataMap[client_socket].wcl;
   size_t &rcl = this->clientDataMap[client_socket].rcl;
   std::string &chunk = this->clientDataMap[client_socket].chunk;
   std::ofstream cgiInput("/tmp/cgi_input_" + std::to_string(client_socket), std::ios::app);
-
   buffer[bytes_received] = '\0';
   chunk.append(buffer, bytes_received);
   rcl += bytes_received;
@@ -323,7 +329,8 @@ void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_r
   {
     cgiInput << chunk;
     chunk.clear();
-    fileReachedEnd(chunk, client_socket, rcl, wcl, cgiInput);
+    if (rcl >= wcl)
+      fileReachedEnd(client_socket, cgiInput);
   }
   else if (this->clients[client_socket].getContentType().find("multipart/form-data;") != std::string::npos)
     parseFormData(client_socket, boundary, chunk, rcl, wcl, cgiInput);
@@ -331,7 +338,8 @@ void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_r
   {
     BodyMap[client_socket].ParseBody(chunk, "", this->clients[client_socket]);
     chunk.clear();
-    fileReachedEnd(chunk, client_socket, rcl, wcl, cgiInput);
+    if (rcl >= wcl)
+      fileReachedEnd(client_socket, cgiInput);
   }
   else
   {
@@ -343,7 +351,7 @@ void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_r
 void WebServ::handleClientsRequest(int client_socket, size_t &i)
 {
   ssize_t bytes_received;
-  char buffer[BUFFER_SIZE];
+  char buffer[BUFFER_SIZE + 1];
   std::string &boundary = this->clientDataMap[client_socket].boundary;
 
   if (!this->clientDataMap[client_socket].headerDataSet)
@@ -353,13 +361,13 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
     fds[i].events = POLLOUT;
   else
   {
-    size_t body_size = this->clients[client_socket].server->limit_client_body_size;
-    if (this->clients[client_socket].getContentLength() == 0 || (body_size && this->clients[client_socket].getContentLength() > body_size))
+    if (this->clients[client_socket].getContentLength() == 0 || this->clients[client_socket].getContentLength() > 100000000000)
     {
+      std::cerr << "Content-Length is invalid" << std::endl;
       fds[i].events = POLLOUT;
       return;
     }
-    bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
+    bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0);
     size_t index = getClientIndex(client_socket);
     if (bytes_received == 0)
     {

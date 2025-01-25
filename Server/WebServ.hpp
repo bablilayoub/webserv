@@ -16,7 +16,7 @@
 #include <signal.h>
 #include <arpa/inet.h>
 
-#define BUFFER_SIZE 80001
+#define BUFFER_SIZE 80000
 #define TIME_OUT 5000
 
 #define GET "GET"
@@ -68,7 +68,7 @@ public:
   // WebServ();
   WebServ(Config *config);
   int init(std::string host, const int port);
-  void setNonBlockingMode(int socket);
+  int setNonBlockingMode(int socket);
   void socketConfig(std::string host, const int port);
   void closeFds();
   void AddSocket(int socket, bool isListener, int event);
@@ -77,7 +77,7 @@ public:
   void handlePostRequest(int client_socket, char *buffer, ssize_t bytes_received, std::string &boundary);
   void cleanUp(int client_socket, size_t &i);
   void parseFormData(int client_socket, std::string &boundary, std::string &chunk, size_t &rcl, size_t &wcl, std::ofstream &cgiInput);
-  void fileReachedEnd(std::string &chunk, int client_socket, size_t &rcl, size_t &wcl, std::ofstream &cgiInput);
+  void fileReachedEnd(int client_socket, std::ofstream &cgiInput);
 
   void initServers();
   void handleServersIncomingConnections();
