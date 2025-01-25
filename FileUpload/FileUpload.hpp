@@ -42,6 +42,7 @@ class   FileUpload {
         size_t      BinarychunkSize;
         size_t      BinaryBytesLeft;
         std::string BinaryChunkSizeString;
+        bool        BinaryDataFinish;
 
         bool        DataFinish;
 
@@ -76,3 +77,4 @@ class   FileUpload {
         void        HandleBinaryData(std::string mimeType);
         void        HandleBinaryChunkedData(std::string &Body);
 };
+

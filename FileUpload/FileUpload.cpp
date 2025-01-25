@@ -48,6 +48,7 @@ FileUpload::FileUpload()
     this->BinaryBytesLeft = 0;
     this->BinaryChunkData = "";
     this->BinarychunkSize = 0;
+    this->BinaryDataFinish = false;
 
     // for the raw data
     this->MimeTypeMap["application/octet-stream"] = ".bin";  // Generic binary data
@@ -251,6 +252,9 @@ void FileUpload::HandleChunkedData(std::string &Body) {
         chunkSize = 0;
         iss >> std::hex >> chunkSize;
 
+        // std::cout << "Chunk string : " << ChunkSizeString << std::endl;
+        // std::cout << "Chunk size : " << chunkSize << std::endl;
+
         if (pos + 2 + chunkSize > Body.length()) 
         {
             bytesLeft = chunkSize - (Body.length() - pos - 2);
@@ -292,7 +296,7 @@ void FileUpload::HandleBinaryData(std::string mimeType) {
 }
 
 void    FileUpload::HandleBinaryChunkedData(std::string &Body) {
-    while (true) 
+    while (true && !this->DataFinish) 
     {
         if (Body.length() == 2 && Body == CRLF)
             break;
@@ -317,13 +321,19 @@ void    FileUpload::HandleBinaryChunkedData(std::string &Body) {
             Body.clear();
         }
         this->pos = Body.find(CRLF);
-        if (this->pos != std::string::npos) 
+        if (this->pos == 0)
+            Body = Body.substr(2);
+        else if (this->pos != std::string::npos) 
         {
             this->BinaryChunkSizeString = Body.substr(0, pos);
             std::istringstream iss(BinaryChunkSizeString);
             this->BinarychunkSize = 0;
             iss >> std::hex >> BinarychunkSize;
 
+
+            if (BinarychunkSize == 0) {
+                this->BinaryDataFinish = true;
+            }
             if (pos + 2 + BinarychunkSize > Body.length()) 
             {
                 BinaryBytesLeft = BinarychunkSize - (Body.length() - pos - 2);
@@ -336,6 +346,8 @@ void    FileUpload::HandleBinaryChunkedData(std::string &Body) {
                 Body = Body.substr(pos + 2 + BinarychunkSize);
                 BinaryBytesLeft = 0;
             }
+            std::cout << "Chunk size: " << BinarychunkSize << ", Bytes written: " << BinaryChunkData.length() << std::endl;
+            std::cout << "Bytes left to write: " << BinaryBytesLeft << std::endl;
 
             if (!BinaryChunkData.empty()) 
                 this->WriteToFile(BinaryChunkData);
@@ -398,3 +410,6 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &cl
     else
         this->WriteToFile(Body);
 }
+
+// 574988518
+// 574947328
