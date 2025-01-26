@@ -6,4 +6,4 @@ testing.cpp
 webserv
 siege_test.sh
 ./upload
-./www/video.mp4
+**/video.mp4
