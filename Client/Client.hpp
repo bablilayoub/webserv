@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/25 19:50:41 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/26 16:11:02 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,10 @@ struct Response
 	int statusCode;
 	std::string content;
 	std::string contentType;
+	std::string filePath;
+	size_t totalSize;
+	size_t sentSize;
+	bool done;
 };
 
 struct CGIState {
@@ -65,7 +69,7 @@ private:
 	void clear();
 
 	void handleFirstLine(std::istringstream &requestStream);
-	void checkConfigs();
+	void startProcessing();
 
 	Server *getServer();
 	Location *getLocation();
@@ -91,6 +95,7 @@ private:
 	bool hasReadPermission(const std::string &path);
 	std::string urlDecode(const std::string &str);
 	void setFinalResponse();
+	void sendRestOfResponse();
 public:
 	Server *server;
 	bool return_anyway;

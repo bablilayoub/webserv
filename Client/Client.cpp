@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/25 20:07:34 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/26 16:23:59 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,6 +56,7 @@ void Client::clear()
 
 void Client::logRequest(int statusCode)
 {
+	// Get the current time
 	std::time_t now = std::time(0);
 	std::tm *localTime = std::localtime(&now);
 
@@ -69,13 +70,11 @@ void Client::logRequest(int statusCode)
 	else
 		statusColor = RED;
 
-	std::cout << "[" << (1900 + localTime->tm_year) << "-"
-			  << std::setw(2) << std::setfill('0') << (localTime->tm_mon + 1) << "-"
-			  << std::setw(2) << std::setfill('0') << localTime->tm_mday << " "
-			  << std::setw(2) << std::setfill('0') << localTime->tm_hour << ":"
-			  << std::setw(2) << std::setfill('0') << localTime->tm_min << ":"
-			  << std::setw(2) << std::setfill('0') << localTime->tm_sec << "] "
-			  << std::setfill(' ')
+	char timeBuffer[20];
+	std::strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S", localTime);
+
+	// Log the request details
+	std::cout << "[" << timeBuffer << "] "
 			  << BOLD << "Server: " << BLUE << this->server_name + ":" + std::to_string(this->port) << RESET << " "
 			  << BOLD << "Method: " << BLUE << std::setw(8) << std::left << this->method << RESET
 			  << BOLD << "Path: " << WHITE << std::setw(45) << this->path << RESET
@@ -381,7 +380,7 @@ void Client::setSuccessResponse(int statusCode, const std::string &path)
 	this->response.statusCode = statusCode;
 }
 
-void Client::checkConfigs()
+void Client::startProcessing()
 {
 	if (!this->server)
 		return this->setErrorResponse(404);
@@ -491,6 +490,8 @@ std::string Client::getHttpHeaders()
 		headers += it->first + ": " + it->second + "\r\n";
 	}
 	headers += "Connection: close\r\n";
+	// headers += "Connection: keep-alive\r\n";
+	// headers += "Accept-Ranges: none\r\n";
 	headers += "\r\n";
 	return headers;
 }
@@ -517,7 +518,7 @@ void Client::generateResponse()
 		return;
 	}
 
-	this->checkConfigs();
+	this->startProcessing();
 }
 
 /*
@@ -527,9 +528,16 @@ void Client::generateResponse()
 Server *Client::getServer()
 {
 	for (std::vector<Server>::iterator serverIt = this->config->servers.begin(); serverIt != this->config->servers.end(); ++serverIt)
+	{
 		if (std::find(serverIt->ports.begin(), serverIt->ports.end(), this->port) != serverIt->ports.end())
+		{
 			if (std::find(serverIt->server_names.begin(), serverIt->server_names.end(), this->server_name) != serverIt->server_names.end())
 				return &(*serverIt);
+			else if (serverIt->server_names.empty())
+				return &(*serverIt);
+		}
+	}
+
 	return NULL;
 }
 
