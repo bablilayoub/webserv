@@ -408,7 +408,6 @@ int    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &cli
     if (client.getIsChunked() && !client.getIsBinary())
         this->HandleChunkedData(Body);
     else if (client.getIsChunked() && client.getIsBinary()) {
-        std::cout << "HandleBinaryChunkedData" << std::endl;
         if (this->HandleBinaryChunkedData(Body) == 1) {
             return 1;
         }
