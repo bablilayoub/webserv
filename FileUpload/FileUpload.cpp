@@ -38,14 +38,14 @@ FileUpload::FileUpload()
 
     this->DataFinish = false;
 
-    // For the Open or not The binary file
+    // For Open or not The binary file
     this->BinaryFileOpen = false;
 
     this->openFile = false;
 
     // For Binary Chunked Data
     this->BinaryChunkSizeString = "";
-    this->BinaryBytesLeft = 0;
+    this->BinaryBytesLeft = 0; 
     this->BinaryChunkData = "";
     this->BinarychunkSize = 0;
     this->BinaryDataFinish = false;
@@ -181,8 +181,12 @@ void    FileUpload::ParseContentType(std::string &Body)
     Body = Body.substr(this->pos + 1, Body.length());
     this->MimeType = Body.substr(0, Body.find("\n") - 1);
     Body = Body.substr(Body.find("\n") + 3 , Body.length());
-    if (this->FileNameEmpty) 
-        this->FileName = this->FileName + "." + this->MimeType;
+    if (this->FileNameEmpty) {
+        if (this->MimeTypeMap.find(this->MimeType) != this->MimeTypeMap.end())
+            this->FileName = this->FileName + this->MimeTypeMap[this->MimeType];
+        else
+            this->FileName = this->FileName + ".bin";
+    }
     this->HeaderFetched = true;
 }
 
@@ -252,9 +256,6 @@ void FileUpload::HandleChunkedData(std::string &Body) {
         chunkSize = 0;
         iss >> std::hex >> chunkSize;
 
-        // std::cout << "Chunk string : " << ChunkSizeString << std::endl;
-        // std::cout << "Chunk size : " << chunkSize << std::endl;
-
         if (pos + 2 + chunkSize > Body.length()) 
         {
             bytesLeft = chunkSize - (Body.length() - pos - 2);
@@ -295,8 +296,8 @@ void FileUpload::HandleBinaryData(std::string mimeType) {
     }
 }
 
-void    FileUpload::HandleBinaryChunkedData(std::string &Body) {
-    while (true && !this->DataFinish) 
+int    FileUpload::HandleBinaryChunkedData(std::string &Body) {
+    while (true && !this->BinaryDataFinish) 
     {
         if (Body.length() == 2 && Body == CRLF)
             break;
@@ -330,9 +331,10 @@ void    FileUpload::HandleBinaryChunkedData(std::string &Body) {
             this->BinarychunkSize = 0;
             iss >> std::hex >> BinarychunkSize;
 
-
             if (BinarychunkSize == 0) {
                 this->BinaryDataFinish = true;
+                return 1;
+                break ;
             }
             if (pos + 2 + BinarychunkSize > Body.length()) 
             {
@@ -346,8 +348,6 @@ void    FileUpload::HandleBinaryChunkedData(std::string &Body) {
                 Body = Body.substr(pos + 2 + BinarychunkSize);
                 BinaryBytesLeft = 0;
             }
-            std::cout << "Chunk size: " << BinarychunkSize << ", Bytes written: " << BinaryChunkData.length() << std::endl;
-            std::cout << "Bytes left to write: " << BinaryBytesLeft << std::endl;
 
             if (!BinaryChunkData.empty()) 
                 this->WriteToFile(BinaryChunkData);
@@ -359,19 +359,21 @@ void    FileUpload::HandleBinaryChunkedData(std::string &Body) {
         if (Body.empty())
             break;
     }
+    return 0;
 }
 
-void    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &client)
+
+int    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &client)
 {
     if ((Body.length() == 2 && Body == CRLF) || (Body.length() == 1 && Body == "\n") || (Body.length() == 1 && Body == "\r"))
-        return ;
+        return 2;
     if (Body.find(Boundary + "--") != std::string::npos && !client.getIsBinary()) 
     {
         this->DataFinish = true;
-        return ;
+        return 2;
     }
     if (this->DataFinish || Body.empty())
-        return ;
+        return 2;
     if (client.getIsBinary() && !this->BinaryFileOpen) 
     {
         this->BinaryChunkData = "";
@@ -405,11 +407,30 @@ void    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &cl
 
     if (client.getIsChunked() && !client.getIsBinary())
         this->HandleChunkedData(Body);
-    else if (client.getIsChunked() && client.getIsBinary())
-        this->HandleBinaryChunkedData(Body);
+    else if (client.getIsChunked() && client.getIsBinary()) {
+        std::cout << "HandleBinaryChunkedData" << std::endl;
+        if (this->HandleBinaryChunkedData(Body) == 1) {
+            return 1;
+        }
+    }
     else
         this->WriteToFile(Body);
+
+    return 0;
 }
 
+
 // 574988518
-// 574947328
+// -rw-r--r--   1 aitaouss  candidate  574947328 Jan 25 17:16 RBL2o6qv.mp4
+// -rw-r--r--   1 aitaouss  candidate  574938990 Jan 25 17:14 RBL36aOk.mp4
+// -rw-r--r--   1 aitaouss  candidate  574988518 Jan 25 17:16 RBL40oYy.mp4
+// -rw-r--r--   1 aitaouss  candidate  574947328 Jan 25 17:16 RBL6BVF0.mp4
+// -rw-r--r--   1 aitaouss  candidate  574947328 Jan 25 17:16 RBLH1BvQ.mp4
+// -rw-r--r--   1 aitaouss  candidate  574947328 Jan 25 17:14 RBLNi1U4.mp4
+// -rw-r--r--   1 aitaouss  candidate  574988518 Jan 25 17:16 RBLObFeI.mp4
+// -rw-r--r--   1 aitaouss  candidate  574947328 Jan 25 17:14 RBLPtiB6.mp4
+// -rw-r--r--   1 aitaouss  candidate  574947328 Jan 25 17:16 RBLVCINA.mp4
+// -rw-r--r--   1 aitaouss  candidate  574988518 Jan 25 17:16 RBLg1y3Z.mp4
+// -rw-r--r--   1 aitaouss  candidate  574947328 Jan 25 17:16 RBLiDfkc.mp4
+// -rw-r--r--   1 aitaouss  candidate  574947328 Jan 25 17:14 RBLjV9HQ.mp4
+// -rw-r--r--   1 aitaouss  candidate  574947328 Jan 25 17:16 RBLpnjTT.mp4
