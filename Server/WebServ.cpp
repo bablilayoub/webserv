@@ -335,10 +335,23 @@ void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_r
     parseFormData(client_socket, boundary, chunk, rcl, wcl, cgiInput);
   else if (this->clients[client_socket].getIsBinary())
   {
-    BodyMap[client_socket].ParseBody(chunk, "", this->clients[client_socket]);
-    chunk.clear();
-    if (rcl >= wcl)
-      fileReachedEnd(client_socket, cgiInput);
+    if (this->clients[client_socket].getIsChunked())
+    {
+
+      if (BodyMap[client_socket].ParseBody(chunk, "", this->clients[client_socket])) 
+      {
+          size_t index = getClientIndex(client_socket);
+          fds[index].events = POLLOUT;
+      }
+      chunk.clear();
+    }
+    else 
+    {
+      BodyMap[client_socket].ParseBody(chunk, "", this->clients[client_socket]);
+      chunk.clear();
+      if (rcl >= wcl)
+        fileReachedEnd(client_socket, cgiInput);
+    }
   }
   else
   {
