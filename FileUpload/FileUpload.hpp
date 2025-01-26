@@ -68,7 +68,7 @@ class   FileUpload
         void        ParseContentType(std::string &Body);
         void        OpenFile(std::string path);
         void        WriteToFile(std::string &Body);
-        void        HandleChunkedData(std::string &Body);
+        int         HandleChunkedData(std::string &Body);
         void        ResetData();
 
     public:
