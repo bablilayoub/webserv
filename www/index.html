@@ -1,16 +1,124 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <title>Simple HTTP Response</title>
-    <link rel="stylesheet" href="./css/index.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webserv</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="icon" type="image/png" href="./icon.png" />
 </head>
 
-<body>
-    <div class="container">
-        <h1>Welcome to My Simple HTTP Server</h1>
-        <p>This content is loaded from a file.</p>
+<body class="bg-gradient-to-br from-gray-800 via-gray-900 to-black text-white font-sans">
+
+    <div class="flex min-h-screen items-center justify-center py-12 px-6 text-center">
+        <div class="max-w-3xl">
+            <h1 class="text-5xl font-extrabold text-gray-100 mb-6 tracking-tight">
+                Webserv - A simple HTTP server
+            </h1>
+            <p class="text-lg text-gray-300 mb-8 leading-relaxed">
+                Your server is up and running! This simple HTTP server serves content quickly and securely.
+                Feel free to start exploring and make the most of it.
+            </p>
+
+            <div class="flex justify-center gap-6">
+                <a href="https://profile.intra.42.fr/users/abablil" target="_blank"
+                    class="transition-transform transform hover:scale-110">
+                    <img src="https://cdn.intra.42.fr/users/33c5eea5d0fcbfff5e4cc2813944d393/abablil.jpg"
+                        class="w-24 h-24 rounded-full shadow-lg border-2 border-gray-600" alt="abablil">
+                </a>
+                <a href="https://profile.intra.42.fr/users/alaalalm" target="_blank"
+                    class="transition-transform transform hover:scale-110">
+                    <img src="https://cdn.intra.42.fr/users/8303b7e0c1a2a265849a8db3a6e77305/alaalalm.jpg"
+                        class="w-24 h-24 rounded-full shadow-lg border-2 border-gray-600" alt="alaalalm">
+                </a>
+                <a href="https://profile.intra.42.fr/users/aitaouss" target="_blank"
+                    class="transition-transform transform hover:scale-110">
+                    <img src="https://cdn.intra.42.fr/users/a8525fb4a37beed334279f8f1936c6da/aitaouss.jpg"
+                        class="w-24 h-24 rounded-full shadow-lg border-2 border-gray-600" alt="aitaouss">
+                </a>
+            </div>
+
+            <div class="mt-12 border border-gray-700 rounded-2xl p-4 h-96 overflow-y-auto">
+                <h2 class="text-3xl font-bold text-gray-100 mb-6 tracking-tight">CGI Endpoints</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-gray-700 p-4 rounded-lg shadow-lg">
+                        <h3 class="text-xl font-bold text-gray-100 mb-2">PHP Form</h3>
+                        <p class="text-gray-300 mb-4">A simple form to test PHP POST requests.</p>
+                        <a href="/form-php" target="_blank"
+                            class="block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                            Open in new tab
+                        </a>
+                    </div>
+                    <div class="bg-gray-700 p-4 rounded-lg shadow-lg">
+                        <h3 class="text-xl font-bold text-gray-100 mb-2">Python Form</h3>
+                        <p class="text-gray-300 mb-4">A simple form to test Python POST requests.</p>
+                        <a href="/form-py" target="_blank"
+                            class="block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                            Open in new tab
+                        </a>
+                    </div>
+                    <div class="bg-gray-700 p-4 rounded-lg shadow-lg">
+                        <h3 class="text-xl font-bold text-gray-100 mb-2">PHP File Upload</h3>
+                        <p class="text-gray-300 mb-4">A simple form to test PHP file uploads.</p>
+                        <a href="/upload-php" target="_blank"
+                            class="block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                            Open in new tab
+                        </a>
+                    </div>
+                    <div class="bg-gray-700 p-4 rounded-lg shadow-lg">
+                        <h3 class="text-xl font-bold text-gray-100 mb-2">Python File Upload</h3>
+                        <p class="text-gray-300 mb-4">A simple form to test Python file uploads.</p>
+                        <a href="/upload-py" target="_blank"
+                            class="block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                            Open in new tab
+                        </a>
+                    </div>
+                    <div class="bg-gray-700 p-4 rounded-lg shadow-lg">
+                        <h3 class="text-xl font-bold text-gray-100 mb-2">Delete Form</h3>
+                        <p class="text-gray-300 mb-4">Delete a file from the server by file name.</p>
+                        <a href="/delete" target="_blank"
+                            class="block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                            Open in new tab
+                        </a>
+                    </div>
+                </div>
+                <h2 class="text-3xl font-bold text-gray-100 mt-12 mb-6 tracking-tight">Authentication Endpoints</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-gray-700 p-4 rounded-lg shadow-lg">
+                        <h3 class="text-xl font-bold text-gray-100 mb-2">Login Form</h3>
+                        <p class="text-gray-300 mb-4">A simple form to test basic authentication.</p>
+                        <a href="/login" target="_blank"
+                            class="block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                            Open in new tab
+                        </a>
+                    </div>
+                    <div class="bg-gray-700 p-4 rounded-lg shadow-lg">
+                        <h3 class="text-xl font-bold text-gray-100 mb-2">Protected Page</h3>
+                        <p class="text-gray-300 mb-4">A protected page that requires auth.</p>
+                        <a href="/dashboard" target="_blank"
+                            class="block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                            Open in new tab
+                        </a>
+                    </div>
+                </div>
+                <h2 class="text-3xl font-bold text-gray-100 mt-12 mb-6 tracking-tight">DELETE Endpoints</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-gray-700 p-4 rounded-lg shadow-lg">
+                        <h3 class="text-xl font-bold text-gray-100 mb-2">(API) DELETE file by name</h3>
+                        <p class="text-gray-300 mb-4">Delete a file from the server by file name.</p>
+                        <a href="/api" target="_blank"
+                            class="block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                            Open in new tab
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <footer class="mt-12 text-sm text-gray-500">
+                Built with <span class="text-pink-500">❤</span> by enthusiasts at <a href="https://1337.ma"
+                    target="_blank" class="text-blue-400 hover:underline">1337 Coding School</a>
+            </footer>
+        </div>
     </div>
 </body>
 

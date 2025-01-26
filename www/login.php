@@ -3,7 +3,7 @@
 session_start();
 
 if (isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true) {
-    header("Location: welcome.php");
+    header("Location: /dashboard");
     exit;
 }
 
@@ -11,7 +11,7 @@ if (isset($_POST["username"]) && isset($_POST["password"])) {
     $_SESSION["loggedin"] = true;
     $_SESSION["username"] = $_POST["username"];
     $_SESSION["password"] = $_POST["password"];
-    header("Location: welcome.php");
+    header("Location: /dashboard");
     exit;
 }
 
