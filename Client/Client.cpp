@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/27 16:41:18 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/27 18:17:37 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -138,6 +138,7 @@ void Client::handleCGIRequest(const std::string &indexPath)
 	this->cgi_state.inputPath = "/tmp/cgi_input_" + std::to_string(this->clientFd);
 	this->cgi_state.running = true;
 
+	this->cgi_state.startTime = time(NULL);
 	pid_t pid = fork();
 	if (pid < 0)
 		return this->setErrorResponse(500);
@@ -247,6 +248,7 @@ bool Client::checkCGICompletion()
 {
 	if (!this->cgi_state.running)
 		return true;
+
 
 	int status;
 	pid_t result = waitpid(this->cgi_state.pid, &status, WNOHANG);
@@ -623,8 +625,40 @@ Location *Client::getLocation()
 std::string Client::loadErrorPage(const std::string &filePath, int statusCode)
 {
 	std::stringstream buffer;
+	std::string statusMessage = this->config->statusCodes.count(statusCode) > 0
+									? this->config->statusCodes.at(statusCode)
+									: "Unknown Error";
 
-	std::string statusMessage = this->config->statusCodes.count(statusCode) > 0 ? this->config->statusCodes.at(statusCode) : "Unknown Error";
+	// Determine background and accent colors based on status code
+	std::string bgGradient, accentColor, borderColor;
+	if (statusCode >= 500)
+	{
+		bgGradient = "bg-gradient-to-br from-red-900 via-red-800 to-red-900";
+		accentColor = "red";
+		borderColor = "border-red-300";
+	}
+	else if (statusCode >= 400)
+	{
+		bgGradient = "bg-gradient-to-br from-orange-900 via-orange-800 to-orange-900";
+		accentColor = "orange";
+		borderColor = "border-orange-300";
+	}
+	else if (statusCode >= 300)
+	{
+		bgGradient = "bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900";
+		accentColor = "purple";
+		borderColor = "border-purple-300";
+	}
+	else
+	{
+		bgGradient = "bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900";
+		accentColor = "blue";
+		borderColor = "border-blue-300";
+	}
+
+	std::string repeatedDivs;
+	for (int i = 0; i < 9; ++i)
+		repeatedDivs += "<div class=\"aspect-square rounded-lg bg-white\"></div>";
 
 	std::string html =
 		"<!DOCTYPE html>\n"
@@ -634,38 +668,56 @@ std::string Client::loadErrorPage(const std::string &filePath, int statusCode)
 		"    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
 		"    <title>Error " +
 		std::to_string(statusCode) + "</title>\n"
-									 "    <style>\n"
-									 "        body {\n"
-									 "            font-family: Arial, sans-serif;\n"
-									 "            text-align: center;\n"
-									 "            background-color: #f4f4f9;\n"
-									 "            color: #333;\n"
-									 "            margin: 0;\n"
-									 "            padding: 50px;\n"
-									 "        }\n"
-									 "        h1 {\n"
-									 "            font-size: 3em;\n"
-									 "            color: #ff6b6b;\n"
-									 "        }\n"
-									 "        p {\n"
-									 "            font-size: 1.2em;\n"
-									 "        }\n"
-									 "        a {\n"
-									 "            text-decoration: none;\n"
-									 "            color: #3498db;\n"
-									 "        }\n"
-									 "        a:hover {\n"
-									 "            text-decoration: underline;\n"
-									 "        }\n"
-									 "    </style>\n"
+									 "    <script src=\"https://cdn.tailwindcss.com\"></script>\n"
 									 "</head>\n"
-									 "<body>\n"
-									 "    <h1>" +
-		std::to_string(statusCode) + " - " + statusMessage + "</h1>\n"
-															 "    <p>Sorry, the page you are looking for cannot be found.</p>\n"
-															 "    <p><a href=\"/\">Return to Home</a></p>\n"
-															 "</body>\n"
-															 "</html>";
+									 "<body class=\"min-h-screen " +
+		bgGradient + " flex items-center justify-center p-4 sm:p-8\">\n"
+					 "    <div class=\"relative w-full max-w-2xl\">\n"
+					 "        <!-- Decorative circles -->\n"
+					 "        <div class=\"hidden lg:block absolute -top-20 -left-20 w-40 h-40 bg-" +
+		accentColor + "-500 rounded-full opacity-10 animate-pulse\"></div>\n"
+					  "        <div class=\"hidden lg:block absolute -bottom-20 -right-20 w-40 h-40 bg-" +
+		accentColor + "-500 rounded-full opacity-10 animate-pulse delay-75\"></div>\n"
+					  "        \n"
+					  "        <!-- Main content -->\n"
+					  "        <div class=\"relative backdrop-blur-lg bg-white bg-opacity-10 rounded-2xl p-8 border " +
+		borderColor + " border-opacity-20 shadow-2xl\">\n"
+					  "            <div class=\"grid grid-cols-1 md:grid-cols-2 gap-8 items-center\">\n"
+					  "                <!-- Error details -->\n"
+					  "                <div class=\"text-white space-y-6\">\n"
+					  "                    <h1 class=\"text-8xl font-bold tracking-tighter\">" +
+		std::to_string(statusCode) + "</h1>\n"
+									 "                    <h2 class=\"text-2xl font-medium leading-tight\">" +
+		statusMessage + "</h2>\n"
+						"                    <p class=\"text-" +
+		accentColor + "-200\">\n"
+					  "                        We're sorry, but we couldn't find the page you were looking for.\n"
+					  "                    </p>\n"
+					  "                    <a href=\"/\" class=\"inline-flex items-center px-6 py-3 rounded-lg bg-white \n"
+					  "                              text-" +
+		accentColor + "-900 hover:bg-opacity-90 transition-all \n"
+					  "                              transform hover:scale-105 hover:shadow-lg\">\n"
+					  "                        <svg class=\"w-5 h-5 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\n"
+					  "                            <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" \n"
+					  "                                  d=\"M7 16l-4-4m0 0l4-4m-4 4h18\">\n"
+					  "                            </path>\n"
+					  "                        </svg>\n"
+					  "                        Go Back Home\n"
+					  "                    </a>\n"
+					  "                </div>\n"
+					  "                \n"
+					  "                <!-- Decorative pattern -->\n"
+					  "                <div class=\"hidden md:block\">\n"
+					  "                    <div class=\"grid grid-cols-3 gap-4 opacity-20\">\n"
+					  "                        " +
+		repeatedDivs + "\n"
+					   "                    </div>\n"
+					   "                </div>\n"
+					   "            </div>\n"
+					   "        </div>\n"
+					   "    </div>\n"
+					   "</body>\n"
+					   "</html>";
 
 	if (!filePath.empty())
 	{
