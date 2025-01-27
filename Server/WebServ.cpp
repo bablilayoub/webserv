@@ -303,6 +303,10 @@ void WebServ::parseFormDataContentLength(int client_socket, std::string &boundar
   bool flag = false;
   std::string boundaryString;
 
+  size_t lastChunkPos;
+  if ((lastChunkPos = chunk.find("\r\n" + boundary + "--")) != std::string::npos)
+    chunk = chunk.substr(0, lastChunkPos) + chunk.substr(lastChunkPos + 2);
+
   size_t pos;
   if ((pos = chunk.find(boundary)) != std::string::npos)
   {
