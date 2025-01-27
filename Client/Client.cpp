@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/27 18:17:37 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/27 21:33:48 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -136,9 +136,7 @@ void Client::handleCGIRequest(const std::string &indexPath)
 
 	this->cgi_state.outputPath = "/tmp/cgi_out_" + std::to_string(this->clientFd);
 	this->cgi_state.inputPath = "/tmp/cgi_input_" + std::to_string(this->clientFd);
-	this->cgi_state.running = true;
 
-	this->cgi_state.startTime = time(NULL);
 	pid_t pid = fork();
 	if (pid < 0)
 		return this->setErrorResponse(500);
@@ -242,13 +240,13 @@ void Client::handleCGIRequest(const std::string &indexPath)
 		delete[] envp;
 	}
 	this->cgi_state.pid = pid;
+	this->cgi_state.running = true;
 }
 
 bool Client::checkCGICompletion()
 {
 	if (!this->cgi_state.running)
 		return true;
-
 
 	int status;
 	pid_t result = waitpid(this->cgi_state.pid, &status, WNOHANG);

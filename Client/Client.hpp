@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/27 18:14:09 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/27 21:33:35 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,7 +30,6 @@ struct CGIState {
     pid_t pid;
     std::string outputPath;
     std::string inputPath;
-    time_t startTime;
 	bool running;
 };
 
