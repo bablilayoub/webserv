@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/27 13:42:39 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/27 16:41:18 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -735,19 +735,28 @@ std::string Client::loadFiles(const std::string &directory)
 	std::string fileListHTML =
 		"<html>"
 		"<head>"
-		"<style>"
-		"body { font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 0; }"
-		"h1 { text-align: center; color: #333; padding: 20px; background-color: #007BFF; color: #fff; margin: 0; }"
-		"table { border-collapse: collapse; margin: 20px auto; max-width: 800px; width: 90%; background-color: #ffffff }"
-		"th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }"
-		"th { background-color: #007BFF; color: #fff; }"
-		"tr:hover { background-color: #f1f1f1; }"
-		"</style>"
+		"<meta charset='UTF-8'>"
+		"<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+		"<script src='https://cdn.tailwindcss.com'></script>"
 		"</head>"
-		"<body>"
-		"<h1>Directory Listing</h1>"
-		"<table>"
-		"<tr><th>Name</th><th>Type</th></tr>"; // Add column for file path
+		"<body class='bg-gray-50 min-h-screen'>"
+		"<div class='min-h-screen'>"
+		"<header class='bg-gradient-to-r from-blue-600 to-blue-700 shadow-lg'>"
+		"<div class='max-w-7xl mx-auto py-6 px-4'>"
+		"<h1 class='text-2xl font-bold text-white text-center'>Directory Listing</h1>"
+		"</div>"
+		"</header>"
+		"<main class='max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8'>"
+		"<div class='bg-white rounded-lg shadow-md overflow-hidden'>"
+		"<div class='overflow-x-auto'>"
+		"<table class='min-w-full divide-y divide-gray-200'>"
+		"<thead class='bg-gray-50'>"
+		"<tr>"
+		"<th class='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Name</th>"
+		"<th class='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Type</th>"
+		"</tr>"
+		"</thead>"
+		"<tbody class='bg-white divide-y divide-gray-200'>";
 
 	while ((entry = readdir(dir)) != NULL)
 	{
@@ -766,18 +775,50 @@ std::string Client::loadFiles(const std::string &directory)
 			continue;
 
 		std::string fileType = S_ISDIR(entryStat.st_mode) ? "Directory" : "File";
+		std::string typeClass = S_ISDIR(entryStat.st_mode)
+									? "bg-blue-100 text-blue-800"
+									: "bg-gray-100 text-gray-800";
 
-		// Add the file path as a clickable link in the table
-		fileListHTML += "<tr>";
-		fileListHTML += "<td><a href='";
+		fileListHTML += "<tr class='hover:bg-gray-50 transition-colors duration-150 ease-in-out'>";
+		fileListHTML += "<td class='px-6 py-4 whitespace-nowrap'><div class='flex items-center'>";
+
+		// Add icon based on type
+		if (S_ISDIR(entryStat.st_mode))
+		{
+			fileListHTML += "<svg class='flex-shrink-0 h-5 w-5 text-blue-500 mr-3' fill='none' stroke='currentColor' viewBox='0 0 24 24'>"
+							"<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z'/>"
+							"</svg>";
+		}
+		else
+		{
+			fileListHTML += "<svg class='flex-shrink-0 h-5 w-5 text-gray-400 mr-3' fill='none' stroke='currentColor' viewBox='0 0 24 24'>"
+							"<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z'/>"
+							"</svg>";
+		}
+
+		fileListHTML += "<a href='";
 		fileListHTML += currentDirectory + (currentDirectory.back() == '/' ? "" : "/");
 		fileListHTML += entry->d_name;
-		fileListHTML += "'>" + std::string(entry->d_name) + "</a></td>";
-		fileListHTML += "<td>" + fileType + "</td>";
-		fileListHTML += "</tr>";
+		fileListHTML += "' class='text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors duration-150'>";
+		fileListHTML += entry->d_name;
+		fileListHTML += "</a></div></td>";
+
+		fileListHTML += "<td class='px-6 py-4 whitespace-nowrap'>";
+		fileListHTML += "<span class='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium " + typeClass + "'>";
+		fileListHTML += fileType;
+		fileListHTML += "</span></td></tr>";
 	}
 
-	fileListHTML += "</table></body></html>";
+	fileListHTML +=
+		"</tbody>"
+		"</table>"
+		"</div>"
+		"</div>"
+		"</main>"
+		"</div>"
+		"</body>"
+		"</html>";
+
 	closedir(dir);
 	return fileListHTML;
 }
@@ -882,7 +923,6 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 	else
 		this->path = path;
 
-	// remove everything after #
 	size_t hashPos = this->path.find('#');
 	if (hashPos != std::string::npos)
 		this->path = this->path.substr(0, hashPos);

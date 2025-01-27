@@ -23,6 +23,7 @@ if (isset($_POST["logout"])) {
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Welcome</title>
 	<script src="https://cdn.tailwindcss.com"></script>
+	<link rel="icon" type="image/png" href="./icon.png" />
 
 	<style>
 		@keyframes fadeInDown {
