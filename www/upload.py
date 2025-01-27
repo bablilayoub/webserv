@@ -8,7 +8,7 @@ import cgitb
 cgitb.enable()
 
 # Set upload directory
-UPLOAD_DIR = "/Users/abablil/goinfre/upload"
+UPLOAD_DIR = "/Users/abablil/goinfre/upload/"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Initialize message

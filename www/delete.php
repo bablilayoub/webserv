@@ -1,5 +1,5 @@
 <?php
-$targetDir = "/Users/abablil/goinfre/upload";
+$targetDir = "/Users/abablil/goinfre/upload/";
 
 // Ensure the upload directory exists
 if (!file_exists($targetDir)) {
@@ -12,7 +12,7 @@ $message = "";
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 	// Sanitize the filename input
 	$filename = basename($_POST["filename"]);
-	$filePath = $targetDir . "/" . $filename;
+	$filePath = $targetDir . $filename;
 
 	if (empty($filename)) {
 		$messageType = "error";
