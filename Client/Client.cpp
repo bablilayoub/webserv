@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/26 16:23:59 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/27 13:42:39 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -881,6 +881,12 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 	}
 	else
 		this->path = path;
+
+	// remove everything after #
+	size_t hashPos = this->path.find('#');
+	if (hashPos != std::string::npos)
+		this->path = this->path.substr(0, hashPos);
+
 	if (this->path != "/" && this->path.back() == '/')
 		while (this->path.size() > 1 && this->path.back() == '/')
 			this->path.pop_back();
