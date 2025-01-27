@@ -7,10 +7,14 @@ $message = "";
 
 // Check if the form is submitted
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Get the submitted values
-    $name = htmlspecialchars($_POST['name'] ? $_POST['name'] : "");
-    $email = htmlspecialchars($_POST['email'] ? $_POST['email'] : "");
-    $message = "Thank you, $name! Your email address ($email) has been received.";
+    if (isset($_POST["name"]) && isset($_POST["email"])) {
+        $name = htmlspecialchars($_POST['name']);
+        $email = htmlspecialchars($_POST['email']);
+
+        $message = "Thank you, $name! Your email address ($email) has been received.";
+    } else {
+        $message = "Please fill in all the fields.";
+    }
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['message'])) {
@@ -28,7 +32,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['message'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contact Form PHP</title>
-    <!-- <link rel="icon" type="image/png" href="./icon.png" /> -->
+    <link rel="icon" type="image/png" href="./icon.png" />
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -110,7 +114,6 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['message'])) {
         </form>
 
         <?php
-        // Display the thank-you message if the form is submitted
         if (!empty($message)) {
             echo "<p>$message</p>";
         }

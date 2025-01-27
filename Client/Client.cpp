@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/25 11:46:57 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/27 13:42:39 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,6 +56,7 @@ void Client::clear()
 
 void Client::logRequest(int statusCode)
 {
+	// Get the current time
 	std::time_t now = std::time(0);
 	std::tm *localTime = std::localtime(&now);
 
@@ -69,13 +70,11 @@ void Client::logRequest(int statusCode)
 	else
 		statusColor = RED;
 
-	std::cout << "[" << (1900 + localTime->tm_year) << "-"
-			  << std::setw(2) << std::setfill('0') << (localTime->tm_mon + 1) << "-"
-			  << std::setw(2) << std::setfill('0') << localTime->tm_mday << " "
-			  << std::setw(2) << std::setfill('0') << localTime->tm_hour << ":"
-			  << std::setw(2) << std::setfill('0') << localTime->tm_min << ":"
-			  << std::setw(2) << std::setfill('0') << localTime->tm_sec << "] "
-			  << std::setfill(' ')
+	char timeBuffer[20];
+	std::strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S", localTime);
+
+	// Log the request details
+	std::cout << "[" << timeBuffer << "] "
 			  << BOLD << "Server: " << BLUE << this->server_name + ":" + std::to_string(this->port) << RESET << " "
 			  << BOLD << "Method: " << BLUE << std::setw(8) << std::left << this->method << RESET
 			  << BOLD << "Path: " << WHITE << std::setw(45) << this->path << RESET
@@ -283,8 +282,16 @@ bool Client::checkCGICompletion()
 				if (rpos != std::string::npos)
 					line = line.substr(0, rpos);
 
-				std::string key = line.substr(0, line.find(":"));
-				std::string value = line.substr(line.find(":") + 2);
+				size_t cpos = line.find(':');
+
+				if (cpos == std::string::npos)
+					break;
+
+				if (cpos + 1 >= line.size())
+					continue;
+
+				std::string key = line.substr(0, cpos);
+				std::string value = line.substr(cpos + 1);
 
 				this->cgi_response_headers[key] = value;
 			}
@@ -340,6 +347,16 @@ void Client::setFinalResponse()
 			this->response.contentType = "text/html";
 	}
 
+	if (this->isCGI && this->cgi_response_headers.count("Location"))
+	{
+		this->responseString = "HTTP/1.1 302 Found\r\n";
+		this->responseString += "Location: " + this->cgi_response_headers["Location"] + "\r\n";
+		this->responseString += "Connection: close\r\n";
+		this->responseString += "\r\n";
+		this->logRequest(302);
+		return;
+	}
+
 	this->responseString = getHttpHeaders() + this->response.content;
 
 	this->logRequest(response.statusCode);
@@ -363,10 +380,13 @@ void Client::setSuccessResponse(int statusCode, const std::string &path)
 	this->response.statusCode = statusCode;
 }
 
-void Client::checkConfigs()
+void Client::startProcessing()
 {
 	if (!this->server)
 		return this->setErrorResponse(404);
+
+	if (!this->location && this->method != METHOD_GET)
+		return this->setErrorResponse(405);
 
 	if (this->location)
 	{
@@ -470,6 +490,8 @@ std::string Client::getHttpHeaders()
 		headers += it->first + ": " + it->second + "\r\n";
 	}
 	headers += "Connection: close\r\n";
+	// headers += "Connection: keep-alive\r\n";
+	// headers += "Accept-Ranges: none\r\n";
 	headers += "\r\n";
 	return headers;
 }
@@ -479,20 +501,6 @@ void Client::generateResponse()
 	if (this->generated || this->return_anyway)
 		return;
 	this->generated = true;
-
-	if (this->server && this->server->limit_client_body_size && this->content_length > this->server->limit_client_body_size)
-	{
-		this->response.statusCode = 413;
-		this->response.content = this->loadErrorPage(this->getErrorPagePath(413), 413);
-		return;
-	}
-
-	if ((!this->isChunked && !this->isContentLenght && this->method == METHOD_POST) || (!this->content_length && this->method == METHOD_POST))
-	{
-		this->response.statusCode = 400;
-		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
-		return;
-	}
 
 	this->response.content.empty();
 	this->response.contentType.empty();
@@ -510,7 +518,7 @@ void Client::generateResponse()
 		return;
 	}
 
-	this->checkConfigs();
+	this->startProcessing();
 }
 
 /*
@@ -520,9 +528,16 @@ void Client::generateResponse()
 Server *Client::getServer()
 {
 	for (std::vector<Server>::iterator serverIt = this->config->servers.begin(); serverIt != this->config->servers.end(); ++serverIt)
+	{
 		if (std::find(serverIt->ports.begin(), serverIt->ports.end(), this->port) != serverIt->ports.end())
+		{
 			if (std::find(serverIt->server_names.begin(), serverIt->server_names.end(), this->server_name) != serverIt->server_names.end())
 				return &(*serverIt);
+			else if (serverIt->server_names.empty())
+				return &(*serverIt);
+		}
+	}
+
 	return NULL;
 }
 
@@ -531,96 +546,74 @@ Location *Client::getLocation()
 	if (!this->server)
 		return NULL;
 
-	for (std::map<std::string, Location>::iterator locIt = this->server->locations.begin(); locIt != this->server->locations.end(); ++locIt)
-	{
-		if (locIt->first == this->path)
-		{
-			this->sub_path = this->path.substr(locIt->first.size());
-			if (this->sub_path.empty())
-				this->sub_path = "/";
-			else if (this->sub_path[0] != '/')
-				this->sub_path = "/" + this->sub_path;
+	Location *closestMatch = NULL;
+	size_t longestMatchLength = 0;
 
-			for (std::vector<std::string>::iterator it = locIt->second.cgi_extensions.begin(); it != locIt->second.cgi_extensions.end(); ++it)
+	for (std::map<std::string, Location>::iterator locIt = this->server->locations.begin();
+		 locIt != this->server->locations.end(); ++locIt)
+	{
+
+		const std::string &locationPath = locIt->first;
+
+		if (this->path.compare(0, locationPath.size(), locationPath) == 0)
+		{
+			if (this->path.size() > locationPath.size() && this->path[locationPath.size()] != '/')
+				continue;
+
+			if (locationPath.size() > longestMatchLength)
 			{
-				size_t pos = this->sub_path.find(*it);
-				if (pos != std::string::npos)
-				{
-					this->path_info = this->sub_path.substr(pos + it->size());
-					this->sub_path = this->sub_path.substr(0, pos + it->size());
-					break;
-				}
+				longestMatchLength = locationPath.size();
+				closestMatch = &locIt->second;
 			}
-			return &locIt->second;
 		}
 	}
 
-	std::vector<std::string> pathParts;
-	std::string path = this->path;
-	size_t pos = 0;
-	while ((pos = path.find('/')) != std::string::npos)
+	if (!closestMatch)
 	{
-		pathParts.push_back(path.substr(0, pos));
-		path.erase(0, pos + 1);
-	}
-	pathParts.push_back(path);
+		std::string tempPath = this->path;
 
-	size_t longestMatch = 0;
-	size_t currentMatch = 0;
+		size_t pos = tempPath.find(".php");
+		if (pos != std::string::npos)
+			tempPath = tempPath.substr(0, pos + 4);
+		pos = tempPath.find(".py");
+		if (pos != std::string::npos)
+			tempPath = tempPath.substr(0, pos + 3);
 
-	Location *longestMatchLocation = NULL;
-	std::string longestMatchPath;
-
-	for (std::map<std::string, Location>::iterator locIt = this->server->locations.begin(); locIt != this->server->locations.end(); ++locIt)
-	{
-		std::vector<std::string> locationParts;
-		std::string locationPath = locIt->first;
-		pos = 0;
-		while ((pos = locationPath.find('/')) != std::string::npos)
-		{
-			locationParts.push_back(locationPath.substr(0, pos));
-			locationPath.erase(0, pos + 1);
-		}
-		locationParts.push_back(locationPath);
-
-		currentMatch = 0;
-		for (size_t i = 0; i < pathParts.size() && i < locationParts.size(); ++i)
-		{
-			if (pathParts[i] == locationParts[i])
-				++currentMatch;
-			else
-				break;
-		}
-
-		if (currentMatch > longestMatch)
-		{
-			longestMatch = currentMatch;
-			longestMatchLocation = &locIt->second;
-			longestMatchPath = locIt->first;
-		}
+		std::map<std::string, Location>::iterator rootLocation = this->server->locations.find("/");
+		if (rootLocation != this->server->locations.end() && tempPath.find('/') == 0 && tempPath.find('/', 1) == std::string::npos)
+			closestMatch = &rootLocation->second;
 	}
 
-	if (longestMatchLocation)
+	if (closestMatch)
 	{
-		this->sub_path = this->path.substr(longestMatchPath.size());
+		this->sub_path = this->path.substr(longestMatchLength);
 		if (this->sub_path.empty())
 			this->sub_path = "/";
 		else if (this->sub_path[0] != '/')
 			this->sub_path = "/" + this->sub_path;
 
-		for (std::vector<std::string>::iterator it = longestMatchLocation->cgi_extensions.begin(); it != longestMatchLocation->cgi_extensions.end(); ++it)
+		for (std::vector<std::string>::iterator it = closestMatch->cgi_extensions.begin();
+			 it != closestMatch->cgi_extensions.end(); ++it)
 		{
 			size_t pos = this->sub_path.find(*it);
 			if (pos != std::string::npos)
 			{
+				if (this->sub_path.size() > pos + it->size() && this->sub_path[pos + it->size()] != '/')
+					continue;
+
 				this->path_info = this->sub_path.substr(pos + it->size());
 				this->sub_path = this->sub_path.substr(0, pos + it->size());
 				break;
 			}
 		}
 	}
+	else
+	{
+		this->sub_path = this->path;
+		this->path_info = this->path;
+	}
 
-	return longestMatchLocation;
+	return closestMatch;
 }
 
 /*
@@ -702,12 +695,13 @@ std::string Client::getMimeType(const std::string &path)
 
 std::string Client::loadFile(const std::string &filePath)
 {
+	std::string content;
+
 	std::ifstream file(filePath.c_str());
 	if (!file.is_open())
-		throw std::runtime_error("Failed to open file: " + filePath);
+		return content;
 
 	std::stringstream buffer;
-	std::string content;
 
 	buffer << file.rdbuf();
 
@@ -887,6 +881,12 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 	}
 	else
 		this->path = path;
+
+	// remove everything after #
+	size_t hashPos = this->path.find('#');
+	if (hashPos != std::string::npos)
+		this->path = this->path.substr(0, hashPos);
+
 	if (this->path != "/" && this->path.back() == '/')
 		while (this->path.size() > 1 && this->path.back() == '/')
 			this->path.pop_back();
@@ -970,6 +970,22 @@ void Client::parse(const std::string &request)
 	}
 
 	if (this->server_name.empty() || !this->port || this->path.empty() || this->method.empty())
+	{
+		this->response.statusCode = 400;
+		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
+		this->return_anyway = true;
+		return;
+	}
+
+	if (this->server && this->server->limit_client_body_size && this->content_length > this->server->limit_client_body_size)
+	{
+		this->response.statusCode = 413;
+		this->response.content = this->loadErrorPage(this->getErrorPagePath(413), 413);
+		this->return_anyway = true;
+		return;
+	}
+
+	if ((!this->isChunked && !this->isContentLenght && this->method == METHOD_POST) || (!this->content_length && this->method == METHOD_POST))
 	{
 		this->response.statusCode = 400;
 		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);

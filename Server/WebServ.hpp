@@ -86,13 +86,8 @@ public:
   void handleServersIncomingConnections();
   int acceptConnectionsFromListner(int listener);
   int getClientIndex(int client_socket);
-  // int handleServersIncomingConnections();
 
-  // geters
-  // int getListner() const;
-  // sockaddr *getSockaddr();
-  // sockaddr_in getHint();
-  // Config *getConf();
+  std::vector<int> getListeners() const;
 
   std::map<int, FileUpload> BodyMap;
   std::map<int, Client> clients;

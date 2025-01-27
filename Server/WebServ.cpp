@@ -9,12 +9,15 @@ WebServ::WebServ(Config *config) : config(config) {}
 int WebServ::init(std::string host, const int port)
 {
   int listener = -1;
-  while (true)
+  int retryCount = 0;
+  const int maxRetries = 10;
+  while (retryCount < maxRetries)
   {
     listener = socket(AF_INET, SOCK_STREAM, 0);
     if (listener == INVALID_SOCKET)
     {
       std::cout << "Socket creation failed" << std::endl;
+      retryCount++;
       continue;
     }
 
@@ -23,6 +26,7 @@ int WebServ::init(std::string host, const int port)
     {
       close(listener);
       std::cout << "setsockopt failed" << std::endl;
+      retryCount++;
       continue;
     }
 
@@ -30,6 +34,7 @@ int WebServ::init(std::string host, const int port)
     {
       close(listener);
       std::cout << "setsockopt failed" << std::endl;
+      retryCount++;
       continue;
     }
 
@@ -38,6 +43,7 @@ int WebServ::init(std::string host, const int port)
     {
       close(listener);
       std::cout << "Failed to set non-blocking mode" << std::endl;
+      retryCount++;
       continue;
     }
 
@@ -45,6 +51,7 @@ int WebServ::init(std::string host, const int port)
     {
       close(listener);
       std::cout << "bind failed" << std::endl;
+      retryCount++;
       continue;
     }
 
@@ -52,11 +59,14 @@ int WebServ::init(std::string host, const int port)
     {
       close(listener);
       std::cout << "Listening to server failed" << std::endl;
+      retryCount++;
       continue;
     }
     std::cout << "Server is listening on port " << port << std::endl;
     return listener;
   }
+  std::cerr << "Failed to initialize server on port " << port << " after " << maxRetries << " attempts." << std::endl;
+  return -1;
 }
 
 void WebServ::socketConfig(std::string host, const int port)
@@ -95,6 +105,11 @@ void WebServ::initServers()
       // if (std::find(ports.begin(), ports.end(), ports[i]) != ports.end())
       //   continue;
       listener = this->init(host, ports[j]);
+      if (listener == -1)
+      {
+        std::cout << "Server creation failed" << std::endl;
+        continue;
+      }
       this->listeners.push_back(listener);
       this->AddSocket(listener, true, POLLIN);
     }
@@ -143,8 +158,8 @@ void WebServ::handleServersIncomingConnections()
     int ret = poll(fds.data(), fds.size(), TIME_OUT);
     if (ret == -1)
     {
-      closeFds();
-      throw std::runtime_error("Poll failed");
+      std::cerr << "Poll failed, retrying..." << std::endl;
+      continue;
     }
     if (ret == 0)
       continue;
@@ -288,6 +303,9 @@ void WebServ::parseFormDataChunked(int client_socket, std::string &boundary, std
       if (BodyMap[client_socket].ParseBody(boundaryString + chunk.substr(0, pos2), boundary, this->clients[client_socket]))
         setClientWritable(client_socket);
       chunk = chunk.substr(pos2);
+      if (chunk.find(boundary + "--") != std::string::npos)
+        if (BodyMap[client_socket].ParseBody(chunk, boundary, this->clients[client_socket]))
+          setClientWritable(client_socket);
       return;
     }
     else
@@ -295,6 +313,7 @@ void WebServ::parseFormDataChunked(int client_socket, std::string &boundary, std
   }
   if (BodyMap[client_socket].ParseBody((flag ? boundaryString : "") + chunk, boundary, this->clients[client_socket]))
     setClientWritable(client_socket);
+
   chunk.clear();
 }
 
@@ -383,10 +402,7 @@ void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_r
     {
 
       if (BodyMap[client_socket].ParseBody(chunk, "", this->clients[client_socket]))
-      {
-        size_t index = getClientIndex(client_socket);
-        fds[index].events = POLLOUT;
-      }
+        setClientWritable(client_socket);
       chunk.clear();
     }
     else
@@ -398,10 +414,7 @@ void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_r
     }
   }
   else
-  {
-    size_t index = getClientIndex(client_socket);
-    fds[index].events = POLLOUT;
-  }
+    fds[getClientIndex(client_socket)].events = POLLOUT;
 }
 
 void WebServ::handleClientsRequest(int client_socket, size_t &i)
@@ -413,16 +426,15 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
   if (!this->clientDataMap[client_socket].headerDataSet)
     getHeaderData(client_socket, &this->clientDataMap[client_socket].headerDataSet, boundary);
 
+  if (this->clients[client_socket].return_anyway)
+  {
+    fds[i].events = POLLOUT;
+    return;
+  }
   if (this->clients[client_socket].getMethod() != POST)
     fds[i].events = POLLOUT;
   else
   {
-    if (this->clients[client_socket].getContentLength() == 0 || this->clients[client_socket].getContentLength() > 100000000000)
-    {
-      std::cerr << "Content-Length is invalid" << std::endl;
-      fds[i].events = POLLOUT;
-      return;
-    }
     bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0);
     size_t index = getClientIndex(client_socket);
     if (bytes_received == 0)
@@ -434,16 +446,13 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
     {
       std::cerr << "Failed to receive data from client" << std::endl;
       fds[index].events = POLLOUT;
-
-      // if (errno == EAGAIN || errno == EWOULDBLOCK)
-      //   std::cout << "EAGAIN or EWOULDBLOCK" << std::endl;
-      // else
-      // {
-      //   fds[index].events = POLLOUT;
-      //   return;
-      // }
     }
     else
       handlePostRequest(client_socket, buffer, bytes_received, boundary);
   }
+}
+
+std::vector<int> WebServ::getListeners() const
+{
+  return this->listeners;
 }

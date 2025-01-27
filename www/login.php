@@ -1,23 +1,19 @@
 <?php
 
-// Initialize variables
-$name = "";
-$email = "";
-$message = "";
+session_start();
 
-// Check if the form is submitted
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Get the submitted values
-    $name = htmlspecialchars($_POST['name'] ? $_POST['name'] : "");
-    $email = htmlspecialchars($_POST['email'] ? $_POST['email'] : "");
-    $message = "Thank you, $name! Your email address ($email) has been received.";
+if (isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true) {
+    header("Location: /dashboard");
+    exit;
 }
 
-if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['message'])) {
-    $message = htmlspecialchars($_GET['message']);
+if (isset($_POST["username"]) && isset($_POST["password"])) {
+    $_SESSION["loggedin"] = true;
+    $_SESSION["username"] = $_POST["username"];
+    $_SESSION["password"] = $_POST["password"];
+    header("Location: /dashboard");
+    exit;
 }
-
-// while (true) {}
 
 ?>
 
@@ -27,7 +23,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['message'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contact Form PHP</title>
+    <title>Login</title>
     <!-- <link rel="icon" type="image/png" href="./icon.png" /> -->
     <style>
         body {
@@ -63,7 +59,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['message'])) {
         }
 
         input[type="text"],
-        input[type="email"] {
+        input[type="password"] {
             width: 100%;
             padding: 12px;
             margin: 8px 0;
@@ -72,6 +68,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['message'])) {
             box-sizing: border-box;
             font-size: 14px;
         }
+
 
         input[type="submit"] {
             width: 100%;
@@ -100,12 +97,12 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['message'])) {
 <body>
 
     <div class="container">
-        <h1>Contact Form PHP</h1>
+        <h1>Login</h1>
         <form method="POST" action="">
-            <label for="name">Name:</label><br>
-            <input type="text" id="name" name="name" required><br><br>
-            <label for="email">Email:</label><br>
-            <input type="email" id="email" name="email" required><br><br>
+            <label for="username">Username:</label><br>
+            <input type="text" id="username" name="username" required><br><br>
+            <label for="password">Password:</label><br>
+            <input type="password" id="password" name="password" required><br><br>
             <input type="submit" value="Submit">
         </form>
 
