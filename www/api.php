@@ -2,7 +2,7 @@
 
 header("Content-Type: application/json");
 
-$targetDir = "/Users/abablil/goinfre/upload";
+$targetDir = "/Users/alaalalm/goinfre/upload";
 
 // if directory does not exist, return response
 if (!file_exists($targetDir)) {

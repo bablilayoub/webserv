@@ -1,6 +1,6 @@
 <?php
 
-$targetDir = "/Users/abablil/goinfre/upload";
+$targetDir = "/Users/alaalalm/goinfre/upload";
 
 if (!file_exists($targetDir)) {
 	mkdir($targetDir, 0777, true);

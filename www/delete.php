@@ -1,5 +1,5 @@
 <?php
-$targetDir = "/Users/abablil/goinfre/upload";
+$targetDir = "/Users/alaalalm/goinfre/upload";
 
 // Ensure the upload directory exists
 if (!file_exists($targetDir)) {
