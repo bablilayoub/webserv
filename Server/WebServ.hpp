@@ -76,20 +76,18 @@ public:
   void getHeaderData(int client_socket, bool *flag, std::string &boundary);
   void handlePostRequest(int client_socket, char *buffer, ssize_t bytes_received, std::string &boundary);
   void cleanUp(int client_socket, size_t &i);
-  void parseFormData(int client_socket, std::string &boundary, std::string &chunk, size_t &rcl, size_t &wcl, std::ofstream &cgiInput);
-  void fileReachedEnd(int client_socket, std::ofstream &cgiInput);
+  void parseFormDataChunked(int client_socket, std::string &boundary, std::string &chunk, size_t &rcl, size_t &wcl);
+
+  void setClientWritable(int client_socket);
+  void parseFormDataContentLength(int client_socket, std::string &boundary, std::string &chunk, size_t &rcl, size_t &wcl);
+  void parseFormDataChunked(int client_socket, std::string &boundary, std::string &chunk);
 
   void initServers();
   void handleServersIncomingConnections();
   int acceptConnectionsFromListner(int listener);
   int getClientIndex(int client_socket);
-  // int handleServersIncomingConnections();
 
-  // geters
-  // int getListner() const;
-  // sockaddr *getSockaddr();
-  // sockaddr_in getHint();
-  // Config *getConf();
+  std::vector<int> getListeners() const;
 
   std::map<int, FileUpload> BodyMap;
   std::map<int, Client> clients;

@@ -26,7 +26,8 @@
 #define CRLF "\r\n"
 
 class Client;
-class   FileUpload {
+class   FileUpload 
+{
     private:
         std::map<std::string, std::string>  MimeTypeMap;
 
@@ -42,6 +43,7 @@ class   FileUpload {
         size_t      BinarychunkSize;
         size_t      BinaryBytesLeft;
         std::string BinaryChunkSizeString;
+        bool        BinaryDataFinish;
 
         bool        DataFinish;
 
@@ -66,13 +68,14 @@ class   FileUpload {
         void        ParseContentType(std::string &Body);
         void        OpenFile(std::string path);
         void        WriteToFile(std::string &Body);
-        void        HandleChunkedData(std::string &Body);
+        int         HandleChunkedData(std::string &Body);
         void        ResetData();
 
     public:
         FileUpload();
         ~FileUpload();
-        void        ParseBody(std::string Body, std::string Boundary, Client &client);
+        int        ParseBody(std::string Body, std::string Boundary, Client &client);
         void        HandleBinaryData(std::string mimeType);
-        void        HandleBinaryChunkedData(std::string &Body);
+        int        HandleBinaryChunkedData(std::string &Body);
 };
+
