@@ -62,7 +62,7 @@ int WebServ::init(std::string host, const int port)
       retryCount++;
       continue;
     }
-    std::cout << "Server is listening on port " << port << std::endl;
+    // std::cout << "Server is listening on port " << port << std::endl;
     return listener;
   }
   std::cerr << "Failed to initialize server on port " << port << " after " << maxRetries << " attempts." << std::endl;
@@ -178,21 +178,10 @@ void WebServ::handleServersIncomingConnections()
         int client_socket = fds[i].fd;
 
         this->clients[client_socket].generateResponse();
+        this->clients[client_socket].sendResponse();
 
-        if (clients[client_socket].getIsCGI())
-          if (!clients[client_socket].checkCGICompletion())
-            continue;
-
-        std::string response = this->clients[client_socket].getResponse();
-        ssize_t &client_sentBytes = this->clientDataMap[client_socket].sent_bytes;
-        ssize_t bytes_sent = send(client_socket, response.c_str() + client_sentBytes,
-                                  response.length() - client_sentBytes, 0);
-        if (bytes_sent > 0)
-        {
-          client_sentBytes += bytes_sent;
-          if ((size_t)client_sentBytes == response.length())
-            cleanUp(client_socket, i);
-        }
+        if (this->clients[client_socket].response.done)
+          cleanUp(client_socket, i);
       }
     }
   }

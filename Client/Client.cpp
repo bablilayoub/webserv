@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/27 21:33:48 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/28 20:02:20 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,6 +52,12 @@ void Client::clear()
 	this->generated = false;
 	this->return_anyway = false;
 	this->cgi_response_headers.clear();
+	this->response.headers.clear();
+	this->response.headers_sent = false;
+	this->response.lastReadPos = 0;
+	this->response.done = false;
+	this->response.sentSize = 0;
+	this->response.filePath.clear();
 }
 
 void Client::logRequest(int statusCode)
@@ -302,6 +308,8 @@ bool Client::checkCGICompletion()
 			else
 				this->response.content = buffer.str();
 
+			this->response.totalSize = this->response.content.size();
+
 			this->response.statusCode = 200;
 			cgiOutput.close();
 		}
@@ -349,15 +357,15 @@ void Client::setFinalResponse()
 
 	if (this->isCGI && this->cgi_response_headers.count("Location"))
 	{
-		this->responseString = "HTTP/1.1 302 Found\r\n";
-		this->responseString += "Location: " + this->cgi_response_headers["Location"] + "\r\n";
-		this->responseString += "Connection: close\r\n";
-		this->responseString += "\r\n";
+		this->response.headers = "HTTP/1.1 302 Found\r\n";
+		this->response.headers += "Location: " + this->cgi_response_headers["Location"] + "\r\n";
+		this->response.headers += "Connection: close\r\n";
+		this->response.headers += "\r\n";
 		this->logRequest(302);
 		return;
 	}
 
-	this->responseString = getHttpHeaders() + this->response.content;
+	this->response.headers = getHttpHeaders();
 
 	this->logRequest(response.statusCode);
 }
@@ -482,16 +490,16 @@ std::string Client::getHttpHeaders()
 	headers.clear();
 	headers += "HTTP/1.1 " + std::to_string(statusCode) + " " + this->config->statusCodes[statusCode] + "\r\n";
 	headers += "Content-Type: " + this->response.contentType + "\r\n";
-	headers += "Content-Length: " + std::to_string(this->response.content.size()) + "\r\n";
+	headers += "Content-Length: " + std::to_string(this->response.totalSize) + "\r\n";
 	for (std::map<std::string, std::string>::iterator it = this->cgi_response_headers.begin(); it != this->cgi_response_headers.end(); ++it)
 	{
 		if (it->first == "Content-Type" || it->first == "Content-Length")
 			continue;
 		headers += it->first + ": " + it->second + "\r\n";
 	}
-	headers += "Connection: close\r\n";
-	// headers += "Connection: keep-alive\r\n";
-	// headers += "Accept-Ranges: none\r\n";
+	// headers += "Connection: close\r\n";
+	headers += "Connection: keep-alive\r\n";
+	headers += "Accept-Ranges: none\r\n";
 	headers += "\r\n";
 	return headers;
 }
@@ -511,10 +519,10 @@ void Client::generateResponse()
 		this->response.statusCode = location->redirect_status_code;
 		this->response.contentType = "text/html";
 
-		this->responseString = "HTTP/1.1 " + std::to_string(response.statusCode) + " " + this->config->statusCodes[response.statusCode] + "\r\n";
-		this->responseString += "Location: " + this->location->redirect + "\r\n";
-		this->responseString += "Connection: close\r\n";
-		this->responseString += "\r\n";
+		this->response.headers = "HTTP/1.1 " + std::to_string(response.statusCode) + " " + this->config->statusCodes[response.statusCode] + "\r\n";
+		this->response.headers += "Location: " + this->location->redirect + "\r\n";
+		this->response.headers += "Connection: close\r\n";
+		this->response.headers += "\r\n";
 		return;
 	}
 
@@ -728,6 +736,9 @@ std::string Client::loadErrorPage(const std::string &filePath, int statusCode)
 		}
 	}
 
+	this->response.totalSize = html.size();
+	this->response.contentType = "text/html";
+
 	return html;
 }
 
@@ -747,16 +758,32 @@ std::string Client::loadFile(const std::string &filePath)
 {
 	std::string content;
 
-	std::ifstream file(filePath.c_str());
+	std::ifstream file(filePath.c_str(), std::ios::binary | std::ios::in);
 	if (!file.is_open())
-		return content;
+		return this->loadErrorPage(this->getErrorPagePath(404), 404);
 
-	std::stringstream buffer;
+	if (this->response.filePath.empty())
+		this->response.filePath = filePath;
 
-	buffer << file.rdbuf();
+	file.seekg(0, std::ios::end);
+	this->response.totalSize = file.tellg();
+	file.seekg(0, std::ios::beg);
 
-	content = buffer.str();
+	if (this->response.lastReadPos > 0)
+		file.seekg(this->response.lastReadPos);
+
+	if (this->response.totalSize > 0)
+	{
+		size_t leftToRead = this->response.totalSize - this->response.lastReadPos;
+		size_t readSize = leftToRead > BYTES_TO_READ ? BYTES_TO_READ : leftToRead;
+
+		char buffer[BYTES_TO_READ];
+		file.read(buffer, readSize);
+		content = std::string(buffer, file.gcount());
+		this->response.lastReadPos = file.tellg();
+	}
 	file.close();
+
 	return content;
 }
 
@@ -870,6 +897,10 @@ std::string Client::loadFiles(const std::string &directory)
 		"</html>";
 
 	closedir(dir);
+
+	this->response.contentType = "text/html";
+	this->response.totalSize = fileListHTML.size();
+
 	return fileListHTML;
 }
 
@@ -1094,15 +1125,72 @@ void Client::parse(const std::string &request)
 	}
 }
 
+void Client::sendResponse()
+{
+	if (this->response.done)
+		return;
+
+	if (this->getIsCGI())
+		if (!this->checkCGICompletion())
+			return;
+
+	if (!this->response.headers_sent)
+	{
+		this->setFinalResponse();
+
+		if (send(this->clientFd, this->response.headers.c_str(), this->response.headers.size(), 0) == -1)
+		{
+			this->response.done = true;
+			return;
+		}
+		this->response.headers_sent = true;
+
+		if (!this->response.content.empty())
+		{
+			if (send(this->clientFd, this->response.content.c_str(), this->response.content.size(), 0) == -1)
+			{
+				this->response.done = true;
+				return;
+			}
+			this->response.sentSize += this->response.content.size();
+
+			if (this->response.totalSize == this->response.sentSize)
+			{
+				this->response.done = true;
+				return;
+			}
+		}
+		return;
+	}
+
+	this->response.content = this->loadFile(this->response.filePath);
+	if (this->response.content.empty())
+	{
+		this->response.done = true;
+		return;
+	}
+
+	// std::cout << "Chunk size: " << this->response.content.size() << std::endl;
+	if (send(this->clientFd, this->response.content.c_str(), this->response.content.size(), 0) == -1)
+	{
+		this->response.done = true;
+		return;
+	}
+	this->response.sentSize += this->response.content.size();
+
+	if (this->response.totalSize == this->response.sentSize)
+		this->response.done = true;
+}
+
 /*
 ** Getters
 */
 
-const std::string &Client::getResponse()
-{
-	this->setFinalResponse();
-	return this->responseString;
-}
+// const std::string &Client::getResponse()
+// {
+// 	this->setFinalResponse();
+// 	return this->responseString;
+// }
 
 const std::string &Client::getBody() const { return this->body; }
 
