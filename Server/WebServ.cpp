@@ -175,13 +175,29 @@ void WebServ::handleServersIncomingConnections()
       }
       if (fds[i].revents & POLLOUT)
       {
-        int client_socket = fds[i].fd;
+        try
+        {
+          int client_socket = fds[i].fd;
 
-        this->clients[client_socket].generateResponse();
-        this->clients[client_socket].sendResponse();
+          if (clients.find(client_socket) == clients.end())
+            continue;
 
-        if (this->clients[client_socket].response.done)
-          cleanUp(client_socket, i);
+          this->clients[client_socket].generateResponse();
+
+          if (!this->clients[client_socket].sendResponse())
+          {
+            cleanUp(client_socket, i);
+            continue;
+          }
+
+          if (this->clients[client_socket].response.done)
+            cleanUp(client_socket, i);
+        }
+        catch (const std::exception &e)
+        {
+          cleanUp(fds[i].fd, i);
+          continue;
+        }
       }
     }
   }

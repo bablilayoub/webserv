@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/28 18:50:00 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/29 12:23:05 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -114,7 +114,7 @@ public:
 	const bool &getIsBinary() const;
 	const bool &getIsContentLenght() const;
 	const bool &getIsCGI() const;
-	void sendResponse();
+	bool sendResponse();
 	const std::string &getUploadDir() const;
 	const std::string &getContentType() const;
 	bool checkCGICompletion();

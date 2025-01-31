@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/28 20:02:20 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/29 12:24:15 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1125,14 +1125,14 @@ void Client::parse(const std::string &request)
 	}
 }
 
-void Client::sendResponse()
+bool Client::sendResponse()
 {
 	if (this->response.done)
-		return;
+		return true;
 
 	if (this->getIsCGI())
 		if (!this->checkCGICompletion())
-			return;
+			return true;
 
 	if (!this->response.headers_sent)
 	{
@@ -1141,7 +1141,7 @@ void Client::sendResponse()
 		if (send(this->clientFd, this->response.headers.c_str(), this->response.headers.size(), 0) == -1)
 		{
 			this->response.done = true;
-			return;
+			return false;
 		}
 		this->response.headers_sent = true;
 
@@ -1150,36 +1150,37 @@ void Client::sendResponse()
 			if (send(this->clientFd, this->response.content.c_str(), this->response.content.size(), 0) == -1)
 			{
 				this->response.done = true;
-				return;
+				return false;
 			}
 			this->response.sentSize += this->response.content.size();
 
 			if (this->response.totalSize == this->response.sentSize)
 			{
 				this->response.done = true;
-				return;
+				return true;
 			}
 		}
-		return;
+		return true;
 	}
 
 	this->response.content = this->loadFile(this->response.filePath);
 	if (this->response.content.empty())
 	{
 		this->response.done = true;
-		return;
+		return true;
 	}
 
-	// std::cout << "Chunk size: " << this->response.content.size() << std::endl;
 	if (send(this->clientFd, this->response.content.c_str(), this->response.content.size(), 0) == -1)
 	{
 		this->response.done = true;
-		return;
+		return false;
 	}
 	this->response.sentSize += this->response.content.size();
 
 	if (this->response.totalSize == this->response.sentSize)
 		this->response.done = true;
+		
+	return true;
 }
 
 /*
