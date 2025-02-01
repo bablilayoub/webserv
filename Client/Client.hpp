@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/01 16:23:51 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/01 20:24:43 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -60,6 +60,7 @@ private:
 	std::string server_name;
 	std::string content_type;
 	std::string path_info;
+	std::string connection;
 
 	std::map<std::string, std::string> headers;
 	std::map<std::string, std::string> cgi_response_headers;

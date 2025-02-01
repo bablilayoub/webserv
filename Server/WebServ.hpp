@@ -31,6 +31,7 @@ struct ClientData
 {
   std::string chunk;
   std::string boundary;
+  int tries;
   size_t rcl;
   size_t header_length;
   size_t wcl;
@@ -51,6 +52,7 @@ struct ClientData
     this->removeHeader = false;
     this->clientServed = false;
     this->sent_bytes = 0;
+    this->tries = 0;
   }
 };
 
@@ -73,7 +75,7 @@ public:
   void closeFds();
   void AddSocket(int socket, bool isListener, int event);
   void handleClientsRequest(int client_socket, size_t &i);
-  void getHeaderData(int client_socket, bool *flag, std::string &boundary);
+  ssize_t getHeaderData(int client_socket, bool *flag, std::string &boundary);
   void handlePostRequest(int client_socket, char *buffer, ssize_t bytes_received, std::string &boundary);
   void cleanUp(int client_socket, size_t &i);
   void parseFormDataChunked(int client_socket, std::string &boundary, std::string &chunk, size_t &rcl, size_t &wcl);

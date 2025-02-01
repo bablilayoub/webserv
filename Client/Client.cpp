@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/01 16:40:24 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/01 20:29:59 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -54,6 +54,7 @@ void Client::clear()
 	this->path.clear();
 	this->method.clear();
 	this->body.clear();
+	this->connection.clear();
 	this->boundary.clear();
 	this->headers.clear();
 	this->upload_dir.empty();
@@ -523,8 +524,9 @@ std::string Client::getHttpHeaders()
 		headers += it->first + ": " + it->second + "\r\n";
 	}
 	// headers += "Connection: keep-alive\r\n";
-	headers += "Connection: close\r\n";
-	headers += "Accept-Ranges: none\r\n";
+	// std::cout << "Connection: " << this->connection << std::endl;
+	headers += "Connection: " + this->connection + "\r\n";
+	// headers += "Accept-Ranges: none\r\n";
 	headers += "\r\n";
 	return headers;
 }
@@ -1093,6 +1095,7 @@ void Client::parse(const std::string &request)
 		size_t hostPrefixPos = line.find(HOST_PREFIX);
 		size_t colonPos = line.find(':');
 		size_t transferEncoding = line.find(TRANSFER_ENCODING);
+		size_t connection = line.find(CONNECTION);
 
 		if (contentLengthPos != std::string::npos)
 		{
@@ -1130,6 +1133,8 @@ void Client::parse(const std::string &request)
 		}
 		else if (transferEncoding != std::string::npos)
 			this->isChunked = true;
+		else if (connection != std::string::npos)
+			this->connection = line.substr(connection + std::string(CONNECTION).length());
 		else if (colonPos != std::string::npos)
 			this->headers[line.substr(0, colonPos)] = line.substr(colonPos + 2);
 	}
