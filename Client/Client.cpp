@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/01 13:52:25 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/01 16:40:24 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -82,6 +82,7 @@ void Client::clear()
 	this->response.done = false;
 	this->response.sentSize = 0;
 	this->response.filePath.clear();
+	this->response.oldlastReadPos = 0;
 }
 
 void Client::logRequest(int statusCode)
@@ -521,9 +522,9 @@ std::string Client::getHttpHeaders()
 			continue;
 		headers += it->first + ": " + it->second + "\r\n";
 	}
-	headers += "Connection: close\r\n";
 	// headers += "Connection: keep-alive\r\n";
-	// headers += "Accept-Ranges: none\r\n";
+	headers += "Connection: close\r\n";
+	headers += "Accept-Ranges: none\r\n";
 	headers += "\r\n";
 	return headers;
 }
@@ -809,6 +810,7 @@ std::string Client::loadFile(const std::string &filePath)
 		char buffer[BYTES_TO_READ];
 		this->response.file.read(buffer, readSize);
 		content = std::string(buffer, this->response.file.gcount());
+		this->response.oldlastReadPos = this->response.lastReadPos;
 		this->response.lastReadPos = this->response.file.tellg();
 	}
 
@@ -1172,13 +1174,13 @@ void Client::parse(const std::string &request)
 	this->parsed = true;
 }
 
-bool Client::sendResponse()
+void Client::sendResponse()
 {
 	if (this->response.done)
-		return true;
+		return;
 
 	if (this->getIsCGI() && !this->checkCGICompletion())
-		return true;
+		return;
 
 	if (!this->response.headers_sent)
 	{
@@ -1187,8 +1189,8 @@ bool Client::sendResponse()
 		std::string fullResponse = this->response.headers + this->response.content;
 		if (send(this->clientFd, fullResponse.c_str(), fullResponse.size(), 0) == -1)
 		{
-			this->response.done = true;
-			return false;
+			this->response.lastReadPos = this->response.oldlastReadPos;
+			return;
 		}
 		this->response.headers_sent = true;
 		this->response.sentSize += this->response.content.size();
@@ -1196,27 +1198,27 @@ bool Client::sendResponse()
 		if (this->response.totalSize == this->response.sentSize)
 			this->response.done = true;
 
-		return true;
+		return;
 	}
 
 	this->response.content = this->loadFile(this->response.filePath);
 	if (this->response.content.empty())
 	{
 		this->response.done = true;
-		return true;
+		return;
 	}
 
 	if (send(this->clientFd, this->response.content.c_str(), this->response.content.size(), 0) == -1)
 	{
-		this->response.done = true;
-		return false;
+		this->response.lastReadPos = this->response.oldlastReadPos;
+		return;
 	}
 	this->response.sentSize += this->response.content.size();
 
 	if (this->response.totalSize == this->response.sentSize)
 		this->response.done = true;
 
-	return true;
+	return;
 }
 
 /*

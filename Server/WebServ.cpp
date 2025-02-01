@@ -173,7 +173,7 @@ void WebServ::handleServersIncomingConnections()
 				else
 					handleClientsRequest(fds[i].fd, i);
 			}
-			if (fds[i].revents & POLLOUT)
+			else if (fds[i].revents & POLLOUT)
 			{
 				int client_socket = fds[i].fd;
 
@@ -182,11 +182,7 @@ void WebServ::handleServersIncomingConnections()
 
 				this->clients[client_socket].generateResponse();
 
-				if (!this->clients[client_socket].sendResponse())
-				{
-					cleanUp(client_socket, i);
-					continue;
-				}
+				this->clients[client_socket].sendResponse();
 
 				if (this->clients[client_socket].response.done)
 					cleanUp(client_socket, i);

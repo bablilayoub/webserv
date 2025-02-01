@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/31 16:30:19 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/01 16:23:51 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,6 +26,7 @@ struct Response
 	size_t sentSize;
 	bool headers_sent;
 	std::string headers;
+	size_t oldlastReadPos;
 	size_t lastReadPos;
 	bool done;
 };
@@ -122,7 +123,7 @@ public:
 	const bool &getIsBinary() const;
 	const bool &getIsContentLenght() const;
 	const bool &getIsCGI() const;
-	bool sendResponse();
+	void sendResponse();
 	const std::string &getUploadDir() const;
 	const std::string &getContentType() const;
 	bool checkCGICompletion();
