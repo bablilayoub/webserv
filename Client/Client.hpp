@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/29 12:23:05 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/31 16:30:19 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,7 @@ struct Response
 	std::string content;
 	std::string contentType;
 	std::string filePath;
+	std::ifstream file;
 	size_t totalSize;
 	size_t sentSize;
 	bool headers_sent;
@@ -99,8 +100,15 @@ private:
 	void setFinalResponse();
 public:
 	Server *server;
-	bool return_anyway;
 	Response response;
+	
+	bool parsed;
+	bool return_anyway;
+
+	Client();
+	~Client();
+    Client(const Client &obj);
+    Client &operator=(const Client &obj);
 
 	void setup(int fd, Config *config);
 	void parse(const std::string &request);

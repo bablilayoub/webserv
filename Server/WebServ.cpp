@@ -175,29 +175,21 @@ void WebServ::handleServersIncomingConnections()
       }
       if (fds[i].revents & POLLOUT)
       {
-        try
+        int client_socket = fds[i].fd;
+
+        if (!this->clients[client_socket].parsed)
+          continue;
+
+        this->clients[client_socket].generateResponse();
+
+        if (!this->clients[client_socket].sendResponse())
         {
-          int client_socket = fds[i].fd;
-
-          if (clients.find(client_socket) == clients.end())
-            continue;
-
-          this->clients[client_socket].generateResponse();
-
-          if (!this->clients[client_socket].sendResponse())
-          {
-            cleanUp(client_socket, i);
-            continue;
-          }
-
-          if (this->clients[client_socket].response.done)
-            cleanUp(client_socket, i);
-        }
-        catch (const std::exception &e)
-        {
-          cleanUp(fds[i].fd, i);
+          cleanUp(client_socket, i);
           continue;
         }
+
+        if (this->clients[client_socket].response.done)
+          cleanUp(client_socket, i);
       }
     }
   }
@@ -250,9 +242,11 @@ void WebServ::getHeaderData(int client_socket, bool *flag, std::string &boundary
   int tries = 0;
 
   *flag = true;
-  while ((bytes_received = recv(client_socket, buffer, BUFFER_SIZE, MSG_PEEK)) > 0 && tries <= 3)
+  while ((bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0)) && tries < 100)
   {
     tries++;
+    if (bytes_received == -1)
+      continue;
     request.append(buffer, bytes_received);
     size_t pos = request.find("\r\n\r\n");
     if (pos != std::string::npos)
