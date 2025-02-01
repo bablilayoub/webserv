@@ -171,7 +171,6 @@ void WebServ::handleServersIncomingConnections()
 			if (fds[i].revents & POLLOUT)
 			{
 				int client_socket = fds[i].fd;
-
 				if (!this->clients[client_socket].parsed)
 					continue;
 
@@ -228,16 +227,15 @@ std::string getBoundary(std::string &header)
 		return "";
 }
 
-void WebServ::getHeaderData(int client_socket, bool *flag, std::string &boundary)
+ssize_t WebServ::getHeaderData(int client_socket, bool *flag, std::string &boundary)
 {
 	char buffer[BUFFER_SIZE + 1];
 	std::string request;
 	std::string header;
-	ssize_t bytes_received;
+	ssize_t bytes_received = -1;
 	int tries = 0;
 
-	*flag = true;
-	while ((bytes_received = recv(client_socket, buffer, BUFFER_SIZE, MSG_PEEK)) > 0 && tries <= 3)
+	while ((bytes_received = recv(client_socket, buffer, BUFFER_SIZE, MSG_PEEK)) > 0 && tries <= 100)
 	{
 		tries++;
 		request.append(buffer, bytes_received);
@@ -246,12 +244,15 @@ void WebServ::getHeaderData(int client_socket, bool *flag, std::string &boundary
 		{
 			header = request.substr(0, pos + 4);
 			this->clientDataMap[client_socket].header_length = header.length();
+			this->clients[client_socket].parse(header);
+			this->clientDataMap[client_socket].wcl = this->clients[client_socket].getContentLength() + this->clientDataMap[client_socket].header_length;
+			boundary = getBoundary(header);
+			std::cout << "-----------------header----------------" << std::endl;
+			*flag = true;
 			break;
 		}
 	}
-	this->clients[client_socket].parse(header);
-	this->clientDataMap[client_socket].wcl = this->clients[client_socket].getContentLength() + this->clientDataMap[client_socket].header_length;
-	boundary = getBoundary(header);
+	return bytes_received;
 }
 
 int WebServ::getClientIndex(int client_socket)
@@ -416,7 +417,10 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
 	std::string &boundary = this->clientDataMap[client_socket].boundary;
 
 	if (!this->clientDataMap[client_socket].headerDataSet)
-		getHeaderData(client_socket, &this->clientDataMap[client_socket].headerDataSet, boundary);
+	{
+		if (getHeaderData(client_socket, &this->clientDataMap[client_socket].headerDataSet, boundary) == -1)
+			return;
+	}
 
 	if (this->clients[client_socket].return_anyway)
 	{
