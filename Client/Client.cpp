@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/02 16:10:54 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/02 16:24:03 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1062,8 +1062,6 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 
 void Client::parse(const std::string &request)
 {
-	std::cout << "Parsing request" << std::endl;
-
 	size_t pos = 0;
 	size_t endPos = request.find("\r\n\r\n", pos);
 
