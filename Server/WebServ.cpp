@@ -227,7 +227,7 @@ void WebServ::cleanUpInactiveClients()
 		if (std::find(listeners.begin(), listeners.end(), fd) == listeners.end())
 		{
 			ClientData &data = clientDataMap[fd];
-			if (now - data.last_activity_time > 30)
+			if (now - data.last_activity_time > 10)
 			{
 				std::cerr << "Client " << fd << " timed out." << std::endl;
 				cleanUp(fd, i);
@@ -348,7 +348,7 @@ void WebServ::parseFormDataContentLength(int client_socket, std::string &boundar
 	std::string boundaryString;
 
 	size_t lastChunkPos;
-	if ((lastChunkPos = chunk.find("\r\n" + boundary + "--")) != std::string::npos)
+	if ((lastChunkPos = chunk.find("\r\n" + boundary)) != std::string::npos)
 		chunk = chunk.substr(0, lastChunkPos) + chunk.substr(lastChunkPos + 2);
 
 	size_t pos;
@@ -451,21 +451,14 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
 		}
 	}
 
-	if (!clientDataMap[client_socket].chunk.empty())
+	if (this->clients[client_socket].return_anyway || this->clients[client_socket].getMethod() != POST)
+		fds[i].events = POLLOUT;
+	else if (!clientDataMap[client_socket].chunk.empty())
 	{
 		size_t chunkSize = clientDataMap[client_socket].chunk.size();
 		clientDataMap[client_socket].chunk.copy(buffer, chunkSize);
 		handlePostRequest(client_socket, buffer, 0, boundary);
-		return;
 	}
-
-	if (this->clients[client_socket].return_anyway)
-	{
-		fds[i].events = POLLOUT;
-		return;
-	}
-	if (this->clients[client_socket].getMethod() != POST)
-		fds[i].events = POLLOUT;
 	else
 	{
 		bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0);
