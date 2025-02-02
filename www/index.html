@@ -186,6 +186,44 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 shadow-lg mt-8">
+                    <h2 class="text-3xl font-bold text-gray-100 mb-6 tracking-tight">Redirect Endpoints</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-gray-700 p-5 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold text-gray-100 mb-2">Free Pc</h3>
+                                <div class="flex items-center text-gray-300 space-x-2">
+                                    <span
+                                        class="bg-blue-500 text-white font-bold py-1 px-2 rounded-lg text-xs">GET</span>
+                                </div>
+                            </div>
+                            <p class="text-gray-300 mb-4">Click the button to claim your prize.</p>
+                            <a href="/free-pc" target="_blank"
+                                class="block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded text-center">
+                                Open in new tab
+                            </a>
+                        </div>
+                        <div class="bg-gray-700 p-5 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold text-gray-100 mb-2">42 Dashboard</h3>
+                                <div class="flex items-center text-gray-300 space-x-2">
+                                    <span
+                                        class="bg-blue-500 text-white font-bold py-1 px-2 rounded-lg text-xs">GET</span>
+                                </div>
+                            </div>
+                            <p class="text-gray-300 mb-4">Redirects to the official 42 dashboard.</p>
+                            <a href="/42-dashboard" target="_blank"
+                                class="block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded text-center">
+                                Open in new tab
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="text-gray-400 text-center mt-8">
+                    You can add more endpoints by modifying the <code>webserv.conf</code> file.
+                </p>
             </section>
         </main>
 
