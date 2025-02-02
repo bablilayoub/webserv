@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/01 20:29:59 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/02 16:10:54 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -562,18 +562,21 @@ void Client::generateResponse()
 
 Server *Client::getServer()
 {
+	Server *defaultServer = NULL;
+
 	for (std::vector<Server>::iterator serverIt = this->config->servers.begin(); serverIt != this->config->servers.end(); ++serverIt)
 	{
 		if (std::find(serverIt->ports.begin(), serverIt->ports.end(), this->port) != serverIt->ports.end())
 		{
+			if (!defaultServer)
+				defaultServer = &(*serverIt);
+
 			if (std::find(serverIt->server_names.begin(), serverIt->server_names.end(), this->server_name) != serverIt->server_names.end())
-				return &(*serverIt);
-			else if (serverIt->server_names.empty())
 				return &(*serverIt);
 		}
 	}
 
-	return NULL;
+	return defaultServer;
 }
 
 Location *Client::getLocation()
@@ -1012,6 +1015,10 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 	if (parts.size() != 3)
 	{
 		this->response.statusCode = 400;
+		this->method = "UNKNOWN";
+		this->path = "UNKNOWN";
+		this->server_name = "UNKNOWN";
+		this->port = 0;
 		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
 		this->return_anyway = true;
 		return;
@@ -1055,6 +1062,8 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 
 void Client::parse(const std::string &request)
 {
+	std::cout << "Parsing request" << std::endl;
+
 	size_t pos = 0;
 	size_t endPos = request.find("\r\n\r\n", pos);
 
@@ -1201,6 +1210,9 @@ void Client::sendResponse()
 		this->response.sentSize += this->response.content.size();
 
 		if (this->response.totalSize == this->response.sentSize)
+			this->response.done = true;
+
+		if (this->location && !this->location->redirect.empty())
 			this->response.done = true;
 
 		return;
