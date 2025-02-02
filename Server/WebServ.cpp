@@ -138,6 +138,7 @@ void WebServ::AddSocket(int socket, bool isListener, int event)
 		this->clients[socket].setup(socket, this->config);
 		ClientData clientData;
 		clientDataMap[socket] = clientData;
+		clientDataMap[socket].last_activity_time = time(nullptr);
 		std::remove(("/tmp/cgi_input_" + std::to_string(socket)).c_str());
 	}
 	struct pollfd pfd;
@@ -159,6 +160,7 @@ void WebServ::handleServersIncomingConnections()
 		if (ret == 0)
 			continue;
 
+		cleanUpInactiveClients();
 		for (size_t i = 0; i < fds.size(); i++)
 		{
 			if (fds[i].revents & POLLIN)
@@ -166,7 +168,10 @@ void WebServ::handleServersIncomingConnections()
 				if (std::find(listeners.begin(), listeners.end(), fds[i].fd) != listeners.end())
 					acceptConnectionsFromListner(fds[i].fd);
 				else
+				{
 					handleClientsRequest(fds[i].fd, i);
+					clientDataMap[fds[i].fd].last_activity_time = time(nullptr);
+				}
 			}
 			else if (fds[i].revents & POLLOUT)
 			{
@@ -181,6 +186,8 @@ void WebServ::handleServersIncomingConnections()
 
 				if (this->clients[client_socket].response.done)
 					cleanUp(client_socket, i);
+				else
+					clientDataMap[fds[i].fd].last_activity_time = time(nullptr);
 			}
 		}
 	}
@@ -193,7 +200,11 @@ void WebServ::handleServersIncomingConnections()
 void WebServ::closeFds()
 {
 	for (size_t i = 0; i < fds.size(); ++i)
-		close(fds[i].fd);
+	{
+		int fd = fds[i].fd;
+		if (fd != -1)
+			close(fd);
+	}
 }
 
 void WebServ::cleanUp(int client_socket, size_t &i)
@@ -204,6 +215,25 @@ void WebServ::cleanUp(int client_socket, size_t &i)
 	fds.erase(fds.begin() + i);
 	i--;
 	close(client_socket);
+}
+
+void WebServ::cleanUpInactiveClients()
+{
+	time_t now = time(nullptr);
+	for (size_t i = 0; i < fds.size(); i++)
+	{
+		int fd = fds[i].fd;
+
+		if (std::find(listeners.begin(), listeners.end(), fd) == listeners.end())
+		{
+			ClientData &data = clientDataMap[fd];
+			if (now - data.last_activity_time > 30)
+			{
+				std::cerr << "Client " << fd << " timed out." << std::endl;
+				cleanUp(fd, i);
+			}
+		}
+	}
 }
 
 ////////////////////////////////////////
