@@ -234,7 +234,6 @@ void WebServ::getHeaderData(int client_socket, bool *flag, std::string &boundary
 
 	if ((bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0)) > 0 && this->clientDataMap[client_socket].tries <= 3)
 	{
-		std::cout << "Bytes received: " << bytes_received << std::endl;
 		this->clientDataMap[client_socket].tries++;
 		buffer[bytes_received] = '\0';
 		request.append(buffer, bytes_received);
@@ -247,7 +246,6 @@ void WebServ::getHeaderData(int client_socket, bool *flag, std::string &boundary
 			boundary = getBoundary(header);
 			this->clientDataMap[client_socket].chunk = request.substr(pos + 4);
 			this->clientDataMap[client_socket].rcl = this->clientDataMap[client_socket].chunk.length();
-			std::cout << "Header length: " << header.length() << "and chunk length: " << this->clientDataMap[client_socket].chunk.length() << std::endl;
 			*flag = true;
 		}
 	}
