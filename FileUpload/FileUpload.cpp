@@ -186,7 +186,6 @@ void    FileUpload::OpenFile(std::string path)
 {
     if (this->HeaderFetched)
     {
-        std::cout << "Header Fetched Open FIle : " << FileName << std::endl;
         this->HeaderFetched = false;
         close(this->fd);
         this->fd = -42;
@@ -196,7 +195,7 @@ void    FileUpload::OpenFile(std::string path)
             this->fd = open(OpenPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0666);
             if (this->fd < 0)
             {
-                std::cout << "Failed to open the file : " << OpenPath << std::endl;
+                std::cerr << "Failed to open the file : " << OpenPath << std::endl;
                 return ;
             }
         }

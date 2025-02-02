@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/25 11:46:57 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/02 19:07:52 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,30 @@
 /*
 ** Client
 */
+
+Client::Client()
+{
+	this->parsed = false;
+}
+
+Client::Client(const Client &obj)
+{
+	*this = obj;
+	this->clear();
+}
+
+Client &Client::operator=(const Client &obj)
+{
+	(void)obj;
+	this->clear();
+	return *this;
+}
+
+Client::~Client()
+{
+	if (this->response.file.is_open())
+		this->response.file.close();
+}
 
 void Client::setup(int fd, Config *config)
 {
@@ -30,6 +54,7 @@ void Client::clear()
 	this->path.clear();
 	this->method.clear();
 	this->body.clear();
+	this->connection.clear();
 	this->boundary.clear();
 	this->headers.clear();
 	this->upload_dir.empty();
@@ -52,10 +77,18 @@ void Client::clear()
 	this->generated = false;
 	this->return_anyway = false;
 	this->cgi_response_headers.clear();
+	this->response.headers.clear();
+	this->response.headers_sent = false;
+	this->response.lastReadPos = 0;
+	this->response.done = false;
+	this->response.sentSize = 0;
+	this->response.filePath.clear();
+	this->response.oldlastReadPos = 0;
 }
 
 void Client::logRequest(int statusCode)
 {
+	// Get the current time
 	std::time_t now = std::time(0);
 	std::tm *localTime = std::localtime(&now);
 
@@ -69,17 +102,15 @@ void Client::logRequest(int statusCode)
 	else
 		statusColor = RED;
 
-	std::cout << "[" << (1900 + localTime->tm_year) << "-"
-			  << std::setw(2) << std::setfill('0') << (localTime->tm_mon + 1) << "-"
-			  << std::setw(2) << std::setfill('0') << localTime->tm_mday << " "
-			  << std::setw(2) << std::setfill('0') << localTime->tm_hour << ":"
-			  << std::setw(2) << std::setfill('0') << localTime->tm_min << ":"
-			  << std::setw(2) << std::setfill('0') << localTime->tm_sec << "] "
-			  << std::setfill(' ')
-			  << BOLD << "Server: " << BLUE << this->server_name + ":" + std::to_string(this->port) << RESET << " "
-			  << BOLD << "Method: " << BLUE << std::setw(8) << std::left << this->method << RESET
-			  << BOLD << "Path: " << WHITE << std::setw(45) << this->path << RESET
-			  << BOLD << "Status: " << statusColor << statusCode << RESET
+	char timeBuffer[20];
+	std::strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S", localTime);
+
+	// Log the request details
+	std::cout << "[" << timeBuffer << "] "
+			  << BOLD << "Server: " << BLUE << std::setw(25) << std::left << (this->server_name + ":" + std::to_string(this->port)) << RESET
+			  << BOLD << "Method: " << BLUE << std::setw(10) << std::left << this->method << RESET
+			  << BOLD << "Path: " << WHITE << std::setw(30) << std::left << this->path << RESET
+			  << BOLD << "Status: " << statusColor << std::setw(4) << std::left << statusCode << RESET
 			  << std::endl;
 }
 
@@ -137,7 +168,6 @@ void Client::handleCGIRequest(const std::string &indexPath)
 
 	this->cgi_state.outputPath = "/tmp/cgi_out_" + std::to_string(this->clientFd);
 	this->cgi_state.inputPath = "/tmp/cgi_input_" + std::to_string(this->clientFd);
-	this->cgi_state.running = true;
 
 	pid_t pid = fork();
 	if (pid < 0)
@@ -242,6 +272,7 @@ void Client::handleCGIRequest(const std::string &indexPath)
 		delete[] envp;
 	}
 	this->cgi_state.pid = pid;
+	this->cgi_state.running = true;
 }
 
 bool Client::checkCGICompletion()
@@ -283,8 +314,16 @@ bool Client::checkCGICompletion()
 				if (rpos != std::string::npos)
 					line = line.substr(0, rpos);
 
-				std::string key = line.substr(0, line.find(":"));
-				std::string value = line.substr(line.find(":") + 2);
+				size_t cpos = line.find(':');
+
+				if (cpos == std::string::npos)
+					break;
+
+				if (cpos + 1 >= line.size())
+					continue;
+
+				std::string key = line.substr(0, cpos);
+				std::string value = line.substr(cpos + 1);
 
 				this->cgi_response_headers[key] = value;
 			}
@@ -294,6 +333,8 @@ bool Client::checkCGICompletion()
 				this->response.content = buffer.str().substr(double_crlf + 4);
 			else
 				this->response.content = buffer.str();
+
+			this->response.totalSize = this->response.content.size();
 
 			this->response.statusCode = 200;
 			cgiOutput.close();
@@ -340,7 +381,17 @@ void Client::setFinalResponse()
 			this->response.contentType = "text/html";
 	}
 
-	this->responseString = getHttpHeaders() + this->response.content;
+	if (this->isCGI && this->cgi_response_headers.count("Location"))
+	{
+		this->response.headers = "HTTP/1.1 302 Found\r\n";
+		this->response.headers += "Location: " + this->cgi_response_headers["Location"] + "\r\n";
+		this->response.headers += "Connection: close\r\n";
+		this->response.headers += "\r\n";
+		this->logRequest(302);
+		return;
+	}
+
+	this->response.headers = getHttpHeaders();
 
 	this->logRequest(response.statusCode);
 }
@@ -363,10 +414,13 @@ void Client::setSuccessResponse(int statusCode, const std::string &path)
 	this->response.statusCode = statusCode;
 }
 
-void Client::checkConfigs()
+void Client::startProcessing()
 {
 	if (!this->server)
 		return this->setErrorResponse(404);
+
+	if (!this->location && this->method != METHOD_GET)
+		return this->setErrorResponse(405);
 
 	if (this->location)
 	{
@@ -462,14 +516,17 @@ std::string Client::getHttpHeaders()
 	headers.clear();
 	headers += "HTTP/1.1 " + std::to_string(statusCode) + " " + this->config->statusCodes[statusCode] + "\r\n";
 	headers += "Content-Type: " + this->response.contentType + "\r\n";
-	headers += "Content-Length: " + std::to_string(this->response.content.size()) + "\r\n";
+	headers += "Content-Length: " + std::to_string(this->response.totalSize) + "\r\n";
 	for (std::map<std::string, std::string>::iterator it = this->cgi_response_headers.begin(); it != this->cgi_response_headers.end(); ++it)
 	{
 		if (it->first == "Content-Type" || it->first == "Content-Length")
 			continue;
 		headers += it->first + ": " + it->second + "\r\n";
 	}
-	headers += "Connection: close\r\n";
+	// headers += "Connection: keep-alive\r\n";
+	// std::cout << "Connection: " << this->connection << std::endl;
+	headers += "Connection: " + this->connection + "\r\n";
+	// headers += "Accept-Ranges: none\r\n";
 	headers += "\r\n";
 	return headers;
 }
@@ -480,20 +537,6 @@ void Client::generateResponse()
 		return;
 	this->generated = true;
 
-	if (this->server && this->server->limit_client_body_size && this->content_length > this->server->limit_client_body_size)
-	{
-		this->response.statusCode = 413;
-		this->response.content = this->loadErrorPage(this->getErrorPagePath(413), 413);
-		return;
-	}
-
-	if ((!this->isChunked && !this->isContentLenght && this->method == METHOD_POST) || (!this->content_length && this->method == METHOD_POST))
-	{
-		this->response.statusCode = 400;
-		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
-		return;
-	}
-
 	this->response.content.empty();
 	this->response.contentType.empty();
 	this->response.statusCode = 200;
@@ -503,14 +546,14 @@ void Client::generateResponse()
 		this->response.statusCode = location->redirect_status_code;
 		this->response.contentType = "text/html";
 
-		this->responseString = "HTTP/1.1 " + std::to_string(response.statusCode) + " " + this->config->statusCodes[response.statusCode] + "\r\n";
-		this->responseString += "Location: " + this->location->redirect + "\r\n";
-		this->responseString += "Connection: close\r\n";
-		this->responseString += "\r\n";
+		this->response.headers = "HTTP/1.1 " + std::to_string(response.statusCode) + " " + this->config->statusCodes[response.statusCode] + "\r\n";
+		this->response.headers += "Location: " + this->location->redirect + "\r\n";
+		this->response.headers += "Connection: close\r\n";
+		this->response.headers += "\r\n";
 		return;
 	}
 
-	this->checkConfigs();
+	this->startProcessing();
 }
 
 /*
@@ -519,11 +562,21 @@ void Client::generateResponse()
 
 Server *Client::getServer()
 {
+	Server *defaultServer = NULL;
+
 	for (std::vector<Server>::iterator serverIt = this->config->servers.begin(); serverIt != this->config->servers.end(); ++serverIt)
+	{
 		if (std::find(serverIt->ports.begin(), serverIt->ports.end(), this->port) != serverIt->ports.end())
+		{
+			if (!defaultServer)
+				defaultServer = &(*serverIt);
+
 			if (std::find(serverIt->server_names.begin(), serverIt->server_names.end(), this->server_name) != serverIt->server_names.end())
 				return &(*serverIt);
-	return NULL;
+		}
+	}
+
+	return defaultServer;
 }
 
 Location *Client::getLocation()
@@ -531,96 +584,74 @@ Location *Client::getLocation()
 	if (!this->server)
 		return NULL;
 
-	for (std::map<std::string, Location>::iterator locIt = this->server->locations.begin(); locIt != this->server->locations.end(); ++locIt)
-	{
-		if (locIt->first == this->path)
-		{
-			this->sub_path = this->path.substr(locIt->first.size());
-			if (this->sub_path.empty())
-				this->sub_path = "/";
-			else if (this->sub_path[0] != '/')
-				this->sub_path = "/" + this->sub_path;
+	Location *closestMatch = NULL;
+	size_t longestMatchLength = 0;
 
-			for (std::vector<std::string>::iterator it = locIt->second.cgi_extensions.begin(); it != locIt->second.cgi_extensions.end(); ++it)
+	for (std::map<std::string, Location>::iterator locIt = this->server->locations.begin();
+		 locIt != this->server->locations.end(); ++locIt)
+	{
+
+		const std::string &locationPath = locIt->first;
+
+		if (this->path.compare(0, locationPath.size(), locationPath) == 0)
+		{
+			if (this->path.size() > locationPath.size() && this->path[locationPath.size()] != '/')
+				continue;
+
+			if (locationPath.size() > longestMatchLength)
 			{
-				size_t pos = this->sub_path.find(*it);
-				if (pos != std::string::npos)
-				{
-					this->path_info = this->sub_path.substr(pos + it->size());
-					this->sub_path = this->sub_path.substr(0, pos + it->size());
-					break;
-				}
+				longestMatchLength = locationPath.size();
+				closestMatch = &locIt->second;
 			}
-			return &locIt->second;
 		}
 	}
 
-	std::vector<std::string> pathParts;
-	std::string path = this->path;
-	size_t pos = 0;
-	while ((pos = path.find('/')) != std::string::npos)
+	if (!closestMatch)
 	{
-		pathParts.push_back(path.substr(0, pos));
-		path.erase(0, pos + 1);
-	}
-	pathParts.push_back(path);
+		std::string tempPath = this->path;
 
-	size_t longestMatch = 0;
-	size_t currentMatch = 0;
+		size_t pos = tempPath.find(".php");
+		if (pos != std::string::npos)
+			tempPath = tempPath.substr(0, pos + 4);
+		pos = tempPath.find(".py");
+		if (pos != std::string::npos)
+			tempPath = tempPath.substr(0, pos + 3);
 
-	Location *longestMatchLocation = NULL;
-	std::string longestMatchPath;
-
-	for (std::map<std::string, Location>::iterator locIt = this->server->locations.begin(); locIt != this->server->locations.end(); ++locIt)
-	{
-		std::vector<std::string> locationParts;
-		std::string locationPath = locIt->first;
-		pos = 0;
-		while ((pos = locationPath.find('/')) != std::string::npos)
-		{
-			locationParts.push_back(locationPath.substr(0, pos));
-			locationPath.erase(0, pos + 1);
-		}
-		locationParts.push_back(locationPath);
-
-		currentMatch = 0;
-		for (size_t i = 0; i < pathParts.size() && i < locationParts.size(); ++i)
-		{
-			if (pathParts[i] == locationParts[i])
-				++currentMatch;
-			else
-				break;
-		}
-
-		if (currentMatch > longestMatch)
-		{
-			longestMatch = currentMatch;
-			longestMatchLocation = &locIt->second;
-			longestMatchPath = locIt->first;
-		}
+		std::map<std::string, Location>::iterator rootLocation = this->server->locations.find("/");
+		if (rootLocation != this->server->locations.end() && tempPath.find('/') == 0 && tempPath.find('/', 1) == std::string::npos)
+			closestMatch = &rootLocation->second;
 	}
 
-	if (longestMatchLocation)
+	if (closestMatch)
 	{
-		this->sub_path = this->path.substr(longestMatchPath.size());
+		this->sub_path = this->path.substr(longestMatchLength);
 		if (this->sub_path.empty())
 			this->sub_path = "/";
 		else if (this->sub_path[0] != '/')
 			this->sub_path = "/" + this->sub_path;
 
-		for (std::vector<std::string>::iterator it = longestMatchLocation->cgi_extensions.begin(); it != longestMatchLocation->cgi_extensions.end(); ++it)
+		for (std::vector<std::string>::iterator it = closestMatch->cgi_extensions.begin();
+			 it != closestMatch->cgi_extensions.end(); ++it)
 		{
 			size_t pos = this->sub_path.find(*it);
 			if (pos != std::string::npos)
 			{
+				if (this->sub_path.size() > pos + it->size() && this->sub_path[pos + it->size()] != '/')
+					continue;
+
 				this->path_info = this->sub_path.substr(pos + it->size());
 				this->sub_path = this->sub_path.substr(0, pos + it->size());
 				break;
 			}
 		}
 	}
+	else
+	{
+		this->sub_path = this->path;
+		this->path_info = this->path;
+	}
 
-	return longestMatchLocation;
+	return closestMatch;
 }
 
 /*
@@ -630,8 +661,40 @@ Location *Client::getLocation()
 std::string Client::loadErrorPage(const std::string &filePath, int statusCode)
 {
 	std::stringstream buffer;
+	std::string statusMessage = this->config->statusCodes.count(statusCode) > 0
+									? this->config->statusCodes.at(statusCode)
+									: "Unknown Error";
 
-	std::string statusMessage = this->config->statusCodes.count(statusCode) > 0 ? this->config->statusCodes.at(statusCode) : "Unknown Error";
+	// Determine background and accent colors based on status code
+	std::string bgGradient, accentColor, borderColor;
+	if (statusCode >= 500)
+	{
+		bgGradient = "bg-gradient-to-br from-red-900 via-red-800 to-red-900";
+		accentColor = "red";
+		borderColor = "border-red-300";
+	}
+	else if (statusCode >= 400)
+	{
+		bgGradient = "bg-gradient-to-br from-orange-900 via-orange-800 to-orange-900";
+		accentColor = "orange";
+		borderColor = "border-orange-300";
+	}
+	else if (statusCode >= 300)
+	{
+		bgGradient = "bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900";
+		accentColor = "purple";
+		borderColor = "border-purple-300";
+	}
+	else
+	{
+		bgGradient = "bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900";
+		accentColor = "blue";
+		borderColor = "border-blue-300";
+	}
+
+	std::string repeatedDivs;
+	for (int i = 0; i < 9; ++i)
+		repeatedDivs += "<div class=\"aspect-square rounded-lg bg-white\"></div>";
 
 	std::string html =
 		"<!DOCTYPE html>\n"
@@ -641,38 +704,56 @@ std::string Client::loadErrorPage(const std::string &filePath, int statusCode)
 		"    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
 		"    <title>Error " +
 		std::to_string(statusCode) + "</title>\n"
-									 "    <style>\n"
-									 "        body {\n"
-									 "            font-family: Arial, sans-serif;\n"
-									 "            text-align: center;\n"
-									 "            background-color: #f4f4f9;\n"
-									 "            color: #333;\n"
-									 "            margin: 0;\n"
-									 "            padding: 50px;\n"
-									 "        }\n"
-									 "        h1 {\n"
-									 "            font-size: 3em;\n"
-									 "            color: #ff6b6b;\n"
-									 "        }\n"
-									 "        p {\n"
-									 "            font-size: 1.2em;\n"
-									 "        }\n"
-									 "        a {\n"
-									 "            text-decoration: none;\n"
-									 "            color: #3498db;\n"
-									 "        }\n"
-									 "        a:hover {\n"
-									 "            text-decoration: underline;\n"
-									 "        }\n"
-									 "    </style>\n"
+									 "    <script src=\"https://cdn.tailwindcss.com\"></script>\n"
 									 "</head>\n"
-									 "<body>\n"
-									 "    <h1>" +
-		std::to_string(statusCode) + " - " + statusMessage + "</h1>\n"
-															 "    <p>Sorry, the page you are looking for cannot be found.</p>\n"
-															 "    <p><a href=\"/\">Return to Home</a></p>\n"
-															 "</body>\n"
-															 "</html>";
+									 "<body class=\"min-h-screen " +
+		bgGradient + " flex items-center justify-center p-4 sm:p-8\">\n"
+					 "    <div class=\"relative w-full max-w-2xl\">\n"
+					 "        <!-- Decorative circles -->\n"
+					 "        <div class=\"hidden lg:block absolute -top-20 -left-20 w-40 h-40 bg-" +
+		accentColor + "-500 rounded-full opacity-10 animate-pulse\"></div>\n"
+					  "        <div class=\"hidden lg:block absolute -bottom-20 -right-20 w-40 h-40 bg-" +
+		accentColor + "-500 rounded-full opacity-10 animate-pulse delay-75\"></div>\n"
+					  "        \n"
+					  "        <!-- Main content -->\n"
+					  "        <div class=\"relative backdrop-blur-lg bg-white bg-opacity-10 rounded-2xl p-8 border " +
+		borderColor + " border-opacity-20 shadow-2xl\">\n"
+					  "            <div class=\"grid grid-cols-1 md:grid-cols-2 gap-8 items-center\">\n"
+					  "                <!-- Error details -->\n"
+					  "                <div class=\"text-white space-y-6\">\n"
+					  "                    <h1 class=\"text-8xl font-bold tracking-tighter\">" +
+		std::to_string(statusCode) + "</h1>\n"
+									 "                    <h2 class=\"text-2xl font-medium leading-tight\">" +
+		statusMessage + "</h2>\n"
+						"                    <p class=\"text-" +
+		accentColor + "-200\">\n"
+					  "                        We're sorry, but we couldn't find the page you were looking for.\n"
+					  "                    </p>\n"
+					  "                    <a href=\"/\" class=\"inline-flex items-center px-6 py-3 rounded-lg bg-white \n"
+					  "                              text-" +
+		accentColor + "-900 hover:bg-opacity-90 transition-all \n"
+					  "                              transform hover:scale-105 hover:shadow-lg\">\n"
+					  "                        <svg class=\"w-5 h-5 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\n"
+					  "                            <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" \n"
+					  "                                  d=\"M7 16l-4-4m0 0l4-4m-4 4h18\">\n"
+					  "                            </path>\n"
+					  "                        </svg>\n"
+					  "                        Go Back Home\n"
+					  "                    </a>\n"
+					  "                </div>\n"
+					  "                \n"
+					  "                <!-- Decorative pattern -->\n"
+					  "                <div class=\"hidden md:block\">\n"
+					  "                    <div class=\"grid grid-cols-3 gap-4 opacity-20\">\n"
+					  "                        " +
+		repeatedDivs + "\n"
+					   "                    </div>\n"
+					   "                </div>\n"
+					   "            </div>\n"
+					   "        </div>\n"
+					   "    </div>\n"
+					   "</body>\n"
+					   "</html>";
 
 	if (!filePath.empty())
 	{
@@ -684,6 +765,9 @@ std::string Client::loadErrorPage(const std::string &filePath, int statusCode)
 			html = buffer.str();
 		}
 	}
+
+	this->response.totalSize = html.size();
+	this->response.contentType = "text/html";
 
 	return html;
 }
@@ -702,17 +786,39 @@ std::string Client::getMimeType(const std::string &path)
 
 std::string Client::loadFile(const std::string &filePath)
 {
-	std::ifstream file(filePath.c_str());
-	if (!file.is_open())
-		throw std::runtime_error("Failed to open file: " + filePath);
-
-	std::stringstream buffer;
 	std::string content;
 
-	buffer << file.rdbuf();
+	if (!this->response.file.is_open())
+	{
+		this->response.file.open(filePath.c_str(), std::ios::binary | std::ios::in);
+		if (!this->response.file.is_open())
+		{
+			std::cout << "Failed to open file: " << filePath << std::endl;
+			return this->loadErrorPage(this->getErrorPagePath(404), 404);
+		}
 
-	content = buffer.str();
-	file.close();
+		this->response.filePath = filePath;
+
+		this->response.file.seekg(0, std::ios::end);
+		this->response.totalSize = this->response.file.tellg();
+		this->response.file.seekg(0, std::ios::beg);
+	}
+
+	if (this->response.lastReadPos > 0)
+		this->response.file.seekg(this->response.lastReadPos);
+
+	if (this->response.totalSize > 0)
+	{
+		size_t leftToRead = this->response.totalSize - this->response.lastReadPos;
+		size_t readSize = leftToRead > BYTES_TO_READ ? BYTES_TO_READ : leftToRead;
+
+		char buffer[BYTES_TO_READ];
+		this->response.file.read(buffer, readSize);
+		content = std::string(buffer, this->response.file.gcount());
+		this->response.oldlastReadPos = this->response.lastReadPos;
+		this->response.lastReadPos = this->response.file.tellg();
+	}
+
 	return content;
 }
 
@@ -741,19 +847,28 @@ std::string Client::loadFiles(const std::string &directory)
 	std::string fileListHTML =
 		"<html>"
 		"<head>"
-		"<style>"
-		"body { font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 0; }"
-		"h1 { text-align: center; color: #333; padding: 20px; background-color: #007BFF; color: #fff; margin: 0; }"
-		"table { border-collapse: collapse; margin: 20px auto; max-width: 800px; width: 90%; background-color: #ffffff }"
-		"th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }"
-		"th { background-color: #007BFF; color: #fff; }"
-		"tr:hover { background-color: #f1f1f1; }"
-		"</style>"
+		"<meta charset='UTF-8'>"
+		"<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+		"<script src='https://cdn.tailwindcss.com'></script>"
 		"</head>"
-		"<body>"
-		"<h1>Directory Listing</h1>"
-		"<table>"
-		"<tr><th>Name</th><th>Type</th></tr>"; // Add column for file path
+		"<body class='bg-gray-50 min-h-screen'>"
+		"<div class='min-h-screen'>"
+		"<header class='bg-gradient-to-r from-blue-600 to-blue-700 shadow-lg'>"
+		"<div class='max-w-7xl mx-auto py-6 px-4'>"
+		"<h1 class='text-2xl font-bold text-white text-center'>Directory Listing</h1>"
+		"</div>"
+		"</header>"
+		"<main class='max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8'>"
+		"<div class='bg-white rounded-lg shadow-md overflow-hidden'>"
+		"<div class='overflow-x-auto'>"
+		"<table class='min-w-full divide-y divide-gray-200'>"
+		"<thead class='bg-gray-50'>"
+		"<tr>"
+		"<th class='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Name</th>"
+		"<th class='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Type</th>"
+		"</tr>"
+		"</thead>"
+		"<tbody class='bg-white divide-y divide-gray-200'>";
 
 	while ((entry = readdir(dir)) != NULL)
 	{
@@ -772,19 +887,55 @@ std::string Client::loadFiles(const std::string &directory)
 			continue;
 
 		std::string fileType = S_ISDIR(entryStat.st_mode) ? "Directory" : "File";
+		std::string typeClass = S_ISDIR(entryStat.st_mode)
+									? "bg-blue-100 text-blue-800"
+									: "bg-gray-100 text-gray-800";
 
-		// Add the file path as a clickable link in the table
-		fileListHTML += "<tr>";
-		fileListHTML += "<td><a href='";
+		fileListHTML += "<tr class='hover:bg-gray-50 transition-colors duration-150 ease-in-out'>";
+		fileListHTML += "<td class='px-6 py-4 whitespace-nowrap'><div class='flex items-center'>";
+
+		// Add icon based on type
+		if (S_ISDIR(entryStat.st_mode))
+		{
+			fileListHTML += "<svg class='flex-shrink-0 h-5 w-5 text-blue-500 mr-3' fill='none' stroke='currentColor' viewBox='0 0 24 24'>"
+							"<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z'/>"
+							"</svg>";
+		}
+		else
+		{
+			fileListHTML += "<svg class='flex-shrink-0 h-5 w-5 text-gray-400 mr-3' fill='none' stroke='currentColor' viewBox='0 0 24 24'>"
+							"<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z'/>"
+							"</svg>";
+		}
+
+		fileListHTML += "<a href='";
 		fileListHTML += currentDirectory + (currentDirectory.back() == '/' ? "" : "/");
 		fileListHTML += entry->d_name;
-		fileListHTML += "'>" + std::string(entry->d_name) + "</a></td>";
-		fileListHTML += "<td>" + fileType + "</td>";
-		fileListHTML += "</tr>";
+		fileListHTML += "' class='text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors duration-150'>";
+		fileListHTML += entry->d_name;
+		fileListHTML += "</a></div></td>";
+
+		fileListHTML += "<td class='px-6 py-4 whitespace-nowrap'>";
+		fileListHTML += "<span class='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium " + typeClass + "'>";
+		fileListHTML += fileType;
+		fileListHTML += "</span></td></tr>";
 	}
 
-	fileListHTML += "</table></body></html>";
+	fileListHTML +=
+		"</tbody>"
+		"</table>"
+		"</div>"
+		"</div>"
+		"</main>"
+		"</div>"
+		"</body>"
+		"</html>";
+
 	closedir(dir);
+
+	this->response.contentType = "text/html";
+	this->response.totalSize = fileListHTML.size();
+
 	return fileListHTML;
 }
 
@@ -864,6 +1015,10 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 	if (parts.size() != 3)
 	{
 		this->response.statusCode = 400;
+		this->method = "UNKNOWN";
+		this->path = "UNKNOWN";
+		this->server_name = "UNKNOWN";
+		this->port = 0;
 		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
 		this->return_anyway = true;
 		return;
@@ -887,6 +1042,11 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 	}
 	else
 		this->path = path;
+
+	size_t hashPos = this->path.find('#');
+	if (hashPos != std::string::npos)
+		this->path = this->path.substr(0, hashPos);
+
 	if (this->path != "/" && this->path.back() == '/')
 		while (this->path.size() > 1 && this->path.back() == '/')
 			this->path.pop_back();
@@ -905,68 +1065,85 @@ void Client::parse(const std::string &request)
 	size_t pos = 0;
 	size_t endPos = request.find("\r\n\r\n", pos);
 
-	if (endPos != std::string::npos)
+	if (endPos == std::string::npos)
 	{
-		this->clear();
+		this->response.statusCode = 400;
+		this->method = "UNKNOWN";
+		this->path = "UNKNOWN";
+		this->server_name = "UNKNOWN";
+		this->port = 0;
+		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
+		this->return_anyway = true;
+		this->parsed = true;
+		return;
+	}
 
-		std::string line;
-		std::string headers = request.substr(0, endPos);
-		std::istringstream headerStream(headers);
+	this->clear();
 
-		this->handleFirstLine(headerStream);
-		if (this->return_anyway)
-			return;
+	std::string line;
+	std::string headers = request.substr(0, endPos);
+	std::istringstream headerStream(headers);
 
-		while (std::getline(headerStream, line))
+	this->handleFirstLine(headerStream);
+	if (this->return_anyway)
+	{
+		this->parsed = true;
+		return;
+	}
+
+	while (std::getline(headerStream, line))
+	{
+		size_t rpos = line.find('\r');
+		if (rpos != std::string::npos)
+			line = line.substr(0, rpos);
+
+		size_t contentLengthPos = line.find(CONTENT_LENGTH_PREFIX);
+		size_t contentTypePos = line.find(CONTENT_TYPE_PREFIX);
+		size_t hostPrefixPos = line.find(HOST_PREFIX);
+		size_t colonPos = line.find(':');
+		size_t transferEncoding = line.find(TRANSFER_ENCODING);
+		size_t connection = line.find(CONNECTION);
+
+		if (contentLengthPos != std::string::npos)
 		{
-			size_t rpos = line.find('\r');
-			if (rpos != std::string::npos)
-				line = line.substr(0, rpos);
-
-			size_t contentLengthPos = line.find(CONTENT_LENGTH_PREFIX);
-			size_t contentTypePos = line.find(CONTENT_TYPE_PREFIX);
-			size_t hostPrefixPos = line.find(HOST_PREFIX);
-			size_t colonPos = line.find(':');
-			size_t transferEncoding = line.find(TRANSFER_ENCODING);
-
-			if (contentLengthPos != std::string::npos)
-			{
-				contentLengthPos += std::string(CONTENT_LENGTH_PREFIX).length();
-				this->content_length = std::atof(line.substr(contentLengthPos).c_str());
-				this->isContentLenght = true;
-			}
-			else if (contentTypePos != std::string::npos)
-			{
-				contentTypePos += std::string(CONTENT_TYPE_PREFIX).length();
-				this->content_type = line.substr(contentTypePos, line.size() - 1).c_str();
-				size_t boundaryPos = this->content_type.find(BOUNDARY_PREFIX);
-				if (boundaryPos != std::string::npos)
-				{
-					boundaryPos += std::string(BOUNDARY_PREFIX).length();
-					this->boundary = this->content_type.substr(boundaryPos, this->content_type.size() - 1);
-				}
-				else if (this->content_type.find("application/x-www-form-urlencoded") == std::string::npos)
-					this->isBinary = true;
-			}
-			else if (hostPrefixPos != std::string::npos)
-			{
-				size_t colonPos = line.find(':', hostPrefixPos + std::string(HOST_PREFIX).length());
-				if (colonPos == std::string::npos)
-				{
-					this->response.statusCode = 400;
-					this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
-					this->return_anyway = true;
-					return;
-				}
-				this->server_name = line.substr(hostPrefixPos + std::string(HOST_PREFIX).length(),
-												colonPos - (hostPrefixPos + std::string(HOST_PREFIX).length()));
-				this->port = std::atof(line.substr(colonPos + 1).c_str());
-			}
-			else if (transferEncoding != std::string::npos)
-				this->isChunked = true;
-			else if (colonPos != std::string::npos)
-				this->headers[line.substr(0, colonPos)] = line.substr(colonPos + 2);
+			contentLengthPos += std::string(CONTENT_LENGTH_PREFIX).length();
+			this->content_length = std::atof(line.substr(contentLengthPos).c_str());
+			this->isContentLenght = true;
 		}
+		else if (contentTypePos != std::string::npos)
+		{
+			contentTypePos += std::string(CONTENT_TYPE_PREFIX).length();
+			this->content_type = line.substr(contentTypePos, line.size() - 1).c_str();
+			size_t boundaryPos = this->content_type.find(BOUNDARY_PREFIX);
+			if (boundaryPos != std::string::npos)
+			{
+				boundaryPos += std::string(BOUNDARY_PREFIX).length();
+				this->boundary = this->content_type.substr(boundaryPos, this->content_type.size() - 1);
+			}
+			else if (this->content_type.find("application/x-www-form-urlencoded") == std::string::npos)
+				this->isBinary = true;
+		}
+		else if (hostPrefixPos != std::string::npos)
+		{
+			size_t colonPos = line.find(':', hostPrefixPos + std::string(HOST_PREFIX).length());
+			if (colonPos == std::string::npos)
+			{
+				this->response.statusCode = 400;
+				this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
+				this->return_anyway = true;
+				this->parsed = true;
+				return;
+			}
+			this->server_name = line.substr(hostPrefixPos + std::string(HOST_PREFIX).length(),
+											colonPos - (hostPrefixPos + std::string(HOST_PREFIX).length()));
+			this->port = std::atof(line.substr(colonPos + 1).c_str());
+		}
+		else if (transferEncoding != std::string::npos)
+			this->isChunked = true;
+		else if (connection != std::string::npos)
+			this->connection = line.substr(connection + std::string(CONNECTION).length());
+		else if (colonPos != std::string::npos)
+			this->headers[line.substr(0, colonPos)] = line.substr(colonPos + 2);
 	}
 
 	if (this->server_name.empty() || !this->port || this->path.empty() || this->method.empty())
@@ -974,10 +1151,39 @@ void Client::parse(const std::string &request)
 		this->response.statusCode = 400;
 		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
 		this->return_anyway = true;
+		this->parsed = true;
 		return;
 	}
 
 	this->server = this->getServer();
+
+	if (this->server && this->server->limit_client_body_size && this->content_length > this->server->limit_client_body_size)
+	{
+		this->response.statusCode = 413;
+		this->response.content = this->loadErrorPage(this->getErrorPagePath(413), 413);
+		this->return_anyway = true;
+		this->parsed = true;
+		return;
+	}
+
+	if ((!this->isChunked && !this->isContentLenght && this->method == METHOD_POST))
+	{
+		this->response.statusCode = 400;
+		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
+		this->return_anyway = true;
+		this->parsed = true;
+		return;
+	}
+
+	if (this->isChunked && this->isContentLenght && this->method == METHOD_POST)
+	{
+		this->response.statusCode = 400;
+		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
+		this->return_anyway = true;
+		this->parsed = true;
+		return;
+	}
+
 	this->location = this->getLocation();
 
 	if (this->location)
@@ -986,17 +1192,76 @@ void Client::parse(const std::string &request)
 		if (this->isCGIRequest())
 			this->isCGI = true;
 	}
+
+	this->parsed = true;
+}
+
+void Client::sendResponse()
+{
+	if (this->response.done)
+		return;
+
+	if (this->getIsCGI() && !this->checkCGICompletion())
+		return;
+
+	if (!this->response.headers_sent)
+	{
+		this->setFinalResponse();
+
+		std::string fullResponse = this->response.headers + this->response.content;
+		ssize_t bytes_sent = send(this->clientFd, fullResponse.c_str(), fullResponse.size(), 0);
+		if (bytes_sent == -1)
+		{
+			this->response.lastReadPos = this->response.oldlastReadPos;
+			return;
+		}
+		this->response.headers_sent = true;
+		this->response.sentSize += bytes_sent;
+
+		if ((this->response.totalSize + this->response.headers.size()) == this->response.sentSize)
+			this->response.done = true;
+
+		if (this->location && !this->location->redirect.empty())
+			this->response.done = true;
+
+		return;
+	}
+
+	if (this->response.filePath.empty())
+	{
+		this->response.done = true;
+		return;
+	}
+
+	this->response.content = this->loadFile(this->response.filePath);
+	if (this->response.content.empty())
+	{
+		this->response.done = true;
+		return;
+	}
+
+	ssize_t bytes_sent = send(this->clientFd, this->response.content.c_str(), this->response.content.size(), 0);
+	if (bytes_sent == -1)
+	{
+		this->response.lastReadPos = this->response.oldlastReadPos;
+		return;
+	}
+	this->response.sentSize += bytes_sent;
+
+	if ((this->response.totalSize + this->response.headers.size()) == this->response.sentSize)
+		this->response.done = true;
+	return;
 }
 
 /*
 ** Getters
 */
 
-const std::string &Client::getResponse()
-{
-	this->setFinalResponse();
-	return this->responseString;
-}
+// const std::string &Client::getResponse()
+// {
+// 	this->setFinalResponse();
+// 	return this->responseString;
+// }
 
 const std::string &Client::getBody() const { return this->body; }
 

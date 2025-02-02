@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/25 11:37:21 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/01 20:24:43 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,13 +20,22 @@ struct Response
 	int statusCode;
 	std::string content;
 	std::string contentType;
+	std::string filePath;
+	std::ifstream file;
+	size_t totalSize;
+	size_t sentSize;
+	bool headers_sent;
+	std::string headers;
+	size_t oldlastReadPos;
+	size_t lastReadPos;
+	bool done;
 };
 
 struct CGIState {
     pid_t pid;
     std::string outputPath;
     std::string inputPath;
-    bool running;
+	bool running;
 };
 
 class Client
@@ -35,13 +44,12 @@ private:
 	int port;
 	int clientFd;
 	size_t content_length;
-
+	
 	bool isCGI;
 	bool isBinary;
 	bool isChunked;
 	bool isContentLenght;
 	bool generated;
-	bool return_anyway;
 
 	std::string path;
 	std::string sub_path;
@@ -52,6 +60,7 @@ private:
 	std::string server_name;
 	std::string content_type;
 	std::string path_info;
+	std::string connection;
 
 	std::map<std::string, std::string> headers;
 	std::map<std::string, std::string> cgi_response_headers;
@@ -60,13 +69,12 @@ private:
 	std::string upload_dir;
 
 	std::string responseString;
-	Response response;
 	CGIState cgi_state;
 
 	void clear();
 
 	void handleFirstLine(std::istringstream &requestStream);
-	void checkConfigs();
+	void startProcessing();
 
 	Server *getServer();
 	Location *getLocation();
@@ -94,6 +102,15 @@ private:
 	void setFinalResponse();
 public:
 	Server *server;
+	Response response;
+	
+	bool parsed;
+	bool return_anyway;
+
+	Client();
+	~Client();
+    Client(const Client &obj);
+    Client &operator=(const Client &obj);
 
 	void setup(int fd, Config *config);
 	void parse(const std::string &request);
@@ -107,7 +124,7 @@ public:
 	const bool &getIsBinary() const;
 	const bool &getIsContentLenght() const;
 	const bool &getIsCGI() const;
-	const std::string &getResponse();
+	void sendResponse();
 	const std::string &getUploadDir() const;
 	const std::string &getContentType() const;
 	bool checkCGICompletion();

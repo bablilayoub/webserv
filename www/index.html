@@ -1,16 +1,240 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <title>Simple HTTP Response</title>
-    <link rel="stylesheet" href="./css/index.css">
-    <link rel="icon" type="image/png" href="./icon.png" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webserv - Simple HTTP Server</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/png" href="./icon.png">
 </head>
 
-<body>
-    <div class="container">
-        <h1>Welcome to My Simple HTTP Server</h1>
-        <p>This content is loaded from a file.</p>
+<body class="bg-gradient-to-br from-gray-900 via-black to-gray-800 text-white font-sans">
+    <!-- Main Container -->
+    <div class="flex flex-col min-h-screen">
+        <!-- Header Section -->
+        <header class="text-center py-16 px-6 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700">
+            <h1 class="text-5xl font-extrabold text-white tracking-tight mb-4">
+                Webserv
+            </h1>
+            <p class="text-xl text-gray-200 max-w-3xl mx-auto">
+                A lightweight and secure HTTP server designed for flexibility and simplicity. Explore its capabilities
+                below.
+            </p>
+        </header>
+
+        <!-- Content Section -->
+        <main class="flex-grow px-6 py-12 max-w-7xl mx-auto">
+            <!-- Team Section -->
+            <section class="mb-16">
+                <h2 class="text-3xl font-bold text-gray-100 text-center mb-8">Meet the Team</h2>
+                <div class="flex flex-wrap justify-center gap-8">
+                    <a href="https://profile.intra.42.fr/users/abablil" target="_blank"
+                        class="transform hover:scale-105 transition">
+                        <img src="https://cdn.intra.42.fr/users/33c5eea5d0fcbfff5e4cc2813944d393/abablil.jpg"
+                            class="w-28 h-28 rounded-full shadow-md border-4 border-blue-500" alt="abablil">
+                    </a>
+                    <a href="https://profile.intra.42.fr/users/alaalalm" target="_blank"
+                        class="transform hover:scale-105 transition">
+                        <img src="https://cdn.intra.42.fr/users/8303b7e0c1a2a265849a8db3a6e77305/alaalalm.jpg"
+                            class="w-28 h-28 rounded-full shadow-md border-4 border-blue-600" alt="alaalalm">
+                    </a>
+                    <a href="https://profile.intra.42.fr/users/aitaouss" target="_blank"
+                        class="transform hover:scale-105 transition">
+                        <img src="https://cdn.intra.42.fr/users/a8525fb4a37beed334279f8f1936c6da/aitaouss.jpg"
+                            class="w-28 h-28 rounded-full shadow-md border-4 border-blue-700" alt="aitaouss">
+                    </a>
+                </div>
+            </section>
+
+            <!-- Main Content -->
+            <section class="w-full max-w-4xl">
+                <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 shadow-lg">
+                    <h2 class="text-3xl font-bold text-gray-100 mb-6 tracking-tight">CGI Endpoints</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-gray-700 p-5 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold text-gray-100 mb-2">PHP Form</h3>
+                                <div class="flex items-center text-gray-300 space-x-2">
+                                    <span
+                                        class="bg-blue-500 text-white font-bold py-1 px-2 rounded-lg text-xs">GET</span>
+                                    <span
+                                        class="bg-green-500 text-white font-bold py-1 px-2 rounded-lg text-xs">POST</span>
+                                </div>
+                            </div>
+                            <p class="text-gray-300 mb-4">A simple form to test PHP POST requests.</p>
+                            <a href="/form-php" target="_blank"
+                                class="block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded text-center">
+                                Open in new tab
+                            </a>
+                        </div>
+                        <div class="bg-gray-700 p-5 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold text-gray-100 mb-2">Python Form</h3>
+                                <div class="flex items-center text-gray-300 space-x-2">
+                                    <span
+                                        class="bg-blue-500 text-white font-bold py-1 px-2 rounded-lg text-xs">GET</span>
+                                    <span
+                                        class="bg-green-500 text-white font-bold py-1 px-2 rounded-lg text-xs">POST</span>
+                                </div>
+                            </div>
+                            <p class="text-gray-300 mb-4">A simple form to test Python POST requests.</p>
+                            <a href="/form-py" target="_blank"
+                                class="block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded text-center">
+                                Open in new tab
+                            </a>
+                        </div>
+                        <div class="bg-gray-700 p-5 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold text-gray-100 mb-2">PHP File Upload</h3>
+                                <div class="flex items-center text-gray-300 space-x-2">
+                                    <span
+                                        class="bg-blue-500 text-white font-bold py-1 px-2 rounded-lg text-xs">GET</span>
+                                    <span
+                                        class="bg-green-500 text-white font-bold py-1 px-2 rounded-lg text-xs">POST</span>
+                                </div>
+                            </div>
+                            <p class="text-gray-300 mb-4">A simple form to test PHP file uploads.</p>
+                            <a href="/upload-php" target="_blank"
+                                class="block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded text-center">
+                                Open in new tab
+                            </a>
+                        </div>
+                        <div class="bg-gray-700 p-5 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold text-gray-100 mb-2">Python File Upload</h3>
+                                <div class="flex items-center text-gray-300 space-x-2">
+                                    <span
+                                        class="bg-blue-500 text-white font-bold py-1 px-2 rounded-lg text-xs">GET</span>
+                                    <span
+                                        class="bg-green-500 text-white font-bold py-1 px-2 rounded-lg text-xs">POST</span>
+                                </div>
+                            </div>
+                            <p class="text-gray-300 mb-4">A simple form to test Python file uploads.</p>
+                            <a href="/upload-py" target="_blank"
+                                class="block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded text-center">
+                                Open in new tab
+                            </a>
+                        </div>
+                        <div class="bg-gray-700 p-5 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold text-gray-100 mb-2">Delete File By Name</h3>
+                                <div class="flex items-center text-gray-300 space-x-2">
+                                    <span
+                                        class="bg-red-500 text-white font-bold py-1 px-2 rounded-lg text-xs">DELETE</span>
+                                </div>
+                            </div>
+                            <p class="text-gray-300 mb-4">Delete a file from the server by file name.</p>
+                            <a href="/api" target="_blank"
+                                class="block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded text-center">
+                                Open in new tab
+                            </a>
+                        </div>
+                        <div class="bg-gray-700 p-5 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold text-gray-100 mb-2">Delete Form</h3>
+                                <div class="flex items-center text-gray-300 space-x-2">
+                                    <span
+                                        class="bg-blue-500 text-white font-bold py-1 px-2 rounded-lg text-xs">GET</span>
+                                    <span
+                                        class="bg-green-500 text-white font-bold py-1 px-2 rounded-lg text-xs">POST</span>
+                                </div>
+                            </div>
+                            <p class="text-gray-300 mb-4">Delete a file from the server by file name.</p>
+                            <a href="/delete" target="_blank"
+                                class="block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded text-center">
+                                Open in new tab
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 shadow-lg mt-8">
+                    <h2 class="text-3xl font-bold text-gray-100 mb-6 tracking-tight">Authentication Endpoints</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-gray-700 p-5 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold text-gray-100 mb-2">Login Form</h3>
+                                <div class="flex items-center text-gray-300 space-x-2">
+                                    <span
+                                        class="bg-blue-500 text-white font-bold py-1 px-2 rounded-lg text-xs">GET</span>
+                                    <span
+                                        class="bg-green-500 text-white font-bold py-1 px-2 rounded-lg text-xs">POST</span>
+                                </div>
+                            </div>
+                            <p class="text-gray-300 mb-4">A simple form to test basic authentication.</p>
+                            <a href="/login" target="_blank"
+                                class="block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded text-center">
+                                Open in new tab
+                            </a>
+                        </div>
+                        <div class="bg-gray-700 p-5 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold text-gray-100 mb-2">Protected Page</h3>
+                                <div class="flex items-center text-gray-300 space-x-2">
+                                    <span
+                                        class="bg-blue-500 text-white font-bold py-1 px-2 rounded-lg text-xs">GET</span>
+                                    <span
+                                        class="bg-green-500 text-white font-bold py-1 px-2 rounded-lg text-xs">POST</span>
+                                </div>
+                            </div>
+                            <p class="text-gray-300 mb-4">A protected page that requires authentication.</p>
+                            <a href="/dashboard" target="_blank"
+                                class="block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded text-center">
+                                Open in new tab
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 shadow-lg mt-8">
+                    <h2 class="text-3xl font-bold text-gray-100 mb-6 tracking-tight">Redirect Endpoints</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-gray-700 p-5 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold text-gray-100 mb-2">Free Pc</h3>
+                                <div class="flex items-center text-gray-300 space-x-2">
+                                    <span
+                                        class="bg-slate-900 text-white font-bold py-1 px-2 rounded-lg text-xs">ANY</span>
+                                </div>
+                            </div>
+                            <p class="text-gray-300 mb-4">Click the button to claim your prize.</p>
+                            <a href="/free-pc" target="_blank"
+                                class="block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded text-center">
+                                Open in new tab
+                            </a>
+                        </div>
+                        <div class="bg-gray-700 p-5 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold text-gray-100 mb-2">42 Dashboard</h3>
+                                <div class="flex items-center text-gray-300 space-x-2">
+                                    <span
+                                        class="bg-slate-900 text-white font-bold py-1 px-2 rounded-lg text-xs">ANY</span>
+                                </div>
+                            </div>
+                            <p class="text-gray-300 mb-4">Redirects to the official 42 dashboard.</p>
+                            <a href="/42-dashboard" target="_blank"
+                                class="block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded text-center">
+                                Open in new tab
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="text-gray-400 text-center mt-8">
+                    You can add more endpoints by modifying the <code>webserv.conf</code> file.
+                </p>
+            </section>
+        </main>
+
+        <!-- Footer Section -->
+        <footer class="py-6 text-center text-sm text-gray-500">
+            <p>
+                Built with <span class="text-pink-500">&hearts;</span> by enthusiasts at
+                <a href="https://1337.ma" target="_blank" class="text-blue-400 hover:underline">1337 Coding
+                    School</a>
+            </p>
+        </footer>
     </div>
 </body>
 

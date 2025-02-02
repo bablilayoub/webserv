@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 10:49:18 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/24 19:57:02 by abablil          ###   ########.fr       */
+/*   Updated: 2025/01/25 17:47:03 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -139,25 +139,25 @@ void Config::processClosingBrace()
 			if (currentLocation.upload_dir.empty())
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": upload_dir is required for the POST method.");
 
-		if (!currentLocation.index.empty() && this->isCGI(currentLocation.index, "php"))
+		// if cgi_extensions is set, check if php_cgi_path or python_cgi_path is set
+		if (!currentLocation.cgi_extensions.empty())
 		{
-			if (currentLocation.php_cgi_path.empty())
-				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": This location requires php_cgi_path.");
+			if (std::find(currentLocation.cgi_extensions.begin(), currentLocation.cgi_extensions.end(), "php") != currentLocation.cgi_extensions.end() && currentLocation.php_cgi_path.empty())
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": php_cgi_path is required for php extension in cgi_extensions.");
+			if (std::find(currentLocation.cgi_extensions.begin(), currentLocation.cgi_extensions.end(), "py") != currentLocation.cgi_extensions.end() && currentLocation.python_cgi_path.empty())
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": python_cgi_path is required for py extension in cgi_extensions.");
+
 			if (currentLocation.cgi_timeout <= 0)
-				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": This location requires cgi_timeout.");
-			if (std::find(currentLocation.cgi_extensions.begin(), currentLocation.cgi_extensions.end(), "php") == currentLocation.cgi_extensions.end())
-				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": index requires php extension in cgi_extensions.");
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": cgi_timeout is required for cgi_extensions.");
 		}
 
+		if (!currentLocation.index.empty() && this->isCGI(currentLocation.index, "php"))
+			if (std::find(currentLocation.cgi_extensions.begin(), currentLocation.cgi_extensions.end(), "php") == currentLocation.cgi_extensions.end())
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": index requires php extension in cgi_extensions.");
+
 		if (!currentLocation.index.empty() && this->isCGI(currentLocation.index, "py"))
-		{
-			if (currentLocation.python_cgi_path.empty())
-				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": This location requires python_cgi_path.");
-			if (currentLocation.cgi_timeout <= 0)
-				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": This location requires cgi_timeout.");
 			if (std::find(currentLocation.cgi_extensions.begin(), currentLocation.cgi_extensions.end(), "py") == currentLocation.cgi_extensions.end())
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": index requires py extension in cgi_extensions.");
-		}
 
 		currentServer.locations[locationPath] = currentLocation;
 		locationPath.clear();
@@ -169,6 +169,17 @@ void Config::processClosingBrace()
 		for (size_t i = 0; i < currentServer.ports.size(); i++)
 			if (currentServer.ports[i] < 1 || currentServer.ports[i] > 65535)
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid port number");
+		if (currentServer.limit_client_body_size_str.empty())
+			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": limit_client_body_size is not specified");
+		currentServer.limit_client_body_size = this->parseInt(currentServer.limit_client_body_size_str);
+		if (currentServer.limit_client_body_size < 0)
+			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid limit_client_body_size");
+
+		if (currentServer.host.empty())
+			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Server must have a host");
+
+		if (currentServer.ports.empty())
+			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Server must have at least one port");
 
 		servers.push_back(currentServer);
 	}
@@ -262,7 +273,7 @@ void Config::handleKeyValue(const std::string &line)
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": server_names cannot be empty");
 		}
 		else if (key == "limit_client_body_size")
-			currentServer.limit_client_body_size = this->parseInt(value);
+			currentServer.limit_client_body_size_str = value;
 		else if (key == "root_folder")
 		{
 			currentServer.root_folder = trimTrailingSlash(value);

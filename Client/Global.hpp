@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/14 18:46:49 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/22 11:50:05 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/01 21:18:12 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,9 @@
 #define CONTENT_TYPE_PREFIX "Content-Type: "
 #define HOST_PREFIX "Host: "
 #define TRANSFER_ENCODING "Transfer-Encoding: chunked"
+#define CONNECTION "Connection: "
+
+#define BYTES_TO_READ 1024
 
 #define RESET "\033[0m"
 #define BOLD "\033[1m"
