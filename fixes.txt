@@ -1,7 +1,0 @@
-SERVER:
-- Empty headers 
-- POST need to be fixed
-
-CLIENT:
-
-FILE UPLOAD:
