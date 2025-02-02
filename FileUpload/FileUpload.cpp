@@ -32,7 +32,6 @@ FileUpload::FileUpload()
     this->ChunkSizeString = "";
     this->FirstChunk = true;
     this->ChunkDone = false;
-    this->FirstCRLF = true;
     this->bytesLeft = 0;
     this->chunkSize = 0;
 
@@ -41,6 +40,7 @@ FileUpload::FileUpload()
     // For Open or not The binary file
     this->BinaryFileOpen = false;
 
+    // For Open or not the file
     this->openFile = false;
 
     // For Binary Chunked Data
@@ -50,49 +50,42 @@ FileUpload::FileUpload()
     this->BinarychunkSize = 0;
     this->BinaryDataFinish = false;
 
-    // for the raw data
-    this->MimeTypeMap["application/octet-stream"] = ".bin";  // Generic binary data
-    this->MimeTypeMap["application/json"] = ".json";        // JSON format
-    this->MimeTypeMap["application/xml"] = ".xml";          // XML format
-    this->MimeTypeMap["application/zip"] = ".zip";          // ZIP archives
-    this->MimeTypeMap["application/gzip"] = ".gz";          // Gzip archives
-    this->MimeTypeMap["application/x-tar"] = ".tar";        // Tar archives
-    this->MimeTypeMap["application/x-7z-compressed"] = ".7z"; // 7-Zip archives
-    this->MimeTypeMap["application/pdf"] = ".pdf";          // PDF documents
-    this->MimeTypeMap["application/x-www-form-urlencoded"] = ".txt"; // Form data
-    this->MimeTypeMap["application/x-bzip"] = ".bz";        // Bzip archives
-    this->MimeTypeMap["application/x-bzip2"] = ".bz2";      // Bzip2 archives
-    this->MimeTypeMap["application/x-rar-compressed"] = ".rar"; // RAR archives
-    this->MimeTypeMap["application/x-msdownload"] = ".exe"; // Windows executables
-    this->MimeTypeMap["application/vnd.ms-excel"] = ".xls"; // Excel spreadsheets
-    this->MimeTypeMap["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"] = ".xlsx"; // Excel (modern)
-
-    this->MimeTypeMap["text/plain"] = ".txt";               // Plain text
-    this->MimeTypeMap["text/html"] = ".html";               // HTML documents
-    this->MimeTypeMap["text/css"] = ".css";                 // CSS stylesheets
-    this->MimeTypeMap["text/csv"] = ".csv";                 // CSV files
-    this->MimeTypeMap["text/javascript"] = ".js";           // JavaScript
-    this->MimeTypeMap["application/javascript"] = ".js";    // Modern JavaScript
-
-    this->MimeTypeMap["image/jpeg"] = ".jpg";               // JPEG images
-    this->MimeTypeMap["image/png"] = ".png";                // PNG images
-    this->MimeTypeMap["image/gif"] = ".gif";                // GIF images
-    this->MimeTypeMap["image/svg+xml"] = ".svg";            // SVG images
-    this->MimeTypeMap["image/webp"] = ".webp";              // WebP images
-    this->MimeTypeMap["image/bmp"] = ".bmp";                // BMP images
-
-    this->MimeTypeMap["audio/mpeg"] = ".mp3";               // MP3 audio
-    this->MimeTypeMap["audio/wav"] = ".wav";                // WAV audio
-    this->MimeTypeMap["audio/ogg"] = ".ogg";                // Ogg Vorbis audio
-
-    this->MimeTypeMap["video/mp4"] = ".mp4";                // MP4 video
-    this->MimeTypeMap["video/x-msvideo"] = ".avi";          // AVI video
-    this->MimeTypeMap["video/webm"] = ".webm";              // WebM video
-    this->MimeTypeMap["video/quicktime"] = ".mov";          // MOV video
-    this->MimeTypeMap["video/x-flv"] = ".flv";              // Flash Video
-
-
-
+    // Mime Type Map
+    this->MimeTypeMap["application/octet-stream"] = ".bin";
+    this->MimeTypeMap["application/json"] = ".json";       
+    this->MimeTypeMap["application/xml"] = ".xml";         
+    this->MimeTypeMap["application/zip"] = ".zip";         
+    this->MimeTypeMap["application/gzip"] = ".gz";         
+    this->MimeTypeMap["application/x-tar"] = ".tar";       
+    this->MimeTypeMap["application/x-7z-compressed"] = ".7z";
+    this->MimeTypeMap["application/pdf"] = ".pdf";
+    this->MimeTypeMap["application/x-www-form-urlencoded"] = ".txt";
+    this->MimeTypeMap["application/x-bzip"] = ".bz";
+    this->MimeTypeMap["application/x-bzip2"] = ".bz2";
+    this->MimeTypeMap["application/x-rar-compressed"] = ".rar";
+    this->MimeTypeMap["application/x-msdownload"] = ".exe";
+    this->MimeTypeMap["application/vnd.ms-excel"] = ".xls";
+    this->MimeTypeMap["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"] = ".xlsx";
+    this->MimeTypeMap["text/plain"] = ".txt";           
+    this->MimeTypeMap["text/html"] = ".html";           
+    this->MimeTypeMap["text/css"] = ".css";             
+    this->MimeTypeMap["text/csv"] = ".csv";             
+    this->MimeTypeMap["text/javascript"] = ".js";       
+    this->MimeTypeMap["application/javascript"] = ".js";
+    this->MimeTypeMap["image/jpeg"] = ".jpg";           
+    this->MimeTypeMap["image/png"] = ".png";            
+    this->MimeTypeMap["image/gif"] = ".gif";            
+    this->MimeTypeMap["image/svg+xml"] = ".svg";        
+    this->MimeTypeMap["image/webp"] = ".webp";          
+    this->MimeTypeMap["image/bmp"] = ".bmp";            
+    this->MimeTypeMap["audio/mpeg"] = ".mp3";           
+    this->MimeTypeMap["audio/wav"] = ".wav";            
+    this->MimeTypeMap["audio/ogg"] = ".ogg";            
+    this->MimeTypeMap["video/mp4"] = ".mp4";            
+    this->MimeTypeMap["video/x-msvideo"] = ".avi";      
+    this->MimeTypeMap["video/webm"] = ".webm";          
+    this->MimeTypeMap["video/quicktime"] = ".mov";      
+    this->MimeTypeMap["video/x-flv"] = ".flv";          
 }
 
 FileUpload::~FileUpload() 
@@ -119,7 +112,6 @@ void    FileUpload::ResetData()
     this->ChunkSizeString = "";
     this->FirstChunk = true;
     this->ChunkDone = false;
-    this->FirstCRLF = true;
     this->bytesLeft = 0;
     this->chunkSize = 0;
 
@@ -183,9 +175,9 @@ void    FileUpload::ParseContentType(std::string &Body)
     Body = Body.substr(Body.find("\n") + 3 , Body.length());
     if (this->FileNameEmpty) {
         if (this->MimeTypeMap.find(this->MimeType) != this->MimeTypeMap.end())
-            this->FileName = this->FileName + this->MimeTypeMap[this->MimeType];
+            this->FileName = generate_random_string(5) + this->MimeTypeMap[this->MimeType];
         else
-            this->FileName = this->FileName + ".bin";
+            this->FileName = generate_random_string(5) + ".bin";
     }
     this->HeaderFetched = true;
 }
@@ -249,7 +241,6 @@ int FileUpload::HandleChunkedData(std::string &Body) {
         pos = Body.find("0\r\n\r\n");
         if (pos != std::string::npos) 
         {
-            std::cout << "Posdvhjasvkjavhjabvkbvs"<< std::endl;
             if (pos != 0) {
                 chunkData = Body.substr(0, pos);
                 if (!chunkData.empty())
@@ -272,9 +263,6 @@ int FileUpload::HandleChunkedData(std::string &Body) {
         chunkSize = 0;
         iss >> std::hex >> chunkSize;
 
-        // if (chunkSize == 0) {
-        //     return 1;
-        // }
         if (pos + 2 + chunkSize > Body.length()) 
         {
             bytesLeft = chunkSize - (Body.length() - pos - 2);
@@ -385,9 +373,6 @@ int    FileUpload::HandleBinaryChunkedData(std::string &Body) {
 
 int    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &client)
 {
-    // std::cout << "|" << Body << "|" << std::endl;
-    // std::cout << Body<< std::endl;
-    // std::cout << "------------" << std::endl;
     if ((Body.length() == 2 && Body == CRLF) || (Body.length() == 1 && Body == "\n") || (Body.length() == 1 && Body == "\r"))
         return 2;
     if (Body.find(Boundary + "--") != std::string::npos && !client.getIsBinary()) 
@@ -444,18 +429,3 @@ int    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &cli
     return 0;
 }
 
-
-// 574988518
-// -rw-r--r--   1 aitaouss  candidate  574947328 Jan 25 17:16 RBL2o6qv.mp4
-// -rw-r--r--   1 aitaouss  candidate  574938990 Jan 25 17:14 RBL36aOk.mp4
-// -rw-r--r--   1 aitaouss  candidate  574988518 Jan 25 17:16 RBL40oYy.mp4
-// -rw-r--r--   1 aitaouss  candidate  574947328 Jan 25 17:16 RBL6BVF0.mp4
-// -rw-r--r--   1 aitaouss  candidate  574947328 Jan 25 17:16 RBLH1BvQ.mp4
-// -rw-r--r--   1 aitaouss  candidate  574947328 Jan 25 17:14 RBLNi1U4.mp4
-// -rw-r--r--   1 aitaouss  candidate  574988518 Jan 25 17:16 RBLObFeI.mp4
-// -rw-r--r--   1 aitaouss  candidate  574947328 Jan 25 17:14 RBLPtiB6.mp4
-// -rw-r--r--   1 aitaouss  candidate  574947328 Jan 25 17:16 RBLVCINA.mp4
-// -rw-r--r--   1 aitaouss  candidate  574988518 Jan 25 17:16 RBLg1y3Z.mp4
-// -rw-r--r--   1 aitaouss  candidate  574947328 Jan 25 17:16 RBLiDfkc.mp4
-// -rw-r--r--   1 aitaouss  candidate  574947328 Jan 25 17:14 RBLjV9HQ.mp4
-// -rw-r--r--   1 aitaouss  candidate  574947328 Jan 25 17:16 RBLpnjTT.mp4

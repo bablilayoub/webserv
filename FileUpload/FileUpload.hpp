@@ -35,7 +35,6 @@ class   FileUpload
         std::string chunkData;
         bool        ChunkDone;  
         bool        FirstChunk;
-        bool        FirstCRLF;
         size_t      bytesLeft;
         size_t      chunkSize;
 
