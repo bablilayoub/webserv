@@ -224,15 +224,15 @@ std::string getBoundary(std::string &header)
 		return "";
 }
 
-void WebServ::getHeaderData(int client_socket, bool *flag, std::string &boundary)
+int WebServ::getHeaderData(int client_socket, bool *flag, std::string &boundary)
 {
 	char buffer[BUFFER_SIZE + 1];
 
 	std::string header;
-	std::string request;
+	std::string &request = this->clientDataMap[client_socket].request;
 	ssize_t bytes_received = -1;
 
-	if ((bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0)) > 0 && this->clientDataMap[client_socket].tries <= 3)
+	if ((bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0)) > 0)
 	{
 		this->clientDataMap[client_socket].tries++;
 		buffer[bytes_received] = '\0';
@@ -247,8 +247,14 @@ void WebServ::getHeaderData(int client_socket, bool *flag, std::string &boundary
 			this->clientDataMap[client_socket].chunk = request.substr(pos + 4);
 			this->clientDataMap[client_socket].rcl = this->clientDataMap[client_socket].chunk.length();
 			*flag = true;
+			request.clear();
+			return 0;
 		}
 	}
+
+	this->clients[client_socket].parse(request);
+	request.clear();
+	return -1;
 }
 
 int WebServ::getClientIndex(int client_socket)
@@ -408,9 +414,11 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
 
 	if (!this->clientDataMap[client_socket].headerDataSet)
 	{
-		getHeaderData(client_socket, &this->clientDataMap[client_socket].headerDataSet, boundary);
-		if (!this->clientDataMap[client_socket].headerDataSet)
+		if (getHeaderData(client_socket, &this->clientDataMap[client_socket].headerDataSet, boundary) == -1)
+		{
+			fds[i].events = POLLOUT;
 			return;
+		}
 	}
 
 	if (!clientDataMap[client_socket].chunk.empty())
@@ -418,6 +426,7 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
 		size_t chunkSize = clientDataMap[client_socket].chunk.size();
 		clientDataMap[client_socket].chunk.copy(buffer, chunkSize);
 		handlePostRequest(client_socket, buffer, 0, boundary);
+		return;
 	}
 
 	if (this->clients[client_socket].return_anyway)
@@ -430,7 +439,6 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
 	else
 	{
 		bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0);
-		std::cout << "Bytes received: " << bytes_received << std::endl;
 		size_t index = getClientIndex(client_socket);
 		if (bytes_received == 0)
 		{
