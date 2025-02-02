@@ -161,6 +161,8 @@ void WebServ::handleServersIncomingConnections()
 
 		for (size_t i = 0; i < fds.size(); i++)
 		{
+			int client_socket = fds[i].fd;
+
 			if (fds[i].revents & POLLIN)
 			{
 				if (std::find(listeners.begin(), listeners.end(), fds[i].fd) != listeners.end())
@@ -170,8 +172,6 @@ void WebServ::handleServersIncomingConnections()
 			}
 			else if (fds[i].revents & POLLOUT)
 			{
-				int client_socket = fds[i].fd;
-
 				if (!this->clients[client_socket].parsed)
 					continue;
 
@@ -180,7 +180,10 @@ void WebServ::handleServersIncomingConnections()
 				this->clients[client_socket].sendResponse();
 
 				if (this->clients[client_socket].response.done)
+				{
+					usleep(1000);
 					cleanUp(client_socket, i);
+				}
 			}
 		}
 	}
@@ -421,17 +424,16 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
 		}
 	}
 
+	if (this->clients[client_socket].return_anyway)
+	{
+		fds[i].events = POLLOUT;
+		return;
+	}
 	if (!clientDataMap[client_socket].chunk.empty())
 	{
 		size_t chunkSize = clientDataMap[client_socket].chunk.size();
 		clientDataMap[client_socket].chunk.copy(buffer, chunkSize);
 		handlePostRequest(client_socket, buffer, 0, boundary);
-		return;
-	}
-
-	if (this->clients[client_socket].return_anyway)
-	{
-		fds[i].events = POLLOUT;
 		return;
 	}
 	if (this->clients[client_socket].getMethod() != POST)

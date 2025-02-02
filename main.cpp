@@ -21,11 +21,12 @@ int main(int ac, char **args)
 			return 1;
 		}
 
-		// std::cout << GREEN << "|--------------------------------------------|" << std::endl;
-		// std::cout << "|                                            |" << std::endl;
-		// std::cout << "|           WEBSERV IS RUNNING               |" << std::endl;
-		// std::cout << "|                                            |" << std::endl;
-		// std::cout << "|--------------------------------------------|" << RESET << std::endl << std::endl;
+		std::cout << GREEN << " _       ____________ _____ __________ _    __" << std::endl;
+		std::cout << GREEN << "| |     / / ____/ __ ) ___// ____/ __ \\ |  / /" << std::endl;
+		std::cout << GREEN << "| | /| / / __/ / __  \\__ \\/ __/ / /_/ / | / /" << std::endl;
+		std::cout << GREEN << "| |/ |/ / /___/ /_/ /__/ / /___/ _, _/| |/ /" << std::endl;
+		std::cout << GREEN << "|__/|__/_____/_____/____/_____/_/ |_| |___/" << std::endl << RESET << std::endl;
+
 
 		webserv.handleServersIncomingConnections();
 	}

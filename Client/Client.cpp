@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/02 16:24:03 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/02 19:07:52 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1155,6 +1155,8 @@ void Client::parse(const std::string &request)
 		return;
 	}
 
+	this->server = this->getServer();
+
 	if (this->server && this->server->limit_client_body_size && this->content_length > this->server->limit_client_body_size)
 	{
 		this->response.statusCode = 413;
@@ -1164,7 +1166,7 @@ void Client::parse(const std::string &request)
 		return;
 	}
 
-	if ((!this->isChunked && !this->isContentLenght && this->method == METHOD_POST) || (!this->content_length && this->method == METHOD_POST))
+	if ((!this->isChunked && !this->isContentLenght && this->method == METHOD_POST))
 	{
 		this->response.statusCode = 400;
 		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
@@ -1173,7 +1175,15 @@ void Client::parse(const std::string &request)
 		return;
 	}
 
-	this->server = this->getServer();
+	if (this->isChunked && this->isContentLenght && this->method == METHOD_POST)
+	{
+		this->response.statusCode = 400;
+		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
+		this->return_anyway = true;
+		this->parsed = true;
+		return;
+	}
+
 	this->location = this->getLocation();
 
 	if (this->location)
@@ -1199,20 +1209,27 @@ void Client::sendResponse()
 		this->setFinalResponse();
 
 		std::string fullResponse = this->response.headers + this->response.content;
-		if (send(this->clientFd, fullResponse.c_str(), fullResponse.size(), 0) == -1)
+		ssize_t bytes_sent = send(this->clientFd, fullResponse.c_str(), fullResponse.size(), 0);
+		if (bytes_sent == -1)
 		{
 			this->response.lastReadPos = this->response.oldlastReadPos;
 			return;
 		}
 		this->response.headers_sent = true;
-		this->response.sentSize += this->response.content.size();
+		this->response.sentSize += bytes_sent;
 
-		if (this->response.totalSize == this->response.sentSize)
+		if ((this->response.totalSize + this->response.headers.size()) == this->response.sentSize)
 			this->response.done = true;
 
 		if (this->location && !this->location->redirect.empty())
 			this->response.done = true;
 
+		return;
+	}
+
+	if (this->response.filePath.empty())
+	{
+		this->response.done = true;
 		return;
 	}
 
@@ -1223,16 +1240,16 @@ void Client::sendResponse()
 		return;
 	}
 
-	if (send(this->clientFd, this->response.content.c_str(), this->response.content.size(), 0) == -1)
+	ssize_t bytes_sent = send(this->clientFd, this->response.content.c_str(), this->response.content.size(), 0);
+	if (bytes_sent == -1)
 	{
 		this->response.lastReadPos = this->response.oldlastReadPos;
 		return;
 	}
-	this->response.sentSize += this->response.content.size();
+	this->response.sentSize += bytes_sent;
 
-	if (this->response.totalSize == this->response.sentSize)
+	if ((this->response.totalSize + this->response.headers.size()) == this->response.sentSize)
 		this->response.done = true;
-
 	return;
 }
 
