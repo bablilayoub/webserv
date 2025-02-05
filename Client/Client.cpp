@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/05 14:43:14 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/05 16:52:11 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1061,7 +1061,7 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 }
 
 void Client::parse(const std::string &request)
-{	
+{
 	size_t pos = 0;
 	size_t endPos = request.find("\r\n\r\n", pos);
 
@@ -1189,70 +1189,63 @@ void Client::parse(const std::string &request)
 
 void Client::sendResponse()
 {
-	if (this->response.done)
+	if (this->response.done || (this->getIsCGI() && !this->checkCGICompletion()))
 		return;
 
-	if (this->getIsCGI() && !this->checkCGICompletion())
-		return;
+	std::string fullResponse;
+	bool firstTime = false;
 
 	if (!this->response.headers_sent)
 	{
+		firstTime = true;
 		this->setFinalResponse();
 
-		std::string fullResponse = this->response.headers + this->response.content;
-		ssize_t bytes_sent = send(this->clientFd, fullResponse.c_str(), fullResponse.size(), 0);
-		if (bytes_sent == -1)
-		{
-			this->response.lastReadPos = this->response.oldlastReadPos;
-			return;
-		}
-		this->response.headers_sent = true;
-		this->response.sentSize += bytes_sent;
-
-		if ((this->response.totalSize + this->response.headers.size()) == this->response.sentSize)
-			this->response.done = true;
-
+		fullResponse = this->response.headers + this->response.content;
+		
 		if (this->location && !this->location->redirect.empty())
 			this->response.done = true;
-
-		return;
 	}
 
-	if (this->response.filePath.empty())
+	if (!firstTime)
 	{
-		this->response.done = true;
-		return;
+		if (this->response.filePath.empty())
+		{
+			this->response.done = true;
+			return;
+		}
+
+		fullResponse = this->loadFile(this->response.filePath);
+		if (fullResponse.empty())
+		{
+			this->response.done = true;
+			return;
+		}
 	}
 
-	this->response.content = this->loadFile(this->response.filePath);
-	if (this->response.content.empty())
-	{
-		this->response.done = true;
-		return;
-	}
-
-	ssize_t bytes_sent = send(this->clientFd, this->response.content.c_str(), this->response.content.size(), 0);
+	ssize_t bytes_sent = send(this->clientFd, fullResponse.c_str(), fullResponse.size(), 0);
 	if (bytes_sent == -1)
 	{
 		this->response.lastReadPos = this->response.oldlastReadPos;
 		return;
 	}
+	if (bytes_sent == 0)
+	{
+		this->response.done = true;
+		return;
+	}
+
+	if (firstTime)
+		this->response.headers_sent = true;
+	
 	this->response.sentSize += bytes_sent;
 
 	if ((this->response.totalSize + this->response.headers.size()) == this->response.sentSize)
 		this->response.done = true;
-	return;
 }
 
 /*
 ** Getters
 */
-
-// const std::string &Client::getResponse()
-// {
-// 	this->setFinalResponse();
-// 	return this->responseString;
-// }
 
 const std::string &Client::getBody() const { return this->body; }
 
