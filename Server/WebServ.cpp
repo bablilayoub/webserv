@@ -74,8 +74,7 @@ void WebServ::socketConfig(std::string host, const int port)
 	memset(&this->hint, 0, sizeof(this->hint));
 	this->hint.sin_family = AF_INET;
 	this->hint.sin_port = htons(port);
-	if (inet_pton(AF_INET, host.c_str(), &this->hint.sin_addr) <= 0)
-		std::cerr << "Invalid address: " << host << std::endl; // to remove
+	inet_pton(AF_INET, host.c_str(), &this->hint.sin_addr);
 };
 
 int WebServ::setNonBlockingMode(int socket)
@@ -90,7 +89,7 @@ int WebServ::setNonBlockingMode(int socket)
 
 void WebServ::initServers()
 {
-	uint16_t serversSize = this->config->servers.size();
+	size_t serversSize = this->config->servers.size();
 	std::string host;
 	std::vector<int> ports;
 	int listener;
@@ -102,8 +101,6 @@ void WebServ::initServers()
 
 		for (size_t j = 0; j < ports.size(); j++)
 		{
-			// if (std::find(ports.begin(), ports.end(), ports[i]) != ports.end())
-			//   continue;
 			listener = this->init(host, ports[j]);
 			if (listener == -1)
 			{
@@ -200,16 +197,6 @@ void WebServ::handleServersIncomingConnections()
 ///         CLEAR RESOURCES          ///
 ////////////////////////////////////////
 
-void WebServ::closeFds()
-{
-	for (size_t i = 0; i < fds.size(); ++i)
-	{
-		int fd = fds[i].fd;
-		if (fd != -1)
-			close(fd);
-	}
-}
-
 void WebServ::cleanUp(int client_socket, size_t &i)
 {
 	this->clients.erase(client_socket);
@@ -232,7 +219,7 @@ void WebServ::cleanUpInactiveClients()
 			ClientData &data = clientDataMap[fd];
 			if (now - data.last_activity_time > 10)
 			{
-				std::cerr << "Client " << fd << " timed out." << std::endl;
+				// std::cerr << "Client " << fd << " timed out." << std::endl;
 				cleanUp(fd, i);
 			}
 		}
@@ -245,7 +232,6 @@ void WebServ::cleanUpInactiveClients()
 
 std::string getBoundary(std::string &header)
 {
-
 	size_t pos = header.find("boundary=");
 	if (pos != std::string::npos)
 	{
@@ -293,12 +279,8 @@ int WebServ::getHeaderData(int client_socket, bool *flag, std::string &boundary)
 int WebServ::getClientIndex(int client_socket)
 {
 	for (size_t i = 0; i < fds.size(); ++i)
-	{
 		if (fds[i].fd == client_socket)
-		{
 			return i;
-		}
-	}
 	return -1;
 }
 
@@ -422,7 +404,6 @@ void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_r
 	{
 		if (this->clients[client_socket].getIsChunked())
 		{
-
 			if (BodyMap[client_socket].ParseBody(chunk, "", this->clients[client_socket]))
 				setClientWritable(client_socket);
 			chunk.clear();
@@ -468,12 +449,12 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
 		size_t index = getClientIndex(client_socket);
 		if (bytes_received == 0)
 		{
-			std::cout << "Client disconnected" << std::endl;
+			// std::cout << "Client disconnected" << std::endl;
 			fds[index].events = POLLOUT;
 		}
 		else if (bytes_received == -1)
 		{
-			std::cerr << "Failed to receive data from client" << std::endl;
+			// std::cerr << "Failed to receive data from client" << std::endl;
 			fds[index].events = POLLOUT;
 		}
 		else

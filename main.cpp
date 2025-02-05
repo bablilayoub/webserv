@@ -3,15 +3,15 @@
 int main(int ac, char **args)
 {
 	signal(SIGPIPE, SIG_IGN);
-	if (ac != 2)
+	if (ac > 2)
 	{
-		std::cout << "Usage : ./webserv [configuration file]" << std::endl;
+		std::cout << "Usage : ./webserv (optional)config_file" << std::endl;
 		return 1;
 	}
 
 	try
 	{
-		Config config(args[1]);
+		Config config(args[1] ? args[1] : "./Configs/webserv.conf");
 		WebServ webserv(&config);
 
 		webserv.initServers();
