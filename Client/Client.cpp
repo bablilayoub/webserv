@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/05 16:52:11 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/05 18:25:43 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -229,6 +229,8 @@ void Client::handleCGIRequest(const std::string &indexPath)
 		for (std::map<std::string, std::string>::iterator it = env.begin(); it != env.end(); ++it)
 		{
 			envp[i] = strdup((it->first + "=" + it->second).c_str());
+			if (envp[i] == NULL)
+				exit(EXIT_FAILURE);
 			++i;
 		}
 		envp[i] = NULL;
@@ -241,7 +243,14 @@ void Client::handleCGIRequest(const std::string &indexPath)
 			delete[] envp;
 			exit(EXIT_FAILURE);
 		}
-		dup2(outFd, STDOUT_FILENO);
+		if (dup2(outFd, STDOUT_FILENO) < 0)
+		{
+			close(outFd);
+			for (int j = 0; j < i; ++j)
+				free(envp[j]);
+			delete[] envp;
+			exit(EXIT_FAILURE);
+		}
 		close(outFd);
 
 		if (this->method == METHOD_POST)
@@ -254,7 +263,14 @@ void Client::handleCGIRequest(const std::string &indexPath)
 				delete[] envp;
 				exit(EXIT_FAILURE);
 			}
-			dup2(inputFd, STDIN_FILENO);
+			if (dup2(inputFd, STDIN_FILENO) < 0)
+			{
+				close(inputFd);
+				for (int j = 0; j < i; ++j)
+					free(envp[j]);
+				delete[] envp;
+				exit(EXIT_FAILURE);
+			}
 			close(inputFd);
 		}
 
@@ -1201,7 +1217,7 @@ void Client::sendResponse()
 		this->setFinalResponse();
 
 		fullResponse = this->response.headers + this->response.content;
-		
+
 		if (this->location && !this->location->redirect.empty())
 			this->response.done = true;
 	}
@@ -1236,7 +1252,7 @@ void Client::sendResponse()
 
 	if (firstTime)
 		this->response.headers_sent = true;
-	
+
 	this->response.sentSize += bytes_sent;
 
 	if ((this->response.totalSize + this->response.headers.size()) == this->response.sentSize)
