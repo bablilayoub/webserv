@@ -217,11 +217,8 @@ void WebServ::cleanUpInactiveClients()
 		if (std::find(listeners.begin(), listeners.end(), fd) == listeners.end())
 		{
 			ClientData &data = clientDataMap[fd];
-			if (now - data.last_activity_time > 10)
-			{
-				// std::cerr << "Client " << fd << " timed out." << std::endl;
+			if (now - data.last_activity_time > 30)
 				cleanUp(fd, i);
-			}
 		}
 	}
 }

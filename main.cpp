@@ -11,7 +11,7 @@ int main(int ac, char **args)
 
 	try
 	{
-		Config config(args[1] ? args[1] : "./Configs/webserv.conf");
+		Config config(args[1] ? args[1] : "./Configs/default.conf");
 		WebServ webserv(&config);
 
 		webserv.initServers();
