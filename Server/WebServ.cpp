@@ -175,8 +175,6 @@ void WebServ::handleServersIncomingConnections()
 				if (!this->clients[client_socket].parsed)
 					continue;
 
-				std::cout << "Sending response to client " << client_socket << std::endl;
-
 				this->clients[client_socket].generateResponse();
 
 				this->clients[client_socket].sendResponse();
@@ -416,11 +414,11 @@ void WebServ::handlePostRequest(int client_socket, char *buffer, ssize_t bytes_r
 
 void WebServ::handleClientsRequest(int client_socket, size_t &i)
 {
-	ssize_t bytes_received;
+	ssize_t bytes_received = 0;
 	char buffer[BUFFER_SIZE + 1];
 	std::string &boundary = this->clientDataMap[client_socket].boundary;
 
-	// if (!this->clientDataMap[client_socket].headerDataSet || (this->clientDataMap[client_socket].headerDataSet && this->clients[client_socket].getMethod() == POST))
+	if (!this->clientDataMap[client_socket].headerDataSet || (this->clientDataMap[client_socket].headerDataSet && this->clients[client_socket].getMethod() == POST))
 		bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0);
 
 	if (!this->clientDataMap[client_socket].headerDataSet)
@@ -430,16 +428,20 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
 			fds[i].events = POLLOUT;
 			return;
 		}
+
+		if (this->clients[client_socket].return_anyway || this->clients[client_socket].getMethod() != POST)
+			fds[i].events = POLLOUT;
+		else if (!clientDataMap[client_socket].chunk.empty())
+		{
+			size_t chunkSize = clientDataMap[client_socket].chunk.size();
+			clientDataMap[client_socket].chunk.copy(buffer, chunkSize);
+			handlePostRequest(client_socket, buffer, 0, boundary);
+		}
+		return;
 	}
 
 	if (this->clients[client_socket].return_anyway || this->clients[client_socket].getMethod() != POST)
 		fds[i].events = POLLOUT;
-	else if (!clientDataMap[client_socket].chunk.empty())
-	{
-		size_t chunkSize = clientDataMap[client_socket].chunk.size();
-		clientDataMap[client_socket].chunk.copy(buffer, chunkSize);
-		handlePostRequest(client_socket, buffer, 0, boundary);
-	}
 	else
 	{
 		size_t index = getClientIndex(client_socket);
