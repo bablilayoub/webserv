@@ -83,7 +83,7 @@ public:
 	void cleanUpInactiveClients();
 
 	void handleClientsRequest(int client_socket, size_t &i);
-	int getHeaderData(int client_socket, bool *flag, std::string &boundary);
+	int getHeaderData(int client_socket, bool *flag, std::string &boundary, ssize_t bytes_received, char *buffer);
 	void handlePostRequest(int client_socket, char *buffer, ssize_t bytes_received, std::string &boundary);
 	void parseFormDataChunked(int client_socket, std::string &boundary, std::string &chunk);
 	void setClientWritable(int client_socket);

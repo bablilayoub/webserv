@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/05 18:46:26 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/06 16:35:33 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -866,6 +866,8 @@ std::string Client::loadFiles(const std::string &directory)
 		"<meta charset='UTF-8'>"
 		"<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
 		"<script src='https://cdn.tailwindcss.com'></script>"
+		"<title>Directory Listing</title>"
+		"<link rel='icon' type='image/png' href='./icon.png' />"
 		"</head>"
 		"<body class='bg-gray-50 min-h-screen'>"
 		"<div class='min-h-screen'>"

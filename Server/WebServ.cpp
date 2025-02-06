@@ -128,14 +128,13 @@ int WebServ::acceptConnectionsFromListner(int listener)
 
 void WebServ::AddSocket(int socket, bool isListener, int event)
 {
-
 	if (!isListener)
 	{
 		this->clients[socket] = Client();
 		this->clients[socket].setup(socket, this->config);
 		ClientData clientData;
 		clientDataMap[socket] = clientData;
-		clientDataMap[socket].last_activity_time = time(nullptr);
+		clientDataMap[socket].last_activity_time = time(NULL);
 		std::remove(("/tmp/cgi_input_" + std::to_string(socket)).c_str());
 	}
 	struct pollfd pfd;
@@ -148,7 +147,7 @@ void WebServ::handleServersIncomingConnections()
 {
 	while (true)
 	{
-		int ret = poll(fds.data(), fds.size(), TIME_OUT);
+		int ret = poll(&fds[0], fds.size(), TIME_OUT);
 		if (ret == -1)
 		{
 			std::cerr << "Poll failed, retrying..." << std::endl;
@@ -161,7 +160,6 @@ void WebServ::handleServersIncomingConnections()
 		for (size_t i = 0; i < fds.size(); i++)
 		{
 			int client_socket = fds[i].fd;
-
 			if (fds[i].revents & POLLIN)
 			{
 				if (std::find(listeners.begin(), listeners.end(), fds[i].fd) != listeners.end())
@@ -169,13 +167,15 @@ void WebServ::handleServersIncomingConnections()
 				else
 				{
 					handleClientsRequest(fds[i].fd, i);
-					clientDataMap[fds[i].fd].last_activity_time = time(nullptr);
+					clientDataMap[fds[i].fd].last_activity_time = time(NULL);
 				}
 			}
 			else if (fds[i].revents & POLLOUT)
 			{
 				if (!this->clients[client_socket].parsed)
 					continue;
+
+				std::cout << "Sending response to client " << client_socket << std::endl;
 
 				this->clients[client_socket].generateResponse();
 
@@ -187,7 +187,7 @@ void WebServ::handleServersIncomingConnections()
 					cleanUp(client_socket, i);
 				}
 				else
-					clientDataMap[fds[i].fd].last_activity_time = time(nullptr);
+					clientDataMap[fds[i].fd].last_activity_time = time(NULL);
 			}
 		}
 	}
@@ -209,7 +209,7 @@ void WebServ::cleanUp(int client_socket, size_t &i)
 
 void WebServ::cleanUpInactiveClients()
 {
-	time_t now = time(nullptr);
+	time_t now = time(NULL);
 	for (size_t i = 0; i < fds.size(); i++)
 	{
 		int fd = fds[i].fd;
@@ -240,15 +240,12 @@ std::string getBoundary(std::string &header)
 		return "";
 }
 
-int WebServ::getHeaderData(int client_socket, bool *flag, std::string &boundary)
+int WebServ::getHeaderData(int client_socket, bool *flag, std::string &boundary, ssize_t bytes_received, char *buffer)
 {
-	char buffer[BUFFER_SIZE + 1];
-
 	std::string header;
 	std::string &request = this->clientDataMap[client_socket].request;
-	ssize_t bytes_received = -1;
 
-	if ((bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0)) > 0)
+	if (bytes_received > 0)
 	{
 		this->clientDataMap[client_socket].tries++;
 		buffer[bytes_received] = '\0';
@@ -423,9 +420,12 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
 	char buffer[BUFFER_SIZE + 1];
 	std::string &boundary = this->clientDataMap[client_socket].boundary;
 
+	// if (!this->clientDataMap[client_socket].headerDataSet || (this->clientDataMap[client_socket].headerDataSet && this->clients[client_socket].getMethod() == POST))
+		bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0);
+
 	if (!this->clientDataMap[client_socket].headerDataSet)
 	{
-		if (getHeaderData(client_socket, &this->clientDataMap[client_socket].headerDataSet, boundary) == -1)
+		if (getHeaderData(client_socket, &this->clientDataMap[client_socket].headerDataSet, boundary, bytes_received, buffer) == -1)
 		{
 			fds[i].events = POLLOUT;
 			return;
@@ -442,7 +442,6 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
 	}
 	else
 	{
-		bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0);
 		size_t index = getClientIndex(client_socket);
 		if (bytes_received == 0)
 		{
