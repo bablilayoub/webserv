@@ -1,7 +1,7 @@
 # General
 NAME = webserv
 COMPILER = c++
-FLAGS = -Wall -Wextra -std=c++98 #-fsanitize=address -g
+FLAGS = -Wall -Wextra -Werror -std=c++98
 
 # FileUpload part
 FILE_UPLOAD_SRC = FileUpload.cpp
@@ -9,7 +9,6 @@ FILE_UPLOAD_HEADERS = FileUpload.hpp
 
 # Server part
 SERVER_HEADERS = WebServ.hpp
-UTILS = Utils.cpp
 SERVER_SRC = WebServ.cpp
 
 # Client Part
@@ -28,10 +27,10 @@ $(NAME): $(OBJ)
 %.o: %.cpp $(HEADERS)
 	$(COMPILER) $(FLAGS) -c $< -o $@
 
-re: fclean all
-
 clean:
 	rm -f $(OBJ)
 
 fclean: clean
 	rm -f $(NAME) 
+
+re: fclean all
