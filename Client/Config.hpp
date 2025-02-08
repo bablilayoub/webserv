@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:07:41 by abablil           #+#    #+#             */
-/*   Updated: 2025/01/25 17:36:33 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/08 14:56:02 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,7 +57,7 @@ private:
     std::string locationPath;
     std::stack<std::string> blockStack;
 
-    int parseInt(const std::string &value);
+    ssize_t parseNumber(const std::string &value);
 
     bool isValidDirectory(const std::string &path);
     

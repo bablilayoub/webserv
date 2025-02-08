@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/06 16:35:33 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/08 15:04:13 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1079,12 +1079,13 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 }
 
 void Client::parse(const std::string &request)
-{
+{	
 	size_t pos = 0;
 	size_t endPos = request.find("\r\n\r\n", pos);
 
 	if (endPos == std::string::npos)
 	{
+		std::cout << "Invalid request" << std::endl;
 		this->response.statusCode = 400;
 		this->method = "UNKNOWN";
 		this->path = "UNKNOWN";

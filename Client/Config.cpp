@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 10:49:18 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/05 18:12:22 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/08 14:59:41 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -139,7 +139,6 @@ void Config::processClosingBrace()
 			if (currentLocation.upload_dir.empty())
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": upload_dir is required for the POST method.");
 
-		// if cgi_extensions is set, check if php_cgi_path or python_cgi_path is set
 		if (!currentLocation.cgi_extensions.empty())
 		{
 			if (std::find(currentLocation.cgi_extensions.begin(), currentLocation.cgi_extensions.end(), "php") != currentLocation.cgi_extensions.end() && currentLocation.php_cgi_path.empty())
@@ -171,9 +170,7 @@ void Config::processClosingBrace()
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid port number");
 		if (currentServer.limit_client_body_size_str.empty())
 			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": limit_client_body_size is not specified");
-		currentServer.limit_client_body_size = this->parseInt(currentServer.limit_client_body_size_str);
-		if (currentServer.limit_client_body_size < 0)
-			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid limit_client_body_size");
+		currentServer.limit_client_body_size = this->parseNumber(currentServer.limit_client_body_size_str);
 
 		if (currentServer.host.empty())
 			throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Server must have a host");
@@ -185,7 +182,7 @@ void Config::processClosingBrace()
 	}
 }
 
-int Config::parseInt(const std::string &value)
+ssize_t Config::parseNumber(const std::string &value)
 {
 	for (size_t i = 0; i < value.size(); i++)
 		if (!std::isdigit(value[i]))
@@ -247,9 +244,9 @@ void Config::handleKeyValue(const std::string &line)
 			while (std::getline(stream, port, ' '))
 			{
 				this->trimWhitespace(port);
-				if (std::find(currentServer.ports.begin(), currentServer.ports.end(), this->parseInt(port)) != currentServer.ports.end())
+				if (std::find(currentServer.ports.begin(), currentServer.ports.end(), this->parseNumber(port)) != currentServer.ports.end())
 					throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Duplicate port number");
-				currentServer.ports.push_back(this->parseInt(port));
+				currentServer.ports.push_back(this->parseNumber(port));
 			}
 
 			if (currentServer.ports.empty())
@@ -288,7 +285,7 @@ void Config::handleKeyValue(const std::string &line)
 			if (pos == std::string::npos)
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid error_page value");
 
-			int errorCode = this->parseInt(value.substr(0, pos));
+			int errorCode = this->parseNumber(value.substr(0, pos));
 			std::string errorPage = value.substr(pos + 1);
 			currentServer.error_pages[errorCode] = errorPage;
 		}
@@ -309,13 +306,13 @@ void Config::handleKeyValue(const std::string &line)
 			if (pos == std::string::npos)
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid redirect value, must be in the format 'status_code url'");
 
-			currentLocation.redirect_status_code = this->parseInt(value.substr(0, pos));
+			currentLocation.redirect_status_code = this->parseNumber(value.substr(0, pos));
 			if (currentLocation.redirect_status_code < 300 || currentLocation.redirect_status_code > 308)
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid redirect status code, must be between 300 and 308");
 			currentLocation.redirect = value.substr(pos + 1);
 		}
 		else if (key == "cgi_timeout")
-			currentLocation.cgi_timeout = this->parseInt(value);
+			currentLocation.cgi_timeout = this->parseNumber(value);
 		else if (key == "root_folder")
 		{
 			currentLocation.root_folder = trimTrailingSlash(value);

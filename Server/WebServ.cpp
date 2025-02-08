@@ -421,6 +421,13 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
 	if (!this->clientDataMap[client_socket].headerDataSet || (this->clientDataMap[client_socket].headerDataSet && this->clients[client_socket].getMethod() == POST))
 		bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0);
 
+	if (bytes_received == -1)
+	{
+		// wait for more data
+		fds[i].events = POLLIN;
+		return;
+	}
+
 	if (!this->clientDataMap[client_socket].headerDataSet)
 	{
 		if (getHeaderData(client_socket, &this->clientDataMap[client_socket].headerDataSet, boundary, bytes_received, buffer) == -1)
