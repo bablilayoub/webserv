@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   FileUpload.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aitaouss <aitaouss@student.42.fr>          +#+  +:+       +#+        */
+/*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/01/22 14:42:28 by aitaouss         ###   ########.fr       */
+/*   Updated: 2025/02/08 20:06:02 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -372,8 +372,6 @@ int    FileUpload::HandleBinaryChunkedData(std::string &Body) {
 
 int    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &client)
 {
-    if ((Body.length() == 2 && Body == CRLF) || (Body.length() == 1 && Body == "\n") || (Body.length() == 1 && Body == "\r"))
-        return 2;
     if (Body.find(Boundary + "--") != std::string::npos && !client.getIsBinary()) 
     {
         this->DataFinish = true;

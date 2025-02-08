@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/08 19:47:41 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/08 20:12:34 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1083,6 +1083,8 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 
 void Client::parse(const std::string &request)
 {
+	std::cout << request << std::endl;
+
 	size_t pos = 0;
 	size_t endPos = request.find("\r\n\r\n", pos);
 
@@ -1188,6 +1190,15 @@ void Client::parse(const std::string &request)
 	}
 
 	if ((!this->isChunked && !this->isContentLenght && this->method == METHOD_POST))
+	{
+		this->response.statusCode = 400;
+		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
+		this->return_anyway = true;
+		this->parsed = true;
+		return;
+	}
+
+	if (this->method == METHOD_POST && this->content_length == 0)
 	{
 		this->response.statusCode = 400;
 		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
