@@ -423,11 +423,10 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
 
 	if (bytes_received == -1)
 	{
-		// wait for more data
 		fds[i].events = POLLIN;
 		return;
 	}
-
+	
 	if (!this->clientDataMap[client_socket].headerDataSet)
 	{
 		if (getHeaderData(client_socket, &this->clientDataMap[client_socket].headerDataSet, boundary, bytes_received, buffer) == -1)

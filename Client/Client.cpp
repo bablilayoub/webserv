@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/08 15:04:13 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/08 19:47:41 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -533,16 +533,19 @@ std::string Client::getHttpHeaders()
 	headers += "HTTP/1.1 " + std::to_string(statusCode) + " " + this->config->statusCodes[statusCode] + "\r\n";
 	headers += "Content-Type: " + this->response.contentType + "\r\n";
 	headers += "Content-Length: " + std::to_string(this->response.totalSize) + "\r\n";
-	for (std::map<std::string, std::string>::iterator it = this->cgi_response_headers.begin(); it != this->cgi_response_headers.end(); ++it)
+	if (this->isCGI)
 	{
-		if (it->first == "Content-Type" || it->first == "Content-Length")
-			continue;
-		headers += it->first + ": " + it->second + "\r\n";
+		for (std::map<std::string, std::string>::iterator it = this->cgi_response_headers.begin(); it != this->cgi_response_headers.end(); ++it)
+		{
+			if (it->first == "Content-Type" || it->first == "Content-Length")
+				continue;
+			headers += it->first + ": " + it->second + "\r\n";
+		}
 	}
-	// headers += "Connection: keep-alive\r\n";
-	// std::cout << "Connection: " << this->connection << std::endl;
+	if (this->connection.empty())
+		this->connection = "close";
 	headers += "Connection: " + this->connection + "\r\n";
-	// headers += "Accept-Ranges: none\r\n";
+	headers += "Accept-Ranges: none\r\n";
 	headers += "\r\n";
 	return headers;
 }
@@ -1079,13 +1082,12 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 }
 
 void Client::parse(const std::string &request)
-{	
+{
 	size_t pos = 0;
 	size_t endPos = request.find("\r\n\r\n", pos);
 
 	if (endPos == std::string::npos)
 	{
-		std::cout << "Invalid request" << std::endl;
 		this->response.statusCode = 400;
 		this->method = "UNKNOWN";
 		this->path = "UNKNOWN";
@@ -1201,6 +1203,15 @@ void Client::parse(const std::string &request)
 		this->upload_dir = this->location->upload_dir;
 		if (this->isCGIRequest())
 			this->isCGI = true;
+	}
+
+	if (this->isCGI && this->content_type.empty() && this->method == METHOD_POST)
+	{
+		this->response.statusCode = 400;
+		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
+		this->return_anyway = true;
+		this->parsed = true;
+		return;
 	}
 
 	this->parsed = true;

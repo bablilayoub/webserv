@@ -30,17 +30,19 @@
 		</div>
 	</div>
 	<script>
-		for (let i = 0; i < 10; i++) {
+		for (let i = 0; i < 50; i++) {
 			const video = document.createElement("video");
-			video.src = `./video.mp4?t=${new Date().getTime()}-${i}`;
-			video.width = 300;
-			video.height = 200;
+			const source = document.createElement("source");
+			video.width = 320;
 			video.controls = true;
-			video.className = "m-2";
 			video.autoplay = true;
+			video.muted = true;
+			video.className = "m-2";
+			source.src = "video.mp4";
+			source.type = "video/mp4";
+			video.appendChild(source);
 			document.getElementById("videos").appendChild(video);
 		}
-
 	</script>
 
 </body>
