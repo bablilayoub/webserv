@@ -93,6 +93,7 @@ void WebServ::initServers()
 	std::string host;
 	std::vector<int> ports;
 	int listener;
+	std::vector<std::string> added_servers;
 
 	for (size_t i = 0; i < serversSize; i++)
 	{
@@ -101,6 +102,10 @@ void WebServ::initServers()
 
 		for (size_t j = 0; j < ports.size(); j++)
 		{
+			if (std::find(added_servers.begin(), added_servers.end(), std::string(host + ":" + std::to_string(ports[j]))) != added_servers.end())
+				continue;
+
+			added_servers.push_back(host + ":" + std::to_string(ports[j]));
 			listener = this->init(host, ports[j]);
 			if (listener == -1)
 			{
@@ -426,7 +431,7 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
 		fds[i].events = POLLIN;
 		return;
 	}
-	
+
 	if (!this->clientDataMap[client_socket].headerDataSet)
 	{
 		if (getHeaderData(client_socket, &this->clientDataMap[client_socket].headerDataSet, boundary, bytes_received, buffer) == -1)
