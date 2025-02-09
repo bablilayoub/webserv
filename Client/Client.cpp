@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/09 18:39:50 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/09 18:52:11 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -794,7 +794,7 @@ std::string Client::loadErrorPage(const std::string &filePath, int statusCode)
 
 std::string Client::getMimeType(const std::string &path)
 {
-	size_t dotPos = path.find('.');
+	size_t dotPos = path.rfind('.');
 	if (dotPos != std::string::npos)
 	{
 		std::string ext = path.substr(dotPos);

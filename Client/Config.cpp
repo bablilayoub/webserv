@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 10:49:18 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/09 18:31:39 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/09 18:54:02 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -451,6 +451,38 @@ void Config::initMimeTypes()
 	this->mimeTypes[".eot"] = "font/eot";
 	this->mimeTypes[".csv"] = "text/csv";
 	this->mimeTypes[".doc"] = "application/msword";
+	this->mimeTypes[".docx"] = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+	this->mimeTypes[".xls"] = "application/vnd.ms-excel";
+	this->mimeTypes[".xlsx"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+	this->mimeTypes[".ppt"] = "application/vnd.ms-powerpoint";
+	this->mimeTypes[".pptx"] = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+	this->mimeTypes[".rtf"] = "application/rtf";
+	this->mimeTypes[".bmp"] = "image/bmp";
+	this->mimeTypes[".tiff"] = "image/tiff";
+	this->mimeTypes[".webp"] = "image/webp";
+	this->mimeTypes[".avi"] = "video/x-msvideo";
+	this->mimeTypes[".mov"] = "video/quicktime";
+	this->mimeTypes[".flv"] = "video/x-flv";
+	this->mimeTypes[".wmv"] = "video/x-ms-wmv";
+	this->mimeTypes[".ogg"] = "audio/ogg";
+	this->mimeTypes[".flac"] = "audio/flac";
+	this->mimeTypes[".aac"] = "audio/aac";
+	this->mimeTypes[".midi"] = "audio/midi";
+	this->mimeTypes[".mpeg"] = "video/mpeg";
+	this->mimeTypes[".tar"] = "application/x-tar";
+	this->mimeTypes[".gz"] = "application/gzip";
+	this->mimeTypes[".bz2"] = "application/x-bzip2";
+	this->mimeTypes[".7z"] = "application/x-7z-compressed";
+	this->mimeTypes[".rar"] = "application/vnd.rar";
+	this->mimeTypes[".epub"] = "application/epub+zip";
+	this->mimeTypes[".sql"] = "application/sql";
+	this->mimeTypes[".psd"] = "image/vnd.adobe.photoshop";
+	this->mimeTypes[".ai"] = "application/postscript";
+	this->mimeTypes[".eps"] = "application/postscript";
+	this->mimeTypes[".ps"] = "application/postscript";
+	this->mimeTypes[".odt"] = "application/vnd.oasis.opendocument.text";
+	this->mimeTypes[".ods"] = "application/vnd.oasis.opendocument.spreadsheet";
+	this->mimeTypes[".odp"] = "application/vnd.oasis.opendocument.presentation";
 }
 
 Config::Config(const std::string &filePath)
