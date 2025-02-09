@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 10:49:18 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/08 23:52:55 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/09 18:31:39 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -251,6 +251,15 @@ void Config::handleKeyValue(const std::string &line)
 
 			if (currentServer.ports.empty())
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": listen cannot be empty");
+
+			if (currentServer.ports.size() > 1)
+			{
+				std::vector<int> temp = currentServer.ports;
+				std::sort(temp.begin(), temp.end());
+				for (size_t i = 0; i < temp.size() - 1; i++)
+					if (temp[i] == temp[i + 1])
+						throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Duplicate port number");
+			}
 		}
 		else if (key == "server_names")
 		{
@@ -479,29 +488,6 @@ Config::Config(const std::string &filePath)
 		throw std::runtime_error("Invalid config file: Unclosed blocks");
 	if (this->servers.size() == 0)
 		throw std::runtime_error("Invalid config file: No server is found");
-
-	for (size_t i = 0; i < servers.size(); i++)
-	{
-		for (size_t j = i + 1; j < servers.size(); j++)
-		{
-			if (servers[i].host == servers[j].host)
-			{
-				for (size_t k = 0; k < servers[i].ports.size(); k++)
-				{
-					if (std::find(servers[j].ports.begin(), servers[j].ports.end(), servers[i].ports[k]) != servers[j].ports.end())
-					{
-						if (servers[i].server_names.empty() && servers[j].server_names.empty())
-							continue;
-						for (size_t l = 0; l < servers[i].server_names.size(); l++)
-						{
-							if (std::find(servers[j].server_names.begin(), servers[j].server_names.end(), servers[i].server_names[l]) != servers[j].server_names.end())
-								throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Duplicate server names with same host and port");
-						}
-					}
-				}
-			}
-		}
-	}
 
 	this->initStatusCodes();
 	this->initMimeTypes();

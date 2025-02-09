@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/08 20:18:12 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/09 18:39:50 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -428,6 +428,7 @@ void Client::setSuccessResponse(int statusCode, const std::string &path)
 	}
 	this->response.content = this->loadFile(path);
 	this->response.statusCode = statusCode;
+	this->response.contentType = getMimeType(path);
 }
 
 void Client::startProcessing()
