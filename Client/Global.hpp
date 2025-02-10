@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/14 18:46:49 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/08 18:55:56 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/10 15:55:54 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,13 +31,6 @@
 #define METHOD_GET "GET"
 #define METHOD_POST "POST"
 #define METHOD_DELETE "DELETE"
-
-#define BOUNDARY_PREFIX "boundary="
-#define CONTENT_LENGTH_PREFIX "Content-Length: "
-#define CONTENT_TYPE_PREFIX "Content-Type: "
-#define HOST_PREFIX "Host: "
-#define TRANSFER_ENCODING "Transfer-Encoding: chunked"
-#define CONNECTION "Connection: "
 
 #define BYTES_TO_READ 1024
 

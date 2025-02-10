@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/09 18:52:11 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/10 16:27:18 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -414,8 +414,16 @@ void Client::setFinalResponse()
 
 void Client::setErrorResponse(int statusCode)
 {
+	if (this->method.empty())
+		this->method = "UNKNOWN";
+	if (this->path.empty())
+		this->path = "UNKNOWN";
+	if (this->server_name.empty())
+		this->server_name = "UNKNOWN";
+
 	this->response.content = loadErrorPage(getErrorPagePath(statusCode), statusCode);
 	this->response.statusCode = statusCode;
+	this->return_anyway = true;
 }
 
 void Client::setSuccessResponse(int statusCode, const std::string &path)
@@ -1016,95 +1024,78 @@ std::string Client::urlDecode(const std::string &str)
 
 void Client::handleFirstLine(std::istringstream &requestStream)
 {
-	std::string line;
-	std::getline(requestStream, line);
-
-	size_t rpos = line.find('\r');
-	if (rpos != std::string::npos)
-		line = line.substr(0, rpos);
-
-	std::vector<std::string> parts;
-	std::istringstream stream(line);
-
-	std::string part;
-	while (std::getline(stream, part, ' '))
+	std::string firstLine;
+	if (!std::getline(requestStream, firstLine))
 	{
-		if (part.find_first_not_of(' ') == std::string::npos)
-			continue;
-		parts.push_back(part);
+		setErrorResponse(400);
+		return;
 	}
+	if (!firstLine.empty() && firstLine.back() == '\r')
+		firstLine.pop_back();
 
-	if (parts.size() != 3)
+	std::istringstream lineStream(firstLine);
+	std::string method, rawPath, httpVersion, extra;
+	if (!(lineStream >> method >> rawPath >> httpVersion) || (lineStream >> extra))
 	{
-		this->response.statusCode = 400;
-		this->method = "UNKNOWN";
-		this->path = "UNKNOWN";
-		this->server_name = "UNKNOWN";
-		this->port = 0;
-		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
-		this->return_anyway = true;
+		setErrorResponse(400);
 		return;
 	}
 
-	this->method = parts[0];
-	if (this->method != METHOD_GET && this->method != METHOD_POST && this->method != METHOD_DELETE)
+	if (method != METHOD_GET && method != METHOD_POST && method != METHOD_DELETE)
 	{
-		this->response.statusCode = 501;
-		this->response.content = this->loadErrorPage(this->getErrorPagePath(501), 501);
-		this->return_anyway = true;
+		setErrorResponse(501);
 		return;
 	}
+	this->method = method;
 
-	std::string path = urlDecode(parts[1]);
-	size_t queryPos = path.find('?');
+	std::string decodedPath = urlDecode(rawPath);
+	size_t queryPos = decodedPath.find('?');
 	if (queryPos != std::string::npos)
 	{
-		this->path = path.substr(0, queryPos);
-		this->query = path.substr(queryPos + 1);
+		this->path = decodedPath.substr(0, queryPos);
+		this->query = decodedPath.substr(queryPos + 1);
 	}
 	else
-		this->path = path;
+		this->path = decodedPath;
 
 	size_t hashPos = this->path.find('#');
 	if (hashPos != std::string::npos)
 		this->path = this->path.substr(0, hashPos);
 
-	if (this->path != "/" && this->path.back() == '/')
+	if (this->path != "/" && !this->path.empty() && this->path.back() == '/')
 		while (this->path.size() > 1 && this->path.back() == '/')
 			this->path.pop_back();
 
-	if (parts[2] != "HTTP/1.1")
+	if (httpVersion != "HTTP/1.1")
 	{
-		this->response.statusCode = 505;
-		this->response.content = this->loadErrorPage(this->getErrorPagePath(505), 505);
-		this->return_anyway = true;
+		setErrorResponse(505);
 		return;
 	}
 }
 
+std::string Client::trim(const std::string &s)
+{
+	size_t start = s.find_first_not_of(" \t\n\r");
+	size_t end = s.find_last_not_of(" \t\n\r");
+	if (start == std::string::npos || end == std::string::npos)
+		return "";
+	return s.substr(start, end - start + 1);
+}
+
 void Client::parse(const std::string &request)
 {
-	size_t pos = 0;
-	size_t endPos = request.find("\r\n\r\n", pos);
-
-	if (endPos == std::string::npos)
+	size_t headerEnd = request.find("\r\n\r\n");
+	if (headerEnd == std::string::npos)
 	{
-		this->response.statusCode = 400;
-		this->method = "UNKNOWN";
-		this->path = "UNKNOWN";
-		this->server_name = "UNKNOWN";
-		this->port = 0;
-		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
-		this->return_anyway = true;
+		setErrorResponse(400);
 		this->parsed = true;
 		return;
 	}
 
 	this->clear();
 
-	std::string line;
-	std::string headers = request.substr(0, endPos);
-	std::istringstream headerStream(headers);
+	std::string headerSection = request.substr(0, headerEnd);
+	std::istringstream headerStream(headerSection);
 
 	this->handleFirstLine(headerStream);
 	if (this->return_anyway)
@@ -1113,113 +1104,137 @@ void Client::parse(const std::string &request)
 		return;
 	}
 
+	std::string line;
 	while (std::getline(headerStream, line))
 	{
-		size_t rpos = line.find('\r');
-		if (rpos != std::string::npos)
-			line = line.substr(0, rpos);
+		if (line.empty())
+			continue;
 
-		size_t contentLengthPos = line.find(CONTENT_LENGTH_PREFIX);
-		size_t contentTypePos = line.find(CONTENT_TYPE_PREFIX);
-		size_t hostPrefixPos = line.find(HOST_PREFIX);
 		size_t colonPos = line.find(':');
-		size_t transferEncoding = line.find(TRANSFER_ENCODING);
-		size_t connection = line.find(CONNECTION);
-
-		if (contentLengthPos != std::string::npos)
+		if (colonPos == std::string::npos)
 		{
-			contentLengthPos += std::string(CONTENT_LENGTH_PREFIX).length();
-			this->content_length = std::atof(line.substr(contentLengthPos).c_str());
-			this->isContentLenght = true;
+			setErrorResponse(400);
+			this->parsed = true;
+			return;
 		}
-		else if (contentTypePos != std::string::npos)
+
+		std::string key = this->trim(line.substr(0, colonPos));
+		std::string value = this->trim(line.substr(colonPos + 1));
+
+		std::string lowerKey = key;
+		std::transform(lowerKey.begin(), lowerKey.end(), lowerKey.begin(), ::tolower);
+
+		if (lowerKey == "content-length")
 		{
-			contentTypePos += std::string(CONTENT_TYPE_PREFIX).length();
-			this->content_type = line.substr(contentTypePos, line.size() - 1).c_str();
-			size_t boundaryPos = this->content_type.find(BOUNDARY_PREFIX);
+			try
+			{
+				this->content_length = std::stoul(value);
+				this->isContentLenght = true;
+			}
+			catch (const std::exception &e)
+			{
+				setErrorResponse(400);
+				this->parsed = true;
+				return;
+			}
+		}
+		else if (lowerKey == "content-type")
+		{
+			this->content_type = value;
+			size_t boundaryPos = this->content_type.find("boundary=");
 			if (boundaryPos != std::string::npos)
 			{
-				boundaryPos += std::string(BOUNDARY_PREFIX).length();
-				this->boundary = this->content_type.substr(boundaryPos, this->content_type.size() - 1);
+				boundaryPos += std::string("boundary=").length();
+				this->boundary = this->content_type.substr(boundaryPos);
 			}
 			else if (this->content_type.find("application/x-www-form-urlencoded") == std::string::npos)
 				this->isBinary = true;
 		}
-		else if (hostPrefixPos != std::string::npos)
+		else if (lowerKey == "host")
 		{
-			size_t colonPos = line.find(':', hostPrefixPos + std::string(HOST_PREFIX).length());
-			if (colonPos == std::string::npos)
+			size_t colonInHost = value.find(':');
+			if (colonInHost == std::string::npos)
 			{
-				this->response.statusCode = 400;
-				this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
-				this->return_anyway = true;
+				setErrorResponse(400);
 				this->parsed = true;
 				return;
 			}
-			this->server_name = line.substr(hostPrefixPos + std::string(HOST_PREFIX).length(),
-											colonPos - (hostPrefixPos + std::string(HOST_PREFIX).length()));
-			this->port = std::atof(line.substr(colonPos + 1).c_str());
+			this->server_name = value.substr(0, colonInHost);
+			std::string portStr = value.substr(colonInHost + 1);
+			if (portStr.find_first_not_of("0123456789") != std::string::npos)
+			{
+				setErrorResponse(400);
+				this->parsed = true;
+				return;
+			}
+			try
+			{
+				this->port = static_cast<unsigned short>(std::stoul(portStr));
+			}
+			catch (const std::exception &e)
+			{
+				setErrorResponse(400);
+				this->parsed = true;
+				return;
+			}
 		}
-		else if (transferEncoding != std::string::npos)
-			this->isChunked = true;
-		else if (connection != std::string::npos)
-			this->connection = line.substr(connection + std::string(CONNECTION).length());
-		else if (colonPos != std::string::npos)
-			this->headers[line.substr(0, colonPos)] = line.substr(colonPos + 2);
+		else if (lowerKey == "transfer-encoding")
+		{
+			if (value.find("chunked") != std::string::npos)
+				this->isChunked = true;
+			else
+			{
+				setErrorResponse(501);
+				this->parsed = true;
+				return;
+			}
+		}
+		else if (lowerKey == "connection")
+			this->connection = value;
+		else
+			this->headers[key] = value;
 	}
 
-	if (this->server_name.empty() || !this->port || this->path.empty() || this->method.empty())
+	if (this->server_name.empty() || this->port == 0 ||
+		this->path.empty() || this->method.empty())
 	{
-		this->response.statusCode = 400;
-		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
-		this->return_anyway = true;
+		setErrorResponse(400);
 		this->parsed = true;
 		return;
 	}
 
 	this->server = this->getServer();
-
-	if (this->server && this->server->limit_client_body_size && this->content_length > this->server->limit_client_body_size)
+	if (this->server && this->server->limit_client_body_size &&
+		this->content_length > this->server->limit_client_body_size)
 	{
-		this->response.statusCode = 413;
-		this->response.content = this->loadErrorPage(this->getErrorPagePath(413), 413);
-		this->return_anyway = true;
+		setErrorResponse(413);
 		this->parsed = true;
 		return;
 	}
 
-	if ((!this->isChunked && !this->isContentLenght && this->method == METHOD_POST))
+	if (!this->isChunked && !this->isContentLenght && this->method == METHOD_POST)
 	{
-		this->response.statusCode = 400;
-		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
-		this->return_anyway = true;
+		setErrorResponse(400);
 		this->parsed = true;
 		return;
 	}
-
 	if (this->method == METHOD_POST && this->content_length == 0)
 	{
-		this->response.statusCode = 400;
-		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
-		this->return_anyway = true;
+		setErrorResponse(400);
 		this->parsed = true;
 		return;
 	}
 
 	this->location = this->getLocation();
-
 	if (this->location)
 	{
 		this->upload_dir = this->location->upload_dir;
 		if (this->isCGIRequest())
 			this->isCGI = true;
 	}
-
 	if (this->isCGI && this->content_type.empty() && this->method == METHOD_POST)
 	{
-		this->response.statusCode = 400;
-		this->response.content = this->loadErrorPage(this->getErrorPagePath(400), 400);
-		this->return_anyway = true;
+		setErrorResponse(400);
 		this->parsed = true;
 		return;
 	}

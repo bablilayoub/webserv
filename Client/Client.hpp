@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 10:59:39 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/01 20:24:43 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/10 15:40:53 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -100,6 +100,7 @@ private:
 	bool hasReadPermission(const std::string &path);
 	std::string urlDecode(const std::string &str);
 	void setFinalResponse();
+	std::string trim(const std::string &s); 
 public:
 	Server *server;
 	Response response;
