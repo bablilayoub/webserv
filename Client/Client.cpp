@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/10 16:27:18 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/10 18:57:14 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1143,10 +1143,7 @@ void Client::parse(const std::string &request)
 			this->content_type = value;
 			size_t boundaryPos = this->content_type.find("boundary=");
 			if (boundaryPos != std::string::npos)
-			{
-				boundaryPos += std::string("boundary=").length();
-				this->boundary = this->content_type.substr(boundaryPos);
-			}
+				this->boundary = this->content_type.substr(boundaryPos + 9);
 			else if (this->content_type.find("application/x-www-form-urlencoded") == std::string::npos)
 				this->isBinary = true;
 		}
@@ -1160,6 +1157,12 @@ void Client::parse(const std::string &request)
 				return;
 			}
 			this->server_name = value.substr(0, colonInHost);
+			if (this->server_name.empty() || this->server_name.find_first_of(" \t\n\r") != std::string::npos)
+			{
+				setErrorResponse(400);
+				this->parsed = true;
+				return;
+			}
 			std::string portStr = value.substr(colonInHost + 1);
 			if (portStr.find_first_not_of("0123456789") != std::string::npos)
 			{
