@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/10 18:57:14 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/13 18:15:29 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -441,17 +441,8 @@ void Client::setSuccessResponse(int statusCode, const std::string &path)
 
 void Client::startProcessing()
 {
-	if (!this->server)
-		return this->setErrorResponse(404);
-
-	if (!this->location && this->method != METHOD_GET)
-		return this->setErrorResponse(405);
-
 	if (this->location)
 	{
-		if (std::find(this->location->accepted_methods.begin(), this->location->accepted_methods.end(), this->method) == this->location->accepted_methods.end())
-			return this->setErrorResponse(405);
-
 		if (this->isDirectory(this->location->root_folder + this->sub_path))
 		{
 			if (!this->location->index.empty())
@@ -1207,6 +1198,30 @@ void Client::parse(const std::string &request)
 	}
 
 	this->server = this->getServer();
+
+	if (!this->server)
+	{
+		setErrorResponse(503);
+		this->parsed = true;
+		return; 
+	}
+
+	this->location = this->getLocation();
+
+	if (this->location && this->location->redirect.empty() && std::find(this->location->accepted_methods.begin(), this->location->accepted_methods.end(), this->method) == this->location->accepted_methods.end())
+	{
+		setErrorResponse(405);
+		this->parsed = true;
+		return;
+	}
+
+	if (!this->location && this->method != METHOD_GET)
+	{
+		setErrorResponse(405);
+		this->parsed = true;
+		return;
+	}
+
 	if (this->server && this->server->limit_client_body_size &&
 		this->content_length > this->server->limit_client_body_size)
 	{
@@ -1228,7 +1243,6 @@ void Client::parse(const std::string &request)
 		return;
 	}
 
-	this->location = this->getLocation();
 	if (this->location)
 	{
 		this->upload_dir = this->location->upload_dir;

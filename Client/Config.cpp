@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 10:49:18 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/09 18:54:02 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/13 17:50:33 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -119,6 +119,7 @@ void Config::processLocationBlock(const std::string &line)
 
 	currentLocation = Location();
 	currentLocation.autoindex = false;
+	currentLocation.autoindex_already_set = false;
 }
 
 void Config::processClosingBrace()
@@ -228,6 +229,9 @@ void Config::handleKeyValue(const std::string &line)
 	{
 		if (key == "host")
 		{
+			if (currentServer.host.size() > 0)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Duplicate host");
+
 			if (value == "localhost")
 				currentServer.host = "127.0.0.1";
 			else if (!this->isValidIpv4(value))
@@ -237,6 +241,9 @@ void Config::handleKeyValue(const std::string &line)
 		}
 		else if (key == "listen")
 		{
+			if (currentServer.ports.size() > 0)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Duplicate listen");
+
 			currentServer.ports.clear();
 			std::istringstream stream(value);
 			std::string port;
@@ -251,18 +258,12 @@ void Config::handleKeyValue(const std::string &line)
 
 			if (currentServer.ports.empty())
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": listen cannot be empty");
-
-			if (currentServer.ports.size() > 1)
-			{
-				std::vector<int> temp = currentServer.ports;
-				std::sort(temp.begin(), temp.end());
-				for (size_t i = 0; i < temp.size() - 1; i++)
-					if (temp[i] == temp[i + 1])
-						throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Duplicate port number");
-			}
 		}
 		else if (key == "server_names")
 		{
+			if (currentServer.server_names.size() > 0)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Duplicate server_names");
+
 			currentServer.server_names.clear();
 			std::istringstream stream(value);
 			std::string server_name;
@@ -270,6 +271,9 @@ void Config::handleKeyValue(const std::string &line)
 			while (std::getline(stream, server_name, ' '))
 			{
 				this->trimWhitespace(server_name);
+
+				if (server_name.empty())
+					continue;
 
 				for (size_t i = 0; i < server_name.size(); i++)
 					if (!std::isalnum(server_name[i]) && server_name[i] != '.' && server_name[i] != '-')
@@ -284,9 +288,16 @@ void Config::handleKeyValue(const std::string &line)
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": server_names cannot be empty");
 		}
 		else if (key == "limit_client_body_size")
+		{
+			if (currentServer.limit_client_body_size_str.size() > 0)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Duplicate limit_client_body_size");
 			currentServer.limit_client_body_size_str = value;
+		}
 		else if (key == "root_folder")
 		{
+			if (currentServer.root_folder.size() > 0)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Duplicate root_folder");
+				
 			currentServer.root_folder = trimTrailingSlash(value);
 			if (!isValidDirectory(currentServer.root_folder))
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid root_folder directory or permissions.");
@@ -308,12 +319,16 @@ void Config::handleKeyValue(const std::string &line)
 	{
 		if (key == "upload_dir")
 		{
+			if (currentLocation.upload_dir.size() > 0)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Duplicate upload_dir");
 			currentLocation.upload_dir = trimTrailingSlash(value);
 			if (!isValidDirectory(currentLocation.upload_dir))
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid upload_dir directory or permissions.");
 		}
 		else if (key == "redirect")
 		{
+			if (currentLocation.redirect.size() > 0)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Duplicate redirect");
 			size_t pos = value.find(' ');
 			if (pos == std::string::npos)
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid redirect value, must be in the format 'status_code url'");
@@ -324,47 +339,75 @@ void Config::handleKeyValue(const std::string &line)
 			currentLocation.redirect = value.substr(pos + 1);
 		}
 		else if (key == "cgi_timeout")
+		{
+			if (currentLocation.cgi_timeout > 0)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Duplicate cgi_timeout");
 			currentLocation.cgi_timeout = this->parseNumber(value);
+			if (currentLocation.cgi_timeout == 0)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid cgi_timeout, must be greater than 0");
+		}
 		else if (key == "root_folder")
 		{
+			if (currentLocation.root_folder.size() > 0)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Duplicate root_folder");
 			currentLocation.root_folder = trimTrailingSlash(value);
 			if (!isValidDirectory(currentLocation.root_folder))
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid root_folder directory or permissions.");
 		}
 		else if (key == "index")
+		{
+			if (currentLocation.index.size() > 0)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Duplicate index");
 			currentLocation.index = value;
+		}
 		else if (key == "autoindex")
 		{
+			if (currentLocation.autoindex_already_set)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Duplicate autoindex");
 			if (value == "on")
 				currentLocation.autoindex = true;
 			else if (value == "off")
 				currentLocation.autoindex = false;
 			else
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": autoindex must be on/off");
+			currentLocation.autoindex_already_set = true;
 		}
 		else if (key == "php_cgi_path")
 		{
+			if (currentLocation.php_cgi_path.size() > 0)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Duplicate php_cgi_path");
 			currentLocation.php_cgi_path = trimTrailingSlash(value);
 			if (!this->isValidCGI(currentLocation.php_cgi_path))
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid php_cgi_path executable or permissions.");
 		}
 		else if (key == "python_cgi_path")
 		{
+			if (currentLocation.python_cgi_path.size() > 0)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Duplicate python_cgi_path");
 			currentLocation.python_cgi_path = trimTrailingSlash(value);
 			if (!this->isValidCGI(currentLocation.python_cgi_path))
 				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid python_cgi_path executable or permissions.");
 		}
 		else if (key == "accepted_methods")
 		{
+			if (currentLocation.accepted_methods.size() > 0)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Duplicate accepted_methods");
 			currentLocation.accepted_methods.clear();
 			std::istringstream stream(value);
 			std::string method;
 
-			while (std::getline(stream, method, ','))
+			while (std::getline(stream, method, ' '))
 			{
 				this->trimWhitespace(method);
+				if (method.empty())
+					continue;
+					
 				if (method != METHOD_GET && method != METHOD_POST && method != METHOD_DELETE)
 					throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid method (GET, POST, DELETE only)");
+
+				if (std::find(currentLocation.accepted_methods.begin(), currentLocation.accepted_methods.end(), method) != currentLocation.accepted_methods.end())
+					throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Duplicate method");
+					
 				currentLocation.accepted_methods.push_back(method);
 			}
 
@@ -373,17 +416,26 @@ void Config::handleKeyValue(const std::string &line)
 		}
 		else if (key == "cgi_extensions")
 		{
+			if (currentLocation.cgi_extensions.size() > 0)
+				throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Duplicate cgi_extensions");
 			currentLocation.cgi_extensions.clear();
 			std::istringstream stream(value);
 			std::string extension;
 
 			std::string validExtensions[] = {"py", "php"};
 
-			while (std::getline(stream, extension, ','))
+			while (std::getline(stream, extension, ' '))
 			{
 				this->trimWhitespace(extension);
+				if (extension.empty())
+					continue;
+
 				if (std::find(std::begin(validExtensions), std::end(validExtensions), extension) == std::end(validExtensions))
 					throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Invalid CGI extension (py, php only)");
+
+				if (std::find(currentLocation.cgi_extensions.begin(), currentLocation.cgi_extensions.end(), extension) != currentLocation.cgi_extensions.end())
+					throw std::runtime_error("Line " + std::to_string(lineNumber) + ": Duplicate CGI extension");
+					
 				currentLocation.cgi_extensions.push_back(extension);
 			}
 

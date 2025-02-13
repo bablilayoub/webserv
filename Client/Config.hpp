@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/12 09:07:41 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/08 14:56:02 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/13 17:48:03 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,7 +17,7 @@
 struct Location
 {
     bool autoindex;
-    
+    bool autoindex_already_set;
     std::string redirect;
     int redirect_status_code;
 
