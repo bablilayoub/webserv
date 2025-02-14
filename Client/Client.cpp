@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/13 18:15:29 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/14 01:21:37 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1056,6 +1056,28 @@ void Client::handleFirstLine(std::istringstream &requestStream)
 	if (this->path != "/" && !this->path.empty() && this->path.back() == '/')
 		while (this->path.size() > 1 && this->path.back() == '/')
 			this->path.pop_back();
+
+	std::vector<std::string> pathParts;
+	std::istringstream pathStream(this->path);
+	std::string segment;
+	while (std::getline(pathStream, segment, '/'))
+	{
+		if (segment == "..")
+		{
+			setErrorResponse(403);
+			return;
+		}
+		else if (!segment.empty() && segment != ".")
+			pathParts.push_back(segment);
+	}
+
+	this->path = "/";
+	for (size_t i = 0; i < pathParts.size(); i++)
+	{
+		this->path += pathParts[i];
+		if (i < pathParts.size() - 1)
+			this->path += "/";
+	}
 
 	if (httpVersion != "HTTP/1.1")
 	{

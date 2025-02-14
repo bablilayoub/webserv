@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/02/13 18:54:46 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/14 01:27:12 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -187,7 +187,7 @@ void    FileUpload::OpenFile(std::string path)
     if (this->HeaderFetched)
     {
         this->HeaderFetched = false;
-        if (close(this->fd) < 0)
+        if (this->fd > 0 && close(this->fd) < 0)
         {
             std::cerr << "Failed to close the file : " << this->FileName << std::endl;
             return ;
