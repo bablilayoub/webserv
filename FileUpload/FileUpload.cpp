@@ -187,11 +187,7 @@ void    FileUpload::OpenFile(std::string path)
     if (this->HeaderFetched)
     {
         this->HeaderFetched = false;
-        if (this->fd > 0 && close(this->fd) < 0)
-        {
-            std::cerr << "Failed to close the file : " << this->FileName << std::endl;
-            return ;
-        }
+        close(this->fd);
         this->fd = -42;
         if (!this->FileName.empty()) 
         {
@@ -241,7 +237,9 @@ int FileUpload::HandleChunkedData(std::string &Body) {
             bytesLeft -= chunkData.length();
             Body.clear();
         }
+
         pos = Body.find("0\r\n\r\n");
+
         if (pos != std::string::npos) 
         {
             if (pos != 0) {
@@ -252,6 +250,7 @@ int FileUpload::HandleChunkedData(std::string &Body) {
             this->DataFinish = true;
             return 1;
         }
+        
         pos = Body.find(CRLF);
 
         if (pos == 0) {
