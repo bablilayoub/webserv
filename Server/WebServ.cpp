@@ -425,7 +425,6 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
 
 	if (!this->clientDataMap[client_socket].headerDataSet || (this->clientDataMap[client_socket].headerDataSet && this->clients[client_socket].getMethod() == POST))
 		bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0);
-
 	if (!this->clientDataMap[client_socket].headerDataSet && bytes_received == -1)
 	{
 		fds[i].events = POLLIN;
@@ -447,6 +446,11 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
 			size_t chunkSize = clientDataMap[client_socket].chunk.size();
 			clientDataMap[client_socket].chunk.copy(buffer, chunkSize);
 			handlePostRequest(client_socket, buffer, 0, boundary);
+		}
+		else if (this->clients[client_socket].getIsBinary())
+		{
+			BodyMap[client_socket].ParseBody("", "", this->clients[client_socket]);
+			setClientWritable(client_socket);
 		}
 		return;
 	}

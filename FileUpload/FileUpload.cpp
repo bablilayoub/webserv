@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/02/14 01:27:12 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/16 15:10:50 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -381,7 +381,7 @@ int    FileUpload::ParseBody(std::string Body, std::string Boundary, Client &cli
         this->DataFinish = true;
         return 2;
     }
-    if (this->DataFinish || Body.empty())
+    if (this->DataFinish || (Body.empty() && !client.getIsBinary()))
         return 2;
     if (client.getIsBinary() && !this->BinaryFileOpen) 
     {
