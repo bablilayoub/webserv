@@ -6,6 +6,14 @@
 
 WebServ::WebServ(Config *config) : config(config) {}
 
+WebServ::~WebServ()
+{
+	for (size_t i = 0; i < fds.size(); i++) {
+		if (fds[i].fd > 0)
+			close(fds[i].fd);
+	}
+}
+
 int WebServ::init(std::string host, const int port)
 {
 	int listener = -1;
@@ -150,14 +158,17 @@ void WebServ::AddSocket(int socket, bool isListener, int event)
 
 void WebServ::handleServersIncomingConnections()
 {
+	size_t maxTries = 0;
 	while (true)
 	{
 		int ret = poll(&fds[0], fds.size(), TIME_OUT);
 		if (ret == -1)
 		{
-			std::cerr << "Poll failed, retrying..." << std::endl;
+			if (++maxTries > 10)
+				throw std::runtime_error("Poll failed");
 			continue;
 		}
+		maxTries = 0;
 		if (ret == 0)
 			continue;
 

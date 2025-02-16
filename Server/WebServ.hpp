@@ -70,6 +70,7 @@ private:
 
 public:
 	WebServ(Config *config);
+	~WebServ();
 	int init(std::string host, const int port);
 	void initServers();
 	int setNonBlockingMode(int socket);
