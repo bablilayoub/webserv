@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/16 14:55:15 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/16 18:16:02 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -215,6 +215,7 @@ void Client::handleCGIRequest(const std::string &indexPath)
 		env["PATH_INFO"] = this->path_info;
 		env["PATH_TRANSLATED"] = this->location->root_folder + this->path_info;
 		env["REMOTE_USER"] = "Webserv";
+		env["ROOT_FOLDER"] = this->location->root_folder;
 
 		for (std::map<std::string, std::string>::iterator it = this->headers.begin(); it != this->headers.end(); ++it)
 		{
@@ -1097,8 +1098,6 @@ std::string Client::trim(const std::string &s)
 
 void Client::parse(const std::string &request)
 {
-	// std::cout << request << std::endl;
-
 	size_t headerEnd = request.find("\r\n\r\n");
 	if (headerEnd == std::string::npos)
 	{

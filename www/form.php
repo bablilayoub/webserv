@@ -1,12 +1,10 @@
 <?php
 
-// Initialize variables
 $name = "";
 $email = "";
 $message = "";
 $messageType = "";
 
-// Check if the form is submitted
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (isset($_POST["name"]) && isset($_POST["email"])) {
         $name = htmlspecialchars($_POST['name']);
@@ -69,11 +67,13 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['message'])) {
                             <div>
                                 <label for="name" class="block text-sm font-medium text-gray-700">Name:</label>
                                 <input type="text" id="name" name="name" required
+                                    placeholder="Enter your name here"
                                     class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                             </div>
                             <div>
                                 <label for="email" class="block text-sm font-medium text-gray-700">Email:</label>
                                 <input type="email" id="email" name="email" required
+                                    placeholder="Enter your email address"
                                     class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                             </div>
                             <button type="submit"

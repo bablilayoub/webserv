@@ -1,7 +1,6 @@
 <?php
 $targetDir = "/Users/abablil/goinfre/upload/";
 
-// Ensure the upload directory exists
 if (!file_exists($targetDir)) {
 	mkdir($targetDir, 0777, true);
 }
@@ -10,7 +9,6 @@ $messageType = "";
 $message = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-	// Sanitize the filename input
 	$filename = basename($_POST["filename"]);
 	$filePath = $targetDir . $filename;
 
@@ -21,7 +19,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		$messageType = "error";
 		$message = "File not found: " . htmlspecialchars($filename);
 	} else {
-		// Attempt to delete the file
 		if (unlink($filePath)) {
 			$messageType = "success";
 			$message = "File deleted successfully: " . htmlspecialchars($filename);

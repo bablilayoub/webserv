@@ -13,10 +13,8 @@ if (isset($_POST["logout"])) {
 	exit;
 }
 
-// Check if the theme cookie is set
 $theme = isset($_COOKIE['theme']) ? $_COOKIE['theme'] : 'light';
 
-// Handle theme toggle
 if (isset($_POST['theme'])) {
 	$newTheme = $_POST['theme'] === 'dark' ? 'dark' : 'light';
 	setcookie('theme', $newTheme, time() + (86400 * 30), "/");

@@ -1,23 +1,18 @@
-#!/usr/bin/env python3
 import cgi
 import cgitb
 
-# Enable CGI error handling
 cgitb.enable()
 
-# Initialize variables
 name = ""
 email = ""
 message = ""
 
-# Get form data
 form = cgi.FieldStorage()
 if form.getvalue("name") and form.getvalue("email"):
     name = form.getvalue("name")
     email = form.getvalue("email")
     message = f"Thank you, {name}! Your email address ({email}) has been received."
 
-# HTML content for the contact form
 print(f"""
 <!DOCTYPE html>
 <html lang="en">
@@ -61,11 +56,13 @@ print(f"""
                             <div>
                                 <label for="name" class="block text-sm font-medium text-gray-700">Name:</label>
                                 <input type="text" id="name" name="name" value="{name}" required
+                                    placeholder="Enter your name here"
                                     class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                             </div>
                             <div>
                                 <label for="email" class="block text-sm font-medium text-gray-700">Email:</label>
                                 <input type="email" id="email" name="email" value="{email}" required
+                                    placeholder="Enter your email address"
                                     class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                             </div>
                             <button type="submit"
