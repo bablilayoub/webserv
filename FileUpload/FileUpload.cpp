@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:34:45 by aitaouss          #+#    #+#             */
-/*   Updated: 2025/02/16 16:08:46 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/16 21:16:48 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -393,11 +393,12 @@ int FileUpload::ParseBody(std::string Body, std::string Boundary, Client &client
         this->BinarychunkSize = 0;
         HandleBinaryData(client.getContentType());
     }
-    else
+    else if (!client.getIsBinary())
     {
         this->pos = Body.find(Boundary);
         if (this->pos == 0)
         {
+            close(this->fd);
             this->openFile = false;
             this->chunkData = "";
             this->bytesLeft = 0;
