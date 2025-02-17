@@ -8,7 +8,8 @@ WebServ::WebServ(Config *config) : config(config) {}
 
 WebServ::~WebServ()
 {
-	for (size_t i = 0; i < fds.size(); i++) {
+	for (size_t i = 0; i < fds.size(); i++)
+	{
 		if (fds[i].fd > 0)
 			close(fds[i].fd);
 	}
@@ -431,30 +432,28 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
 
 	if (!this->clientDataMap[client_socket].headerDataSet || (this->clientDataMap[client_socket].headerDataSet && this->clients[client_socket].getMethod() == POST))
 		bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0);
-	size_t index = getClientIndex(client_socket);
-	if (bytes_received == 0 || bytes_received == -1)
+	if (bytes_received == 0)
 	{
-		std::cout << "Client disconnected" << std::endl;
-		fds[index].events = POLLOUT;
+		fds[getClientIndex(client_socket)].events = POLLOUT;
 		return;
 	}
 
 	if (!this->clientDataMap[client_socket].headerDataSet)
 	{
-		if (getHeaderData(client_socket, &this->clientDataMap[client_socket].headerDataSet, boundary, bytes_received, buffer) == -1)
+		if (getHeaderData(client_socket, &this->clientDataMap[client_socket].headerDataSet, boundary, bytes_received, buffer) == -1) {
 			return;
+		}
+
 		if (this->clients[client_socket].return_anyway || this->clients[client_socket].getMethod() != POST)
 			fds[i].events = POLLOUT;
 		else if (!clientDataMap[client_socket].chunk.empty())
 		{
-			std::cout << "131313: "<< std::endl;
 			size_t chunkSize = clientDataMap[client_socket].chunk.size();
 			clientDataMap[client_socket].chunk.copy(buffer, chunkSize);
 			handlePostRequest(client_socket, buffer, 0, boundary);
 		}
 		else if (this->clients[client_socket].getIsBinary())
 		{
-			std::cout << "Binary" << std::endl;
 			BodyMap[client_socket].ParseBody("", "", this->clients[client_socket]);
 			setClientWritable(client_socket);
 		}
@@ -463,8 +462,14 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
 
 	if (this->clients[client_socket].return_anyway || this->clients[client_socket].getMethod() != POST)
 		fds[i].events = POLLOUT;
-	else
-			handlePostRequest(client_socket, buffer, bytes_received, boundary);
+	else {
+		if (bytes_received == -1)
+		{
+			fds[getClientIndex(client_socket)].events = POLLOUT;
+			return;
+		}
+		handlePostRequest(client_socket, buffer, bytes_received, boundary);
+	}
 }
 
 std::vector<int> WebServ::getListeners() const

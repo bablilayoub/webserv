@@ -18,7 +18,7 @@
 
 #define BUFFER_SIZE 80000
 #define TIME_OUT 5000
-#define INACTIVITY_TIMEOUT 10
+#define INACTIVITY_TIMEOUT 30
 
 #define GET "GET"
 #define POST "POST"
