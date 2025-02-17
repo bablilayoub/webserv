@@ -1,8 +1,15 @@
 <?php
 
 header("Content-Type: application/json");
+ini_set('display_errors', 0);
 
 $targetDir = $_ENV['ROOT_FOLDER'];
+
+if (empty($targetDir) || !is_dir($targetDir)) {
+    http_response_code(500);
+    echo json_encode(array("message" => "Server misconfiguration: ROOT_FOLDER not set or invalid"));
+    exit;
+}
 
 if ($_SERVER["REQUEST_METHOD"] !== "DELETE") {
 	http_response_code(405);
@@ -38,22 +45,24 @@ if (strpos($full_path, $targetDir) !== 0) {
 	exit;
 }
 
-if (is_dir($full_path)) {
-	if (rmdir($full_path)) {
-		http_response_code(200);
-		echo json_encode(array("message" => "Directory deleted successfully"));
-	} else {
-		http_response_code(500);
-		echo json_encode(array("message" => "Failed to delete directory"));
-	}
+function deleteDir($dir) {
+    if (!is_dir($dir)) {
+        return unlink($dir);
+    }
+    foreach (scandir($dir) as $file) {
+        if ($file !== '.' && $file !== '..') {
+            deleteDir($dir . DIRECTORY_SEPARATOR . $file);
+        }
+    }
+    return rmdir($dir);
+}
+
+if (deleteDir($full_path)) {
+    http_response_code(200);
+    echo json_encode(array("message" => "File or directory deleted successfully"));
 } else {
-	if (unlink($full_path)) {
-		http_response_code(200);
-		echo json_encode(array("message" => "File deleted successfully"));
-	} else {
-		http_response_code(500);
-		echo json_encode(array("message" => "Failed to delete file"));
-	}
+    http_response_code(500);
+    echo json_encode(array("message" => "Failed to delete file or directory"));
 }
 
 ?>
