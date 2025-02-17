@@ -8,7 +8,8 @@ WebServ::WebServ(Config *config) : config(config) {}
 
 WebServ::~WebServ()
 {
-	for (size_t i = 0; i < fds.size(); i++) {
+	for (size_t i = 0; i < fds.size(); i++)
+	{
 		if (fds[i].fd > 0)
 			close(fds[i].fd);
 	}
@@ -70,7 +71,6 @@ int WebServ::init(std::string host, const int port)
 			retryCount++;
 			continue;
 		}
-		// std::cout << "Server is listening on port " << port << std::endl;
 		return listener;
 	}
 	std::cerr << "Failed to initialize server on port " << port << " after " << maxRetries << " attempts." << std::endl;
@@ -169,10 +169,10 @@ void WebServ::handleServersIncomingConnections()
 			continue;
 		}
 		maxTries = 0;
+		cleanUpInactiveClients();
 		if (ret == 0)
 			continue;
 
-		cleanUpInactiveClients();
 		for (size_t i = 0; i < fds.size(); i++)
 		{
 			int client_socket = fds[i].fd;
@@ -231,7 +231,7 @@ void WebServ::cleanUpInactiveClients()
 		if (std::find(listeners.begin(), listeners.end(), fd) == listeners.end())
 		{
 			ClientData &data = clientDataMap[fd];
-			if (now - data.last_activity_time > 30)
+			if (now - data.last_activity_time > INACTIVITY_TIMEOUT)
 				cleanUp(fd, i);
 		}
 	}
@@ -261,7 +261,6 @@ int WebServ::getHeaderData(int client_socket, bool *flag, std::string &boundary,
 
 	if (bytes_received > 0)
 	{
-		this->clientDataMap[client_socket].tries++;
 		buffer[bytes_received] = '\0';
 		request.append(buffer, bytes_received);
 		size_t pos = request.find("\r\n\r\n");
@@ -278,9 +277,6 @@ int WebServ::getHeaderData(int client_socket, bool *flag, std::string &boundary,
 			return 0;
 		}
 	}
-
-	this->clients[client_socket].parse(request);
-	request.clear();
 	return -1;
 }
 
@@ -436,17 +432,15 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
 
 	if (!this->clientDataMap[client_socket].headerDataSet || (this->clientDataMap[client_socket].headerDataSet && this->clients[client_socket].getMethod() == POST))
 		bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0);
-	if (!this->clientDataMap[client_socket].headerDataSet && bytes_received == -1)
+	if (bytes_received == 0)
 	{
-		fds[i].events = POLLIN;
+		fds[getClientIndex(client_socket)].events = POLLOUT;
 		return;
 	}
 
 	if (!this->clientDataMap[client_socket].headerDataSet)
 	{
-		if (getHeaderData(client_socket, &this->clientDataMap[client_socket].headerDataSet, boundary, bytes_received, buffer) == -1)
-		{
-			fds[i].events = POLLOUT;
+		if (getHeaderData(client_socket, &this->clientDataMap[client_socket].headerDataSet, boundary, bytes_received, buffer) == -1) {
 			return;
 		}
 
@@ -468,21 +462,13 @@ void WebServ::handleClientsRequest(int client_socket, size_t &i)
 
 	if (this->clients[client_socket].return_anyway || this->clients[client_socket].getMethod() != POST)
 		fds[i].events = POLLOUT;
-	else
-	{
-		size_t index = getClientIndex(client_socket);
-		if (bytes_received == 0)
+	else {
+		if (bytes_received == -1)
 		{
-			// std::cout << "Client disconnected" << std::endl;
-			fds[index].events = POLLOUT;
+			fds[getClientIndex(client_socket)].events = POLLOUT;
+			return;
 		}
-		else if (bytes_received == -1)
-		{
-			// std::cerr << "Failed to receive data from client" << std::endl;
-			fds[index].events = POLLOUT;
-		}
-		else
-			handlePostRequest(client_socket, buffer, bytes_received, boundary);
+		handlePostRequest(client_socket, buffer, bytes_received, boundary);
 	}
 }
 
