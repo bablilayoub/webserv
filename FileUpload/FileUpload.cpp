@@ -150,7 +150,6 @@ void FileUpload::ParseContentDisposition(std::string &Body)
     if (this->pos == std::string::npos)
     {
         this->FileNameEmpty = true;
-        this->FileName = "RBL" + generate_random_string(5);
         Body = Body.substr(2, Body.length());
     }
     else if (this->pos != std::string::npos)
