@@ -6,7 +6,7 @@
 /*   By: abablil <abablil@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/01/09 14:29:17 by abablil           #+#    #+#             */
-/*   Updated: 2025/02/16 18:16:02 by abablil          ###   ########.fr       */
+/*   Updated: 2025/02/18 18:18:18 by abablil          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -589,6 +589,9 @@ Server *Client::getServer()
 		if (std::find(serverIt->ports.begin(), serverIt->ports.end(), this->port) != serverIt->ports.end())
 		{
 			if (!defaultServer)
+				defaultServer = &(*serverIt);
+
+			if (serverIt->host == this->server_name)
 				defaultServer = &(*serverIt);
 
 			if (std::find(serverIt->server_names.begin(), serverIt->server_names.end(), this->server_name) != serverIt->server_names.end())
@@ -1226,7 +1229,7 @@ void Client::parse(const std::string &request)
 	{
 		setErrorResponse(503);
 		this->parsed = true;
-		return; 
+		return;
 	}
 
 	this->location = this->getLocation();
